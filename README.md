@@ -48,4 +48,4 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 ## License:
 ELT_RTKBase is licensed under AGPL 3 (see [LICENSE](./LICENSE) file).
 
-ELT_RTKBase uses [RtkBase](https://github.com/Stefal/rtkbase) (AGPL v3) Thank you for Stefal!
+ELT_RTKBase uses [RtkBase](https://github.com/Stefal/rtkbase) (AGPL v3) by Stefal!
