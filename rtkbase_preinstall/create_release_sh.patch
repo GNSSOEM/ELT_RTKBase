@@ -1,0 +1,28 @@
+diff --git a/tools/create_release.sh b/tools/create_release.sh
+index c69e8c1..22d1b39 100755
+--- a/tools/create_release.sh
++++ b/tools/create_release.sh
+@@ -24,6 +24,8 @@ tar --exclude-vcs \
+     --exclude='rtkbase/.github' \
+     --exclude='rtkbase/settings.conf' \
+     --exclude='rtkbase/venv' \
++    --exclude='rtkbase/tools/bin' \
++    --exclude='rtkbase/tools/wheel' \
+     --exclude='test.sh' \
+     --exclude='test.conf' \
+     --exclude='*.pyc' \
+@@ -36,9 +38,10 @@ echo '========================================================'
+ 
+ if [[ ${BUNDLED} == '--bundled' ]]
+ then
+-    cat rtkbase/tools/install.sh $ARCHIVE_NAME > install.sh
+-    chmod +x install.sh
+-    echo 'Bundled script install.sh created inside' $(pwd)
++    cat rtkbase/tools/install.sh $ARCHIVE_NAME > rtkbase_install.sh
++    chmod +x rtkbase_install.sh
++    rm -f $ARCHIVE_NAME
++    echo 'Bundled script rtkbase_install.sh created inside' $(pwd)
+     echo '========================================================'
+ 
+ fi
+\ No newline at end of file
