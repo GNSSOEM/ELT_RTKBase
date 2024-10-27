@@ -164,8 +164,15 @@ detect_usb() {
                 #echo detect_speed_Bynav ${devname}
                 detect_speed_Bynav ${devname}
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
-             elif [[ "$ID_SERIAL" =~ 1a86_USB_Dual_Serial ]]; then
+             elif [[ "$ID_SERIAL" =~ 1a86_USB_Dual_Serial ]]; then # 1a86 - QinHeng Electronics, CH340 or CH341
                 echo ${devname} >> "${BynavDevices}"
+             else                                                  # ordinary CH340 - "1a86_USB_Serial"
+                #echo detect_speed_Unicore ${devname}
+                detect_speed_Unicore ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Bynav ${devname}
+                detect_speed_Bynav ${devname}
+                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
              fi
              [[ ${#detected_gnss[*]} -eq 3 ]] && break
          done
