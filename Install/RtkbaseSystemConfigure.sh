@@ -158,6 +158,68 @@ then
    WORK=Y
 fi
 
+ChangeConnection(){
+   device=$1
+   ip="$2"
+   gate="$3"
+   dns="$4"
+   #echo device=${device} ip=${ip} gate=${gate} dns=${dns}
+   #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
+   UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
+   if [[ "${UUID}" != "" ]]; then
+      CMD="nmcli connection modify uuid \"${UUID}\""
+      if [[ "${ip}" =~ DHCP ]]; then
+         CMD="${CMD} ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+         kind=DHCP
+      else
+         if [[ -n "${ip}" ]]; then
+            CMD="${CMD} ipv4.method \"manual\" ipv4.addresses \"${ip}\""
+         fi
+         if [[ -n "${gate}" ]]; then
+            CMD="${CMD} ipv4.gateway \"${gate}\""
+         fi
+         if [[ -n "${dns}" ]]; then
+            CMD="${CMD} ipv4.dns \"${dns}\""
+         fi
+         kind=Static
+      fi
+      #echo ${CMD}
+      eval ${CMD}
+      ExitCodeCheck $?
+      #echo nmcli connection down uuid \"${UUID}\"
+      nmcli connection down uuid "${UUID}"
+      ExitCodeCheck $?
+      #echo nmcli connection up uuid \"${UUID}\"
+      nmcli connection up uuid "${UUID}"
+      ExitCodeCheck $?
+      #echo ping -4 -c 1 -W 1 -q -I ${device} google.com \>/dev/null
+      ping -4 -c 1 -W 1 -q -I ${device} google.com >/dev/null
+      if [[ $? == 0 ]]; then
+         echo Ping OK. ${kind} ${device} configured.
+      else
+         echo Ping failed. Restore DHCP for ${device}
+         CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+         #echo ${CMD}
+         eval ${CMD}
+         ExitCodeCheck $?
+         #echo nmcli connection down uuid \"${UUID}\"
+         nmcli connection down uuid "${UUID}"
+         ExitCodeCheck $?
+         #echo nmcli connection up uuid \"${UUID}\"
+         nmcli connection up uuid "${UUID}"
+         ExitCodeCheck $?
+      fi
+   fi
+   WORK=Y
+}
+
+if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
+   ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}"
+fi
+if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
+   ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}"
+fi
+
 if [[ -z "${WORK}" ]]
 then
   echo No any work
