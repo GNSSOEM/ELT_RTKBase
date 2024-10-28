@@ -604,14 +604,19 @@ add_rtkbase_user(){
    fi
 }
 
-RTKBASE_ADD_1ST=
+doPatch(){
+  patch -f ${1} ${2}
+  ExitCodeCheck $?
+}
+
 install_rtklib() {
     echo '################################'
     echo 'INSTALLING RTKLIB'
     echo '################################'
     platform=$(uname -m)
     RTKLIB_DIR=${BASEDIR}/${RTKLIB}/${platform}
-    if [[ -d ${RTKLIB_DIR} ]]; then
+    if [[ -d ${RTKLIB_DIR} ]] && lsb_release -c | grep -q 'bookworm'; then
+       echo RtkLib copyed from ${RTKLIB_DIR}
        LOCAL_BIN=/usr/local/bin/
        #echo chmod 711 ${RTKLIB_DIR}/*
        chmod 711 ${RTKLIB_DIR}/*
@@ -619,8 +624,29 @@ install_rtklib() {
        mv ${RTKLIB_DIR}/* ${LOCAL_BIN}
        ExitCodeCheck $?
     else
-       echo RtkLib will be installed from original RtkBase
-       RTKBASE_ADD_1ST=-r
+       echo RtkLib will be compiled from original and patches
+       echo Get Rtklib 2.4.3 b34j release and unnpack it
+       sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/rtklibexplorer/RTKLIB/archive/refs/tags/b34j.tar.gz | tar -xvz >/dev/null
+       #Install Rtklib app
+       RTKLIB_CURDIR=`pwd`
+       RTKLIB_GIT=${RTKLIB_CURDIR}/RTKLIB-b34j
+       RTKLIB_PATCH=${BASEDIR}/${RTKLIB}
+       doPatch ${RTKLIB_GIT}/src/stream.c ${RTKLIB_PATCH}/stream.patch
+       doPatch ${RTKLIB_GIT}/src/streamsvr.c ${RTKLIB_PATCH}/streamsvr.patch
+       doPatch ${RTKLIB_GIT}/src/rinex.c ${RTKLIB_PATCH}/rinex.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/str2str/str2str.c ${RTKLIB_PATCH}/str2str.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/str2str/gcc/makefile ${RTKLIB_PATCH}/str2str_makefile.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/convbin/convbin.c ${RTKLIB_PATCH}/convbin.patch
+       #TODO add correct CTARGET in makefile?
+       echo Compile and install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc install
+       #deleting RTKLIB
+       rm -rf ${RTKLIB_GIT}
     fi
     #ls -la /usr/local/bin/
     #echo rm -rf ${BASEDIR}/${RTKLIB}
@@ -734,12 +760,12 @@ correct_units(){
 }
 
 rtkbase_install(){
-   #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d ${RTKBASE_ADD_1ST}
-   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d ${RTKBASE_ADD_1ST}
+   #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
    ExitCodeCheck $?
    if [ $lastcode != 0 ]
    then
-      echo BUG: ${RTKBASE_INSTALL} -j -d ${RTKBASE_ADD_1ST} finished with exitcode = $lastcode
+      echo BUG: ${RTKBASE_INSTALL} -j -d finished with exitcode = $lastcode
       #ls -la ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    fi
 
@@ -1141,9 +1167,9 @@ stop_rtkbase_services
 have_phase1 && add_rtkbase_user
 have_phase1 && install_rtkbase_system_configure
 have_phase1 && install_tune_power
-have_phase1 && install_rtklib
 #echo cd ${RTKBASE_PATH}
 cd ${RTKBASE_PATH}
+have_phase1 && install_rtklib
 have_phase1 && copy_rtkbase_install_file
 have_phase1 && rtkbase_install
 have_phase1 && configure_for_unicore

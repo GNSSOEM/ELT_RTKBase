@@ -1,0 +1,13 @@
+diff --git a/app/consapp/convbin/convbin.c b/app/consapp/convbin/convbin.c
+index 19bac98..87e4b97 100644
+--- a/app/consapp/convbin/convbin.c
++++ b/app/consapp/convbin/convbin.c
+@@ -329,7 +329,7 @@ static void setmask(const char *argv, rnxopt_t *opt, int mask)
+         else if (p[0]=='C') i=RNX_SYS_CMP;
+         else if (p[0]=='I') i=RNX_SYS_IRN;
+         else continue;
+-        int code=obs2code(p+2);
++        code=obs2code(p+2);
+         if (code != CODE_NONE) {
+             opt->mask[i][code-1]=mask?'1':'0';
+         }

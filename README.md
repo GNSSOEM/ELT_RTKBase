@@ -38,11 +38,11 @@ Based on RtkBase
 + Zeroconfig VPN by [Tailscale](https://tailscale.com)
 + System update & upgrade by buttom in the web-interface
 + Indication of disconnections with the NTRIP server in the web interface.
++ Support for static IP addresses
 
 ## The next version is expected to include:
 + NTRIP 2.0
 + 5 NTRIP servers
-+ Support for static IP addresses
 
 ## License:
 ELT_RTKBase is licensed under AGPL 3 (see [LICENSE](./LICENSE) file).

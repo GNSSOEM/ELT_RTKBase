@@ -35,8 +35,10 @@ cd ${1}
 ExitCodeCheck $?
 doPatch src/stream.c stream.patch
 doPatch src/streamsvr.c streamsvr.patch
+doPatch src/rinex.c rinex.patch
 doPatch app/consapp/str2str/str2str.c str2str.patch
 doPatch app/consapp/str2str/gcc/makefile str2str_makefile.patch
+doPatch app/consapp/convbin/convbin.c convbin.patch
 
 cd app/consapp/str2str/gcc
 ExitCodeCheck $?
