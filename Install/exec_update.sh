@@ -24,7 +24,7 @@ update_log="${data_path}/${date}_UPDATE.log"
 #WHOAMI=`whoami`
 #echo ${WHOAMI} >${update_log}
 
-sudo ${update_path}/update.sh -U >${update_log}
+sudo ${update_path}/update.sh -U &>${update_log}
 lastcode=$?
 #lastcode=0
 
