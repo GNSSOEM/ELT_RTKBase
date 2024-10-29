@@ -7,7 +7,7 @@ HAVE_DEB12=`lsb_release -c | grep bookworm`
 if [[ "${HAVE_PI4}" == "" ]] || [[ "${HAVE_TYPEC}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
    echo No PI4 or no Debian 12 or haven\'t USB device in type-C
    echo HAVE_PI4=${HAVE_PI4} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12}
-   systemctl stop rtkbase_check_internet.sh
+   systemctl stop rtkbase_check_internet.service
    exit 0
 fi
 
