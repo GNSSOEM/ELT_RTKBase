@@ -41,11 +41,15 @@ PPP_CONF_PATH=ppp_conf.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 SYSPROXY=RtkbaseSystemConfigureProxy.sh
+NETWORK_EVENT=rtkbase_network_event.sh
+CHECK_INTERNET=rtkbase_check_internet.sh
+CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
 TUNE_POWER=tune_power.sh
 CONFIG=config.txt
 CONFIG_ORIG=config.original
 RTKLIB=rtklib
 SERVICE_PATH=/etc/systemd/system
+NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
 BANNER=/etc/ssh/sshd_config.d/rename_user.conf
 VERSION=version.txt
@@ -515,7 +519,9 @@ stop_rtkbase_services(){
                   rtkbase_archive.timer \
                   modem_check.service \
                   modem_check.timer \
-                  rtkbase_gnss_web_proxy.service"
+                  rtkbase_gnss_web_proxy.service \
+                  ${SYSSERVICE} \
+                  ${CHECK_INTERNET_SERVICE}"
      if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
         serviceList="${serviceList} rtkbase_web.service"
      fi
@@ -707,8 +713,7 @@ install_rtkbase_system_configure(){
   chmod +x ${RTKBASE_PATH}/${SYSCONGIG}
   ExitCodeCheck $?
 
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-  then
+  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
      #echo mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
      mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
      ExitCodeCheck $?
@@ -721,13 +726,37 @@ install_rtkbase_system_configure(){
   mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   ExitCodeCheck $?
 
-  if ! ischroot
-  then
+  #echo mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
+  mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
+  ExitCodeCheck $?
+  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  ExitCodeCheck $?
+
+  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+     #echo mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
+     mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
+     ExitCodeCheck $?
+  fi
+  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
+  ExitCodeCheck $?
+
+  #echo mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
+  mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
+  ExitCodeCheck $?
+
+  if ! ischroot; then
      #echo systemctl daemon-reload
      systemctl daemon-reload
   fi
+
   #echo systemctl enable ${SYSSERVICE}
   systemctl enable ${SYSSERVICE}
+  ExitCodeCheck $?
+
+  #echo systemctl enable ${CHECK_INTERNET_SERVICE}
+  systemctl enable ${CHECK_INTERNET_SERVICE}
   ExitCodeCheck $?
 }
 
@@ -1053,6 +1082,9 @@ start_rtkbase_services(){
      #echo systemctl start "${GNSS_WEB_PROXY}"
      systemctl start "${GNSS_WEB_PROXY}"
   fi
+
+  #echo systemctl start "${CHECK_INTERNET_SERVICE}"
+  systemctl start "${CHECK_INTERNET_SERVICE}"
 }
 
 delete_garbage(){
@@ -1111,7 +1143,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
               ${PPP_CONF_PATH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
-              ${SYSTEM_UPGRADE} ${EXEC_UPDATE}"
+              ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
+              ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

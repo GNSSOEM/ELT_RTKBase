@@ -17,8 +17,9 @@ tar --exclude-vcs \
     Bynav_RTCM3_OUT.txt Septentrio_TEST.txt rtklib/aarch64/* \
     Septentrio_RTCM3_OUT.txt settings_html.patch \
     ppp_conf.patch config.original tailscale_get_href.sh \
-    system_upgrade.sh exec_update.sh
- 
+    system_upgrade.sh exec_update.sh rtkbase_network_event.sh \
+    rtkbase_check_internet.sh rtkbase_check_internet.service
+
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
 chmod +x $BUNDLE_NAME
