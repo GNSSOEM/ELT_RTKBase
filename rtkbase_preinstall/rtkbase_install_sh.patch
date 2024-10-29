@@ -1,5 +1,5 @@
 diff --git a/tools/install.sh b/tools/install.sh
-index a3972d5..f0c7454 100755
+index a3972d5..d4ed85b 100755
 --- a/tools/install.sh
 +++ b/tools/install.sh
 @@ -289,7 +289,7 @@ install_rtkbase_bundled() {
@@ -7,7 +7,7 @@ index a3972d5..f0c7454 100755
      # Check if there is some content after __ARCHIVE__ marker (more than 100 lines)
      [[ $(sed -n '/__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "RTKBASE isn't bundled inside install.sh. Please choose another source" && exit 1  
 -    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | tar xpJv && \
-+    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | sudo -u "${RTKBASE_USER}" tar xpJv && \
++    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | sudo -u "${RTKBASE_USER}" tar xpJv >/dev/null && \
      _add_rtkbase_path_to_environment
  }
  
