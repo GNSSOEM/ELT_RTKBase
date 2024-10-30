@@ -40,7 +40,6 @@ SETTING_HTML_PATCH=settings_html.patch
 PPP_CONF_PATH=ppp_conf.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
-SYSPROXY=RtkbaseSystemConfigureProxy.sh
 NETWORK_EVENT=rtkbase_network_event.sh
 CHECK_INTERNET=rtkbase_check_internet.sh
 CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
@@ -713,15 +712,6 @@ install_rtkbase_system_configure(){
   chmod +x ${RTKBASE_PATH}/${SYSCONGIG}
   ExitCodeCheck $?
 
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-     #echo mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${SYSPROXY}
-  chmod +x ${RTKBASE_PATH}/${SYSPROXY}
-  ExitCodeCheck $?
-
   #echo mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   ExitCodeCheck $?
@@ -1138,7 +1128,7 @@ can_reboot(){
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
               ${RUNCAST_PATCH} ${SET_BASE_POS} ${UNICORE_SETTIGNS} \
-              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} ${SYSPROXY} \
+              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
