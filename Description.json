@@ -1,5 +1,5 @@
 {
-  "version": "170",
-  "new_release": "v1.7.0",
-  "comment": "VPN Tailscale\r\nSystem Upgrade\r\nELT Rtkbase update\r\nImproved diagnostic logs\r\nIndication of server's discconnection in the web interface\r\nLots of fixes"
+  "version": "171",
+  "new_release": "v1.7.1",
+  "comment": "Support for static IP addresses\r\nLots of fixes"
 }
