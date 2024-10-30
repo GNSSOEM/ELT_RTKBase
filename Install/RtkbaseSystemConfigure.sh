@@ -169,36 +169,54 @@ ChangeConnection(){
    if [[ "${UUID}" != "" ]]; then
       CMD="nmcli connection modify uuid \"${UUID}\""
       if [[ "${ip}" =~ DHCP ]]; then
-         CMD="${CMD} ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+         method=auto
+         ip=
+         gate=
+         dns=
          kind=DHCP
       else
-         if [[ -n "${ip}" ]]; then
-            CMD="${CMD} ipv4.method \"manual\" ipv4.addresses \"${ip}\""
-         fi
-         if [[ -n "${gate}" ]]; then
-            CMD="${CMD} ipv4.gateway \"${gate}\""
-         fi
-         if [[ -n "${dns}" ]]; then
-            CMD="${CMD} ipv4.dns \"${dns}\""
-         fi
+         method=manual
          kind=Static
       fi
-      #echo ${CMD}
-      eval ${CMD}
-      ExitCodeCheck $?
-      #echo nmcli connection down uuid \"${UUID}\"
-      nmcli connection down uuid "${UUID}"
-      ExitCodeCheck $?
-      #echo nmcli connection up uuid \"${UUID}\"
-      nmcli connection up uuid "${UUID}"
-      ExitCodeCheck $?
-      #echo ping -4 -c 1 -W 1 -q -I ${device} google.com \>/dev/null
-      ping -4 -c 1 -W 1 -q -I ${device} google.com >/dev/null
-      if [[ $? == 0 ]]; then
-         echo Ping OK. ${kind} ${device} configured.
-      else
-         echo Ping failed. Restore DHCP for ${device}
-         CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+
+      old_method=`nmcli connection show uuid "${UUID}" | grep "ipv4.method:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_method}" != "${method}" ]]; then
+         #echo old_method=${old_method} method=${method}
+         CMD="${CMD} ipv4.method \"${method}\""
+         change=Y
+      fi
+
+      old_ip=`nmcli connection show uuid "${UUID}" | grep "ipv4.addresses:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_ip}" == "--" ]]; then
+         old_ip=
+      fi
+      if [[ "${old_ip}" != "${ip}" ]]; then
+         #echo old_ip=${old_ip} ip=${ip}
+         CMD="${CMD} ipv4.addresses \"${ip}\""
+         change=Y
+      fi
+
+      old_gate=`nmcli connection show uuid "${UUID}" | grep "ipv4.gateway:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_gate}" == "--" ]]; then
+         old_gate=
+      fi
+      if [[ "${old_gate}" != "${gate}" ]]; then
+         #echo old_gate=${old_gate} gate=${gate}
+         CMD="${CMD} ipv4.gateway \"${gate}\""
+         change=Y
+      fi
+
+      old_dns=`nmcli connection show uuid "${UUID}" | grep "ipv4.dns:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_dns}" == "--" ]]; then
+         old_dns=
+      fi
+      if [[ "${old_dns}" != "${dns}" ]]; then
+         #echo old_dns=${old_dns} dns=${dns}
+         CMD="${CMD} ipv4.dns \"${dns}\""
+         change=Y
+      fi
+
+      if [[ "${change}" == "Y" ]]; then
          #echo ${CMD}
          eval ${CMD}
          ExitCodeCheck $?
@@ -208,6 +226,25 @@ ChangeConnection(){
          #echo nmcli connection up uuid \"${UUID}\"
          nmcli connection up uuid "${UUID}"
          ExitCodeCheck $?
+         #echo ping -4 -c 1 -W 1 -q -I ${device} google.com \>/dev/null
+         ping -4 -c 1 -W 1 -q -I ${device} google.com >/dev/null
+         if [[ $? == 0 ]]; then
+            echo Ping OK. ${kind} ${device} configured.
+         else
+            echo Ping failed. Restore DHCP for ${device}
+            CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+            #echo ${CMD}
+            eval ${CMD}
+            ExitCodeCheck $?
+            #echo nmcli connection down uuid \"${UUID}\"
+            nmcli connection down uuid "${UUID}"
+            ExitCodeCheck $?
+            #echo nmcli connection up uuid \"${UUID}\"
+            nmcli connection up uuid "${UUID}"
+            ExitCodeCheck $?
+         fi
+      else
+         echo ${kind} ${device} already configured as the same
       fi
    fi
    WORK=Y
