@@ -356,7 +356,7 @@ then
       ${BASEDIR}/NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
       ExitCodeCheck $?
    else
-      $lastcode=0
+      lastcode=0
    fi
    if [[ $lastcode == 0 ]]; then
       if [[ "${ANTINFO}" != "" ]]; then
