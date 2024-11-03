@@ -235,22 +235,40 @@ ChangeConnection(){
          #echo nmcli --wait 120 connection up uuid \"${UUID}\"
          nmcli --wait 120 connection up uuid "${UUID}"
          ExitCodeCheck $?
-         #echo ping -4 -c 1 -W 1 -q -I ${device} google.com \>/dev/null
-         ping -4 -c 1 -W 1 -q -I ${device} google.com >/dev/null
-         if [[ $? == 0 ]]; then
-            echo Ping OK. ${kind} ${device} configured.
-         else
-            echo Ping failed. Restore DHCP for ${device}
-            CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
-            #echo ${CMD}
-            eval ${CMD}
-            ExitCodeCheck $?
-            #echo nmcli connection down uuid \"${UUID}\"
-            nmcli connection down uuid "${UUID}"
-            ExitCodeCheck $?
-            #echo nmcli connection up uuid \"${UUID}\"
-            nmcli connection up uuid "${UUID}"
-            ExitCodeCheck $?
+
+         #echo DEBUG=${DEBUG}
+         if [[ -n "${DEBUG}" ]]; then
+            if [[ -n "${dns}" ]]; then
+               ping_target="google.com"
+            elif [[ "${gate}" != "" ]]; then
+               ping_target="${gate}"
+            else
+               ping_target=
+            fi
+
+            if [[ -n "${ping_target}" ]]; then
+               #echo ping -4 -c 1 -W 1 -q -I ${device} ${ping_target} \>/dev/null
+               ping -4 -c 1 -W 1 -q -I ${device} ${ping_target} >/dev/null
+               if [[ $? == 0 ]]; then
+                  echo Ping OK. ${kind} ${device} configured.
+               else
+                  echo Ping failed. Restore DHCP for ${device}
+                  CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+                  #echo ${CMD}
+                  eval ${CMD}
+                  ExitCodeCheck $?
+                  is_active=`nmcli connection show --active uuid "${UUID}" | grep "connection.id:"`
+                  #echo is_active=${is_active}
+                  if [[ -n "${is_active}" ]]; then
+                     #echo nmcli connection down uuid \"${UUID}\"
+                     nmcli connection down uuid "${UUID}"
+                     ExitCodeCheck $?
+                  fi
+                  #echo nmcli connection up uuid \"${UUID}\"
+                  nmcli connection up uuid "${UUID}"
+                  ExitCodeCheck $?
+               fi
+            fi
          fi
       else
          echo ${kind} ${device} already configured as the same
