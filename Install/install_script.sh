@@ -215,6 +215,9 @@ delete_all_extracted(){
 }
 
 check_version(){
+  echo '################################'
+  echo 'CHECK VERSION'
+  echo '################################'
   if [ -f ${BASEDIR}/${VERSION} ]
   then
      NEW_VERSION=`cat ${BASEDIR}/${VERSION}`
@@ -223,9 +226,6 @@ check_version(){
   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]] && [ -f ${RTKBASE_PATH}/${VERSION} ]
   then
-     echo '################################'
-     echo 'CHECK VERSION'
-     echo '################################'
      UPDATE=Y
      OLD_VERSION=`cat ${RTKBASE_PATH}/${VERSION}`
      ExitCodeCheck $?
@@ -245,6 +245,7 @@ check_version(){
         fi
      fi
   else
+     echo Install version ${NEW_VERSION}
      OLD_VERSION=${NEW_VERSION}
      UPDATE=N
   fi
