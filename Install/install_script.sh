@@ -983,12 +983,28 @@ configure_for_unicore(){
 }
 
 configure_settings(){
-   if [ -f ${SETTINGS_SAVE} ]
-   then
+   if [ -f ${SETTINGS_SAVE} ]; then
       echo '################################'
       echo 'RESTORE SETTINGS'
       echo '################################'
+   else
+      echo '################################'
+      echo 'CONFIGURE SETTINGS'
+      echo '################################'
+   fi
 
+   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
+   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
+   then
+      #echo mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
+      mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
+      ExitCodeCheck $?
+   fi
+   #echo chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   ExitCodeCheck $?
+
+   if [ -f ${SETTINGS_SAVE} ]; then
       #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
       sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
       ExitCodeCheck $?
@@ -996,27 +1012,17 @@ configure_settings(){
       source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
       #echo version=${version} VERSION=${VERSION}
       sudo -u "${RTKBASE_USER}" sed -i s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
-   else
-      echo '################################'
-      echo 'CONFIGURE SETTINGS'
-      echo '################################'
 
-      #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-      if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-      then
-         #echo mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-         mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-         ExitCodeCheck $?
-      fi
-      #echo chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-      chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
+      ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
       ExitCodeCheck $?
-      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${RECVNAME}
+   else
+      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
       ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
       ExitCodeCheck $?
    fi
-   #echo rm -f ${BASEDIR}/${UNICORE_SETTIGNS}
-   rm -f ${BASEDIR}/${UNICORE_SETTIGNS}
+   #echo rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
 }
 
 configure_gnss(){
