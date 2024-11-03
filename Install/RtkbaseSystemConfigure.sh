@@ -163,9 +163,14 @@ ChangeConnection(){
    ip="$2"
    gate="$3"
    dns="$4"
-   #echo device=${device} ip=${ip} gate=${gate} dns=${dns}
+   conname="$5"
+   #echo device=${device} ip=${ip} gate=${gate} dns=${dns} conname=${conname}
    #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
    UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
+   if [[ "${UUID}" = "" ]]; then
+      UUID=`nmcli --fields UUID,NAME con show | grep "${conname}" | awk -F ' ' '{print $1}'`
+      #UUID=${UUID}
+   fi
    if [[ "${UUID}" != "" ]]; then
       CMD="nmcli connection modify uuid \"${UUID}\""
       if [[ "${ip}" =~ DHCP ]]; then
@@ -220,11 +225,15 @@ ChangeConnection(){
          #echo ${CMD}
          eval ${CMD}
          ExitCodeCheck $?
-         #echo nmcli connection down uuid \"${UUID}\"
-         nmcli connection down uuid "${UUID}"
-         ExitCodeCheck $?
-         #echo nmcli connection up uuid \"${UUID}\"
-         nmcli connection up uuid "${UUID}"
+         is_active=`nmcli connection show --active uuid "${UUID}" | grep "connection.id:"`
+         #echo is_active=${is_active}
+         if [[ -n "${is_active}" ]]; then
+            #echo nmcli connection down uuid \"${UUID}\"
+            nmcli connection down uuid "${UUID}"
+            ExitCodeCheck $?
+         fi
+         #echo nmcli --wait 120 connection up uuid \"${UUID}\"
+         nmcli --wait 120 connection up uuid "${UUID}"
          ExitCodeCheck $?
          #echo ping -4 -c 1 -W 1 -q -I ${device} google.com \>/dev/null
          ping -4 -c 1 -W 1 -q -I ${device} google.com >/dev/null
@@ -246,15 +255,17 @@ ChangeConnection(){
       else
          echo ${kind} ${device} already configured as the same
       fi
+   else
+      echo conection for ${device} not found
    fi
    WORK=Y
 }
 
 if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
-   ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}"
+   ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}" "Wired connection 1"
 fi
 if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
-   ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}"
+   ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
 fi
 
 if [[ -z "${WORK}" ]]
