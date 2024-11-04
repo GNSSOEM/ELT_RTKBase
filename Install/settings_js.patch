@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..b2e857e 100644
+index 9f48006..bad5fcc 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -111,7 +111,7 @@ $(document).ready(function () {
@@ -102,11 +102,12 @@ index 9f48006..b2e857e 100644
              var newFeaturesArray = response['comment'].split('\r\n');
              $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
              $.each( newFeaturesArray, function( index, value ){
-@@ -460,14 +488,17 @@ $(document).ready(function () {
+@@ -460,14 +488,18 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data
                  });
 -                $("#updateModal .modal-body").html('<span class="spinner-border spinner-border-sm"></span> Updating...');
++                $("#updateModal .modal-title").text("Manual Update from file!");
 +                $("#updateModal .modal-body").text("Please wait...Downloading update from file...");
 +                $("#start-update-button").prop("disabled", true);
 +                $("#start-update-button").html('<span class="spinner-border spinner-border-sm"></span> Updating...');
@@ -122,7 +123,7 @@ index 9f48006..b2e857e 100644
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-@@ -477,11 +508,11 @@ $(document).ready(function () {
+@@ -477,11 +509,11 @@ $(document).ready(function () {
  
      socket.on("downloading_update", function(msg) {
          response = JSON.parse(msg);
@@ -136,7 +137,7 @@ index 9f48006..b2e857e 100644
              $("#start-update-button").html('Update...');
              $("#cancel-button").prop("disabled", false);
          }
-@@ -489,13 +520,13 @@ $(document).ready(function () {
+@@ -489,13 +521,13 @@ $(document).ready(function () {
  
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
@@ -152,7 +153,7 @@ index 9f48006..b2e857e 100644
          $("#start-update-button").prop("disabled", true);
          $("#cancel-button").prop("disabled", false);
      })
-@@ -505,16 +536,21 @@ $(document).ready(function () {
+@@ -505,16 +537,21 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -183,7 +184,7 @@ index 9f48006..b2e857e 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -531,14 +567,6 @@ $(document).ready(function () {
+@@ -531,14 +568,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -198,7 +199,7 @@ index 9f48006..b2e857e 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -703,6 +731,15 @@ $(document).ready(function () {
+@@ -703,6 +732,15 @@ $(document).ready(function () {
            };
        };
  
@@ -214,7 +215,7 @@ index 9f48006..b2e857e 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +772,28 @@ $(document).ready(function () {
+@@ -735,5 +773,28 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
