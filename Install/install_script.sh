@@ -491,7 +491,7 @@ unpack_files(){
       # Find __ARCHIVE__ marker, read archive content and decompress it
       ARCHIVE=$(awk '/^__ARCHIVE__/ {print NR + 1; exit 0; }' "${0}")
       # Check if there is some content after __ARCHIVE__ marker (more than 100 lines)
-      [[ $(sed -n '/__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "ELT_RTKBase isn't bundled inside install.sh" && exit 1
+      [[ $(sed -n '/^__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "ELT_RTKBase isn't bundled inside ${0}" && exit 1
       #echo tail -n+${ARCHIVE} "${0}" \| tar xpJv --no-same-owner --no-same-permissions  --wildcards -C ${BASEDIR} ${FILES_EXTRACT}
       tail -n+${ARCHIVE} "${0}" | tar xpJv --no-same-owner --no-same-permissions  --wildcards -C ${BASEDIR} ${FILES_EXTRACT} >/dev/null
       ExitCodeCheck $?
