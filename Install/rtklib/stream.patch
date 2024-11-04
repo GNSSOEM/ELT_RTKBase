@@ -1,5 +1,5 @@
 diff --git a/src/stream.c b/src/stream.c
-index f6d815e..a2be053 100644
+index f6d815e..15c7ea8 100644
 --- a/src/stream.c
 +++ b/src/stream.c
 @@ -124,6 +124,9 @@
@@ -323,7 +323,7 @@ index f6d815e..a2be053 100644
          if (tcpcli->toinact>0&&
              (int)(tickget()-tcpcli->svr.tact)>tcpcli->toinact) {
 -            sprintf(msg,"timeout");
-+            sprintf(msg,"tcp client timeout %s",tcpcli->svr.saddr);
++            sprintf(msg,"tcp client inactive timeout %s",tcpcli->svr.saddr);
              tracet(2,"waittcpcli: inactive timeout sock=%d\n",tcpcli->svr.sock);
 -            discontcp(&tcpcli->svr,tcpcli->tirecon);
 +            discontcp(&tcpcli->svr,tcpcli->tirecon,msg);
