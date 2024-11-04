@@ -1,5 +1,5 @@
 {
-  "version": "171",
-  "new_release": "v1.7.1",
+  "version": "172",
+  "new_release": "v1.7.2",
   "comment": "Support for static IP addresses\r\nLots of fixes"
 }
