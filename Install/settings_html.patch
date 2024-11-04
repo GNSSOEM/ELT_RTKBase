@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..8a4a392 100644
+index c8f257b..f288063 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -35,7 +35,7 @@
@@ -27,6 +27,15 @@ index c8f257b..8a4a392 100644
      </div>
    </div>
      <form id="{{ ntrip_B_settings.pop(0).source_section }}" class="collapse was-validated">
+@@ -351,7 +353,7 @@
+             <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
+         </div>
+       </div>
+-      <div class="form-group row">
++      <div class="form-group row" hidden>
+         <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
+         <div class="col-sm-9">
+             <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
 @@ -479,7 +481,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
