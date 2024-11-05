@@ -15,7 +15,6 @@ ORIGDIR=`pwd`
 RECVPORT=/dev/serial0
 RTKBASE_INSTALL=rtkbase_install.sh
 SET_BASE_POS=UnicoreSetBasePos.sh
-UNICORE_SETTIGNS=UnicoreSettings.sh
 UNICORE_CONFIGURE=UnicoreConfigure.sh
 TAILSCALE_GET_HREF=tailscale_get_href.sh
 SYSTEM_UPGRADE=system_upgrade.sh
@@ -994,16 +993,11 @@ configure_settings(){
       echo '################################'
    fi
 
-   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-   then
-      #echo mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-      mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-      ExitCodeCheck $?
-   fi
-   #echo chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-   chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-   ExitCodeCheck $?
+   rtcm_msg="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230"
+   rtcm_msg_onocoy="1005(30),1033(30),1077,1087,1097,1107,1117,1127,1137,1230(30)"
+   rtcm_msg_full="1005,1006,1007,1013,1033,1019,1020,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230"
+   sed="sudo -u "${RTKBASE_USER}" sed -i"
+   #echo sed=${sed}
 
    if [ -f ${SETTINGS_SAVE} ]; then
       #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
@@ -1014,16 +1008,33 @@ configure_settings(){
       #echo version=${version} VERSION=${VERSION}
       sudo -u "${RTKBASE_USER}" sed -i s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
 
-      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
-      ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
-      ExitCodeCheck $?
+      if [[ ${OLD_VERSION} < 172 ]]; then
+         source <( grep -v '^#' "${settings}" | grep 'rtcm_msg_a=' )
+         #echo rtcm_msg_a=${rtcm_msg_a}
+         if [[ "${rtcm_msg_a}" == "${rtcm_msg}" ]]; then
+            echo correct \"rtcm_msg_a\" field for version below 172
+            ${sed} s/^rtcm_msg_a=.*/rtcm_msg_a=\'${rtcm_msg_onocoy}\'/ "${SETTINGS_NOW}"
+         fi
+      fi
    else
-      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-      ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-      ExitCodeCheck $?
+      ${sed} s/^position=.*/position=\'0\.00\ 0\.00\ 0\.00\'/ "${SETTINGS_NOW}"
+      ${sed} s/^com_port=.*/com_port=\'\'/ "${SETTINGS_NOW}"
+      ${sed} s/^com_port_settings=.*/com_port_settings=\'115200:8:n:1\'/ "${SETTINGS_NOW}"
+      ${sed} s/^receiver=.*/receiver=\'\'/ "${SETTINGS_NOW}"
+      ${sed} s/^receiver_format=.*/receiver_format=\'rtcm3\'/ "${SETTINGS_NOW}"
+      ${sed} s/^antenna_info=.*/antenna_info=\'ELT0123\'/ "${SETTINGS_NOW}"
+
+      ${sed} s/^svr_addr_a=.*/svr_addr_a=\'servers.onocoy.com\'/ "${SETTINGS_NOW}"
+      ${sed} s/^svr_addr_b=.*/svr_addr_b=\'ntrip.rtkdirect.com\'/ "${SETTINGS_NOW}"
+
+      ${sed} s/^rtcm_msg_a=.*/rtcm_msg_a=\'${rtcm_msg_onocoy}\'/ "${SETTINGS_NOW}"
+      ${sed} s/^rtcm_msg_b=.*/rtcm_msg_b=\'${rtcm_msg}\'/ "${SETTINGS_NOW}"
+      ${sed} s/^local_ntripc_msg=.*/local_ntripc_msg=\'${rtcm_msg}\'/ "${SETTINGS_NOW}"
+      ${sed} s/^rtcm_svr_msg=.*/rtcm_svr_msg=\'${rtcm_msg_full}\'/ "${SETTINGS_NOW}"
+      ${sed} s/^rtcm_serial_msg=.*/rtcm_serial_msg=\'${rtcm_msg_full}\'/ "${SETTINGS_NOW}"
+
+      ${sed} s/^archive_rotate=.*/archive_rotate=\'20\'/ "${SETTINGS_NOW}"
    fi
-   #echo rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-   rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
 }
 
 configure_gnss(){
@@ -1134,7 +1145,7 @@ can_reboot(){
 }
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
-              ${RUNCAST_PATCH} ${SET_BASE_POS} ${UNICORE_SETTIGNS} \
+              ${RUNCAST_PATCH} ${SET_BASE_POS} \
               ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
