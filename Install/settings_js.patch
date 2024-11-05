@@ -1,8 +1,51 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index c63e6e3..f51313a 100644
+index 9f48006..bad5fcc 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
-@@ -347,8 +347,19 @@ $(document).ready(function () {
+@@ -111,7 +111,7 @@ $(document).ready(function () {
+     socket.on("services status", function(msg) {
+         // gestion des services
+         var servicesStatus = JSON.parse(msg);
+-        //console.log("service status: " + servicesStatus);
++        //console.log("service status: " + msg);
+         
+         // ################ MAiN service Switch  ######################
+         //console.log("REFRESHING  service switch");
+@@ -131,6 +131,12 @@ $(document).ready(function () {
+         if (servicesStatus[0].btn_off_color) {
+             mainSwitch.bootstrapToggle('setOffStyle', servicesStatus[0].btn_off_color);
+         }
++        var ntrip_A_Error = $('#ntrip_A-error');
++        if (servicesStatus[1].error) {
++            ntrip_A_Error.text(servicesStatus[1].error);
++        } else {
++            ntrip_A_Error.text('');
++        }
+         
+         // event for switching on/off service on user mouse click
+         //TODO When the switch changes its position, this event seems attached before
+@@ -187,6 +193,12 @@ $(document).ready(function () {
+         if (servicesStatus[2].btn_off_color) {
+             ntrip_B_Switch.bootstrapToggle('setOffStyle', servicesStatus[2].btn_off_color);
+         }
++        var ntrip_B_Error = $('#ntrip_B-error');
++        if (servicesStatus[2].error) {
++            ntrip_B_Error.text(servicesStatus[2].error);
++        } else {
++            ntrip_B_Error.text('');
++        }
+         
+         // event for switching on/off service on user mouse click
+         //TODO When the switch changes its position, this event seems attached before
+@@ -334,6 +346,7 @@ $(document).ready(function () {
+         detectApplyBtnElt.innerText = "Apply";
+         detectApplyBtnElt.setAttribute('disabled', '');
+         detectApplyBtnElt.removeAttribute('data-dismiss');
++        detectCancelBtnElt.hidden = false;
+         detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Detecting GNSS receiver...';
+         socket.emit("detect_receiver", {"then_configure" : false});
+         $('#detectModal').modal();
+@@ -347,8 +360,19 @@ $(document).ready(function () {
          if (response['result'] === 'success') {
              detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
@@ -22,3 +65,182 @@ index c63e6e3..f51313a 100644
                  // NEW METHOD from https://stackoverflow.com/questions/35154348/trigger-form-submission-with-javascript
                  document.getElementById("main").dispatchEvent(new SubmitEvent('submit', {cancelable: true}));
                  if (response['then_configure']) {
+@@ -381,7 +405,7 @@ $(document).ready(function () {
+         detectApplyBtnElt.onclick = function (){}; //remove the previous attached event which launched the gnss configuration
+         detectApplyBtnElt.innerText = "Close";
+         detectApplyBtnElt.setAttribute('disabled', '');
+-        detectCancelBtnElt.remove();
++        detectCancelBtnElt.hidden = true;
+         detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Configuring GNSS receiver...';
+         socket.emit("configure_receiver");
+         $('#detectModal').modal();
+@@ -419,20 +443,24 @@ $(document).ready(function () {
+     // ####################### HANDLE UPDATE #######################
+ 
+     $('#check_update_button').on("click", function (){
+-        socket.emit("check update");
++        $("#start-update-button").html('Update');
++        $("#start-update-button").prop("disabled", true);
++        $("#cancel-button").prop("disabled", false);
++        $("#updateModal .modal-body").text('');
++        socket.emit("check update ELT");
+     });
+ 
+     socket.on("new release", function(msg) {
+         // open modal box asking for starting update
+         response = JSON.parse(msg);
+-        console.log(JSON.stringify(response));
++        console.log("new release:" + JSON.stringify(response));
+         if (response.error) {
+             $("#updateModal .modal-title").text("Update error!");
+             $("#updateModal .modal-body").append(response['error']);
+             $("#updateModal").modal();
+         }else if (response.new_release) {
+             $("#updateModal .modal-title").text("Update available!");
+-            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
++            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
+             var newFeaturesArray = response['comment'].split('\r\n');
+             $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
+             $.each( newFeaturesArray, function( index, value ){
+@@ -460,14 +488,18 @@ $(document).ready(function () {
+                     // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
+                     body: new FormData(upd_formElt) // for multipart/form-data
+                 });
+-                $("#updateModal .modal-body").html('<span class="spinner-border spinner-border-sm"></span> Updating...');
++                $("#updateModal .modal-title").text("Manual Update from file!");
++                $("#updateModal .modal-body").text("Please wait...Downloading update from file...");
++                $("#start-update-button").prop("disabled", true);
++                $("#start-update-button").html('<span class="spinner-border spinner-border-sm"></span> Updating...');
++                $("#cancel-button").prop("disabled", true);
+             };
+         }
+     });
+     
+     $("#start-update-button").on("click", function () {
+         //$("#updateModal .modal-title").text(("Installing update"));
+-        socket.emit("update rtkbase");
++        socket.emit("update rtkbase ELT");
+         $("#updateModal .modal-body").text("Please wait...Downloading update...");
+         $(this).prop("disabled", true);
+         $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
+@@ -477,11 +509,11 @@ $(document).ready(function () {
+ 
+     socket.on("downloading_update", function(msg) {
+         response = JSON.parse(msg);
+-        console.log("Downloading result: " + response);
++        console.log("Downloading result: " + JSON.stringify(response));
+         if (response['result'] === 'true') {
+             $("#updateModal .modal-body").text("Please wait...Preparing update...");
+         } else {
+-            $("#updateModal .modal-body").text("Download failure");
++            $("#updateModal .modal-body").text(response['error']);
+             $("#start-update-button").html('Update...');
+             $("#cancel-button").prop("disabled", false);
+         }
+@@ -489,13 +521,13 @@ $(document).ready(function () {
+ 
+     socket.on("updating_rtkbase_stopped", function(msg) {
+         response = JSON.parse(msg);
+-        console.log("mgs: " + response.error)
++        console.log("updating_rtkbase_stopped: " + JSON.stringify(response))
+         $("#updateModal .modal-title").text("Error !");
+         $("#updateModal .modal-body").text("");
+         for (line of response.error) {
+             $("#updateModal .modal-body").append("<p>" + line + "</p>");
+         }
+-        $("#start-update-button").html('Update');
++        $("#start-update-button").html('Update...');
+         $("#start-update-button").prop("disabled", true);
+         $("#cancel-button").prop("disabled", false);
+     })
+@@ -505,16 +537,21 @@ $(document).ready(function () {
+         //update_countdown(1200, 0);
+     })
+     
+-    socket.on("update_successful", function() {
+-            console.log("update successful");
++    socket.on("update_successful", function(msg) {
++        response = JSON.parse(msg);
++        console.log("update finished: " + JSON.stringify(response));
++        if (response['result'] === 'true') {
+             $("#updateModal .modal-body").text("Update Successful!");
+-            $("#start-update-button").html('Refresh');
+-            $("#start-update-button").prop("disabled", false);
+-            $("#start-update-button").off("click");
+-            $("#start-update-button").on("click", function() {
+-                location.reload();
+-            });
+-            $("#updateModal").modal();
++        } else {
++            $("#updateModal .modal-body").text("Update Error! See update.log in Logs page");
++        }
++        $("#start-update-button").html('Refresh');
++        $("#start-update-button").prop("disabled", false);
++        $("#start-update-button").off("click");
++        $("#start-update-button").on("click", function() {
++            location.reload();
++        });
++        $("#updateModal").modal();
+     });
+ 
+     function update_countdown(remaining, count) {
+@@ -531,14 +568,6 @@ $(document).ready(function () {
+         }
+         setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
+     };
+-    // Cleaning update modal box when closing it
+-
+-    $("#updateModal").on('hidden.bs.modal', function(){
+-        $("#updateModal .modal-title").text("Update");
+-        $("#updateModal .modal-body").text('');
+-        $("#start-update-button").prop("disabled", true);
+-      });
+-
+     // ####################### HANDLE CHANGING PASSWORD #######################
+ 
+     document.getElementById('change_password').addEventListener("input", function(e) {
+@@ -703,6 +732,15 @@ $(document).ready(function () {
+           };
+       };
+ 
++    // ########################### HANDLE TAILSCALE ###########################
++
++    document.getElementById('tailscale-button').onclick = function (){
++        socket.emit("get tailscale href");
++    }
++    socket.on("tailscale_href", function(msg) {
++        window.open(msg, '_blank');
++    })
++
+     // ####################### HANDLE REBOOT & SHUTDOWN #######################
+ 
+     $("#reboot-button").on("click", function() {
+@@ -735,5 +773,28 @@ $(document).ready(function () {
+         socket.emit("shutdown device");
+     })
+ 
++    $("#upgrade-button").on("click", function() {
++        $("#upgradeModal .modal-body").html('Update & upgrade linux. Are you sure?');
++        $("#confirm-upgrade-button").prop("hidden", false);
++        $("#confirm-upgrade-button").prop("disabled", false);
++        $("#confirm-upgrade-button").html('Upgrade');
++        $("#upgrade-cancel-button").prop("hidden", false);
++        $("#upgrade-cancel-button").prop("disabled", false);
++        $("#upgrade-cancel-button").html('Cancel');
++        $("#upgradeModal").modal();
++    })
++    $("#confirm-upgrade-button").on("click", function() {
++        $("#upgradeModal .modal-body").html('<div class="align-items-center">Upgrading now...  <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div></div>');
++        $(this).html('<span class="spinner-border spinner-border-sm"></span> Upgrading...');
++        $(this).prop("disabled", true);
++        $("#upgrade-cancel-button").prop("hidden", true);
++        socket.emit("update and upgrade");
++    })
++    socket.on("upgrade_finished", function(msg) {
++        $("#upgradeModal .modal-body").html(msg);
++        $("#confirm-upgrade-button").prop("hidden", true);
++        $("#upgrade-cancel-button").prop("hidden", false);
++        $("#upgrade-cancel-button").html('Continue');
++    })
+     // end of document.ready
+ });

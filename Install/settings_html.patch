@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..84daef4 100644
+index c8f257b..f288063 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -35,7 +35,7 @@
@@ -11,7 +11,41 @@ index c8f257b..84daef4 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -529,7 +529,7 @@
+@@ -119,6 +119,7 @@
+         <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+       </svg>
+     </a>
++    <span id="ntrip_A-error"></span>
+     </div>
+   </div>
+     <form id="{{ ntrip_A_settings.pop(0).source_section }}" class="collapse was-validated">
+@@ -193,6 +194,7 @@
+         <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+       </svg>
+     </a>
++    <span id="ntrip_B-error"></span>
+     </div>
+   </div>
+     <form id="{{ ntrip_B_settings.pop(0).source_section }}" class="collapse was-validated">
+@@ -351,7 +353,7 @@
+             <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
+         </div>
+       </div>
+-      <div class="form-group row">
++      <div class="form-group row" hidden>
+         <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
+         <div class="col-sm-9">
+             <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
+@@ -479,7 +481,7 @@
+     <h4> System Settings:</h4>
+     <div class="row py-2 align-items-center">
+         <div class="col-sm-4">
+-            <span class="col-sm-3">Rtkbase {{ g.version }}</span>
++            <span class="col-sm-3">ELT Rtkbase 1.7.2</span>
+         </div>
+         <div class="col-sm-8">
+             <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
+@@ -529,7 +531,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -20,3 +54,61 @@ index c8f257b..84daef4 100644
          {% endif %}
        </span>
      </div>
+@@ -602,11 +604,20 @@
+       <span class="col-sm-3">Diagnostic:</span>
+     </div>
+     <div class="col-sm-8">
+-        <a href="{{ url_for('diagnostic') }}" target="_blank" class="btn btn-secondary" role="button">View</a>
++        <a href="{{ url_for('diagnostic') }}" target="_self" class="btn btn-secondary" role="button">View</a>
+         <!--<button id="download-diag-button" class="btn btn-secondary" type="button" disabled>Download</button>-->
+     </div>
+   </div>
+ 
++  <div class="row py-2 align-items-center">
++    <div class="col-sm-4">
++      <span class="col-sm-3">VPN:</span>
++    </div>
++    <div class="col-sm-8">
++        <a id="tailscale-button" class="btn btn-secondary" role="button">Tailscale admin console</a>
++    </div>
++  </div>
++
+     <div class="row py-2 align-items-center">
+       <div class="col-sm-4">
+         <span class="col-sm-3">Power:</span>
+@@ -614,6 +625,7 @@
+       <div class="col-sm-8">
+           <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
+           <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
++          <button id="upgrade-button" class="btn btn-secondary" type="button">System Upgrade</button>
+       </div>
+   </div>
+     
+@@ -775,6 +787,27 @@
+   </div>
+ </div>
+ 
++<!-- The upgrade Modal dialog box-->
++<div class="modal" id="upgradeModal">
++  <div class="modal-dialog">
++    <div class="modal-content">
++      <!-- Modal Header -->
++      <div class="modal-header">
++        <h4 class="modal-title">Upgrade</h4>
++        <button type="button" class="close" data-dismiss="modal">&times;</button>
++      </div>
++      <!-- Modal body -->
++      <div class="modal-body text-center ">Update & upgrade linux. Are you sure?
++      </div>
++      <!-- Modal footer -->
++      <div class="modal-footer mx-auto">
++        <button id="confirm-upgrade-button" type="button" class="btn btn-danger">Upgrade</button>
++        <button id="upgrade-cancel-button" type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
++      </div>
++    </div>
++  </div>
++</div>
++
+ {% endblock %}
+ 
+ 

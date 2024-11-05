@@ -5,7 +5,7 @@ After=network.target
 After=rtkbase_setup.service
 
 [Service]
-ExecStart=/usr/local/rtkbase/RtkbaseSystemConfigureProxy.sh
+ExecStart=/usr/local/rtkbase/RtkbaseSystemConfigure.sh
 RemainAfterExit=true
 Type=oneshot
 

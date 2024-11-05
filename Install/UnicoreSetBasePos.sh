@@ -10,7 +10,8 @@ com_port=${1}
 com_speed=${2}
 position=${3}
 receiver=${4}
-#echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver}
+antenna_info="${5}"
+#echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver} antenna_info="${antenna_info}"
 
 if [[ ! -c /dev/${com_port} ]]; then
    echo /dev/${com_port} NOT EXISTS!
@@ -39,9 +40,11 @@ else
    recv_port=${com_port}
    recv_speed=${com_speed}
    recv_position=
+   recv_ant=
+   recv_com=
    SAVECONF=Y
 fi
-#echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position}
+#echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
 
 if [[ ${com_speed} -lt 115200 ]]
 then
@@ -51,6 +54,7 @@ fi
 
 SETSPEED=Y
 SETPOS=Y
+SETANT=Y
 TIMEPOS=N
 BADPOS=
 if [[ "${com_port}" == "${recv_port}" ]]
@@ -70,36 +74,47 @@ then
          BADPOS=N
       fi
    fi
+   if [[ "${antenna_info}" == "${recv_ant}" ]]
+   then
+      SETANT=N
+   fi
 else
    recv_port=${com_port}
+   recv_com=
    SETSPEED=N
    SAVECONF=Y
 fi
 
 OLDDEV=/dev/${com_port}:${recv_speed}
 DEVICE=/dev/${com_port}:${com_speed}
-#echo SETSPEED=${SETSPEED} SETPOS=${SETPOS} TIMEPOS=${TIMEPOS} BADPOS=${BADPOS} OLDDEV=${OLDDEV} DEVICE=${DEVICE}
+#echo SETSPEED=${SETSPEED} SETPOS=${SETPOS} SETANT=${SETANT} TIMEPOS=${TIMEPOS} BADPOS=${BADPOS} OLDDEV=${OLDDEV} DEVICE=${DEVICE}
 
-if [[ ${SETSPEED} == Y ]]
+if [[ ${SETSPEED} == Y ]] && [[ "${recv_com}" == "" ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
    then
-      real_port=`realpath /dev/${com_port} | sed s#^.*/##`
-      #echo real_port=${real_port}
-      if [[ "${real_port}" == ttyS[0-9] ]] || [[ "${real_port}" == ttyAMA[0-9] ]]
+      recv_com=`${BASEDIR}/NmeaConf ${OLDDEV} RESET COM | grep COM`
+      if [[ "${recv_com}" == "" ]]
       then
-         RECVCOM=COM2
-      elif [[ "${real_port}" == ttyUSB[0-9] ]] || [[ "${real_port}" == ttyACM[0-9] ]]
-      then
-         RECVCOM=COM1
+          recv_com=`${BASEDIR}/NmeaConf ${DEVICE} RESET COM | grep COM`
+          if [[ "${recv_com}" != "" ]]
+          then
+             echo Receiver already on ${com_speed}
+             #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             ExitCodeCheck $?
+             recv_speed=${com_speed}
+             SAVECONF=Y
+             SETSPEED=N
+          fi
       fi
    elif [[ "${receiver}" =~ Bynav ]]
    then
-      RECVCOM=`${BASEDIR}/NmeaConf ${OLDDEV} TEST COM | grep COM`
-      if [[ "${RECVCOM}" == "" ]]
+      recv_com=`${BASEDIR}/NmeaConf ${OLDDEV} TEST COM | grep COM`
+      if [[ "${recv_com}" == "" ]]
       then
-          RECVCOM=`${BASEDIR}/NmeaConf ${DEVICE} TEST COM | grep COM`
-          if [[ "${RECVCOM}" != "" ]]
+          recv_com=`${BASEDIR}/NmeaConf ${DEVICE} TEST COM | grep COM`
+          if [[ "${recv_com}" != "" ]]
           then
              echo Receiver already on ${com_speed}
              #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
@@ -112,15 +127,18 @@ then
       fi
    elif [[ "${receiver}" =~ Septentrio ]]
    then
-       SAVECONF=Y
-       SETSPEED=N
+      SAVECONF=Y
+      SETSPEED=N
+   fi
+   if [[ "${recv_com}" != "" ]]; then
+      SAVECONF=Y
    fi
 fi
 
 if [[ ${SETSPEED} == Y ]]
 then
-   #echo RECVCOM=${RECVCOM}
-   if [[ "${RECVCOM}" == "" ]]
+   #echo recv_com=${recv_com}
+   if [[ "${recv_com}" == "" ]]
    then
       echo Unknown receiver port for change speed
       exit 1
@@ -133,13 +151,13 @@ then
    do
       if [[ "${receiver}" =~ Unicore ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"CONFIG ${RECVCOM} ${com_speed}\" QUIET
-         ${BASEDIR}/NmeaConf ${OLDDEV} "CONFIG ${RECVCOM} ${com_speed}" QUIET
+         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"CONFIG ${recv_com} ${com_speed}\" QUIET
+         ${BASEDIR}/NmeaConf ${OLDDEV} "CONFIG ${recv_com} ${com_speed}" QUIET
          lastcode=$?
       elif [[ "${receiver}" =~ Bynav ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"SERIALCONFIG ${RECVCOM} ${com_speed}\" QUIET
-         ${BASEDIR}/NmeaConf ${OLDDEV} "SERIALCONFIG ${RECVCOM} ${com_speed}" QUIET
+         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"SERIALCONFIG ${recv_com} ${com_speed}\" QUIET
+         ${BASEDIR}/NmeaConf ${OLDDEV} "SERIALCONFIG ${recv_com} ${com_speed}" QUIET
          lastcode=$?
       fi
       #echo lastcode=${lastcode}
@@ -315,6 +333,40 @@ then
    SAVECONF=Y
 fi
 
+if [[ ${SETANT} == Y ]]
+then
+   ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
+   ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
+   ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
+   if [[ "${ANTSETUP}" == "" ]]; then
+      ANTSETUP=0
+   fi
+   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
+   if [[ "${receiver}" =~ Unicore ]]; then
+      #ANTINFO="\"${ANTNAME}\" \"${ANTSERIAL}\" ${ANTSETUP}"
+      ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
+      #echo ANTINFO=${ANTINFO}
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
+      ExitCodeCheck $?
+   elif [[ "${receiver}" =~ Septentrio ]]; then
+      ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\", ${ANTSETUP}"
+      #echo ANTINFO=${ANTINFO}
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      ExitCodeCheck $?
+   else
+      lastcode=0
+   fi
+   if [[ $lastcode == 0 ]]; then
+      if [[ "${ANTINFO}" != "" ]]; then
+         SAVEPOS=Y
+      fi
+      recv_ant="${antenna_info}"
+      SAVECONF=Y
+   fi
+fi
+
 if [[ ${SAVEPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Septentrio ]]
@@ -337,10 +389,12 @@ fi
 
 if [[ ${SAVECONF} == Y ]]
 then
-   #echo SAVE OLDCONF=${OLDCONF} recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position}
+   #echo SAVE OLDCONF=${OLDCONF} recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
    echo recv_port=${recv_port}>${OLDCONF}
    echo recv_speed=${recv_speed}>>${OLDCONF}
    echo recv_position=\"${recv_position}\">>${OLDCONF}
+   echo recv_ant=\"${recv_ant}\">>${OLDCONF}
+   echo recv_com=${recv_com}>>${OLDCONF}
 fi
 
 if [[ ${lastcode} == N ]]

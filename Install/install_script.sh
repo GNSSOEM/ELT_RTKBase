@@ -17,8 +17,12 @@ RTKBASE_INSTALL=rtkbase_install.sh
 SET_BASE_POS=UnicoreSetBasePos.sh
 UNICORE_SETTIGNS=UnicoreSettings.sh
 UNICORE_CONFIGURE=UnicoreConfigure.sh
+TAILSCALE_GET_HREF=tailscale_get_href.sh
+SYSTEM_UPGRADE=system_upgrade.sh
+EXEC_UPDATE=exec_update.sh
 SETTINGS_NOW=${RTKBASE_GIT}/settings.conf
 SETTINGS_SAVE=${RTKBASE_GIT}/settings.save
+SETTINGS_DEFAULT=${RTKBASE_GIT}/settings.conf.default
 NMEACONF=NmeaConf
 CONF_TAIL=RTCM3_OUT.txt
 CONF980=UM980_${CONF_TAIL}
@@ -36,15 +40,19 @@ SETTING_HTML_PATCH=settings_html.patch
 PPP_CONF_PATH=ppp_conf.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
-SYSPROXY=RtkbaseSystemConfigureProxy.sh
+NETWORK_EVENT=rtkbase_network_event.sh
+CHECK_INTERNET=rtkbase_check_internet.sh
+CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
 TUNE_POWER=tune_power.sh
 CONFIG=config.txt
 CONFIG_ORIG=config.original
 RTKLIB=rtklib
 SERVICE_PATH=/etc/systemd/system
+NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
 BANNER=/etc/ssh/sshd_config.d/rename_user.conf
 VERSION=version.txt
+ONLINE_UPDATE=NO
 
 lastcode=N
 exitcode=0
@@ -102,6 +110,21 @@ configure_config(){
         HAVE_CORE_FREQ=`grep "^core_freq=250" ${BOOTCONFIG}`
         #echo HAVE_CORE_FREQ=${HAVE_CORE_FREQ}
 
+        PI4_SECTION=`awk '/^\[pi4\]/ {print NR + 1; exit 0; }' ${BOOTCONFIG}`
+        #echo PI4_SECTION=${PI4_SECTION}
+        if [[ ${PI4_SECTION} != "" ]]; then
+           #echo tail -n+${PI4_SECTION} ${BOOTCONFIG}
+           #tail -n+${PI4_SECTION} ${BOOTCONFIG}
+           NEXT_SECTION=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | awk '/^\[/ {print NR; exit 0; }'`
+           #echo NEXT_SECTION=${NEXT_SECTION}
+           if [[ ${NEXT_SECTION} == "" ]]; then
+              HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | grep "^otg_mode=1"`
+           else
+              HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | head -n+${NEXT_SECTION} | grep "^otg_mode=1"`
+           fi
+        fi
+        #echo HAVE_OTG=${HAVE_OTG}
+
         if [[ ${HAVE_UART} == "" ]] || [[ ${HAVE_MINI_BT} == "" ]] || [[ ${HAVE_CORE_FREQ} == "" ]]
         then
            echo [all] >> ${BOOTCONFIG}
@@ -131,6 +154,14 @@ configure_config(){
         then
            echo core_freq=250 >> ${BOOTCONFIG}
            echo Core freq added to ${BOOTCONFIG}
+        fi
+
+        if [[ ${HAVE_OTG} == "" ]]
+        then
+           echo [pi4] >> ${BOOTCONFIG}
+           echo otg_mode=1 >> ${BOOTCONFIG}
+           echo Otg mode added to ${BOOTCONFIG}
+           NEEDREBOOT=Y
         fi
      fi
   fi
@@ -175,7 +206,18 @@ replace_config(){
   fi
 }
 
+delete_all_extracted(){
+  if [[ "${FILES_EXTRACT}" != "" ]]
+  then
+     #echo rm -rf ${FILES_EXTRACT}
+     rm -rf ${FILES_EXTRACT}
+  fi
+}
+
 check_version(){
+  echo '################################'
+  echo 'CHECK VERSION'
+  echo '################################'
   if [ -f ${BASEDIR}/${VERSION} ]
   then
      NEW_VERSION=`cat ${BASEDIR}/${VERSION}`
@@ -184,9 +226,6 @@ check_version(){
   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]] && [ -f ${RTKBASE_PATH}/${VERSION} ]
   then
-     echo '################################'
-     echo 'CHECK VERSION'
-     echo '################################'
      UPDATE=Y
      OLD_VERSION=`cat ${RTKBASE_PATH}/${VERSION}`
      ExitCodeCheck $?
@@ -194,8 +233,7 @@ check_version(){
      if [ "${NEW_VERSION}" -lt "${OLD_VERSION}" ]
      then
         echo Already installed version'('${OLD_VERSION}')' is newer, than install.sh version'('${NEW_VERSION}')'. Exiting
-        #echo rm -f ${FILES_EXTRACT}
-        rm -f ${FILES_EXTRACT}
+        delete_all_extracted
         exit
      else
         echo Update from version ${OLD_VERSION} to version ${NEW_VERSION}
@@ -207,6 +245,7 @@ check_version(){
         fi
      fi
   else
+     echo Install version ${NEW_VERSION}
      OLD_VERSION=${NEW_VERSION}
      UPDATE=N
   fi
@@ -252,6 +291,14 @@ install_packet_if_not_installed(){
    #echo NEED_INSTALL=${NEED_INSTALL} \$\1=${1}
 }
 
+check_platform(){
+   platform=$(uname -m)
+   if [[ ! ${platform} =~ 'aarch64' ]] && [[ ! ${platform} =~ 'armv7l' ]]; then
+      echo ELT_RTKBase cannot be installed on ${platform} architecture
+      exit 1
+   fi
+}
+
 restart_as_root(){
    WHOAMI=`whoami`
    if [[ ${WHOAMI} != "root" ]]
@@ -266,11 +313,12 @@ restart_as_root(){
 
 do_reboot(){
    #echo NEEDREBOOT=${NEEDREBOOT}
-   if [[ ${NEEDREBOOT} == "Y" ]]
-   then
-      echo Please try again ${0} after reboot
-      #echo rm -f ${FILES_EXTRACT}
-      rm -f ${FILES_EXTRACT}
+   if [[ ${NEEDREBOOT} == "Y" ]]; then
+      if [[ "${1}" != "END" ]]; then
+         echo Please try again ${0} after reboot
+      fi
+      delete_all_extracted
+      echo Rebooting now!!!!
       reboot now
       exit
    fi
@@ -289,8 +337,7 @@ check_port(){
    if [[ ! -c "${RECVPORT}" ]]
    then
       echo port ${RECVPORT} not found. Setup port and try again
-      #echo rm -f ${FILES_EXTRACT}
-      rm -f ${FILES_EXTRACT}
+      delete_all_extracted
       exit
    fi
 }
@@ -311,10 +358,33 @@ install_additional_utilies(){
    #echo NEED_INSTALL=${NEED_INSTALL}
    if [[ "${NEED_INSTALL}" != "" ]]
    then
-      apt-get install -y ${NEED_INSTALL}
+      apt-get install -q -y ${NEED_INSTALL}
       ExitCodeCheck $?
       NEED_INSTALL=
    fi
+}
+
+install_tailscale(){
+   if ! type tailscale >/dev/null 2>&1; then
+      echo '################################'
+      echo 'INSTALL TAILSCALE'
+      echo '################################'
+      #echo curl -fsSL https://tailscale.com/install.sh \| sh
+      curl -fsSL https://tailscale.com/install.sh | sh
+      ExitCodeCheck $?
+      if type tailscale >/dev/null 2>&1; then
+         #echo mkdir -p /etc/bash_completion.d
+         mkdir -p /etc/bash_completion.d
+         ExitCodeCheck $?
+         #echo tailscale completion bash \> /etc/bash_completion.d/tailscale
+         tailscale completion bash > /etc/bash_completion.d/tailscale
+         ExitCodeCheck $?
+         #echo source \<\(tailscale completion bash\)
+         #source <(tailscale completion bash)
+         #ExitCodeCheck $?
+      fi
+   fi
+   #tailscale status
 }
 
 delete_pi_user(){
@@ -421,8 +491,9 @@ unpack_files(){
       # Find __ARCHIVE__ marker, read archive content and decompress it
       ARCHIVE=$(awk '/^__ARCHIVE__/ {print NR + 1; exit 0; }' "${0}")
       # Check if there is some content after __ARCHIVE__ marker (more than 100 lines)
-      [[ $(sed -n '/__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "UM980_RPI_Hat_RtkBase isn't bundled inside install.sh" && exit 1  
-      tail -n+${ARCHIVE} "${0}" | tar xpJv --no-same-owner --no-same-permissions  --wildcards -C ${BASEDIR} ${FILES_EXTRACT}
+      [[ $(sed -n '/^__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "ELT_RTKBase isn't bundled inside ${0}" && exit 1
+      #echo tail -n+${ARCHIVE} "${0}" \| tar xpJv --no-same-owner --no-same-permissions  --wildcards -C ${BASEDIR} ${FILES_EXTRACT}
+      tail -n+${ARCHIVE} "${0}" | tar xpJv --no-same-owner --no-same-permissions  --wildcards -C ${BASEDIR} ${FILES_EXTRACT} >/dev/null
       ExitCodeCheck $?
    fi
 }
@@ -433,23 +504,29 @@ stop_rtkbase_services(){
      echo '################################'
      echo 'STOP RTKBASE SERVICES'
      echo '################################'
-     for service_name in str2str_ntrip_A.service \
-                         str2str_ntrip_B.service \
-                         str2str_local_ntrip_caster \
-                         str2str_rtcm_svr.service \
-                         str2str_rtcm_client.service \
-                         str2str_rtcm_udp_svr.service \
-                         str2str_rtcm_udp_client.service \
-                         str2str_rtcm_serial.service \
-                         str2str_file.service \
-                         str2str_tcp.service \
-                         rtkrcv_raw2nmea.service \
-                         rtkbase_web.service \
-                         rtkbase_archive.service \
-                         rtkbase_archive.timer \
-                         modem_check.service \
-                         modem_check.timer \
-                         rtkbase_gnss_web_proxy.service
+     serviceList="str2str_ntrip_A.service \
+                  str2str_ntrip_B.service \
+                  str2str_local_ntrip_caster \
+                  str2str_rtcm_svr.service \
+                  str2str_rtcm_client.service \
+                  str2str_rtcm_udp_svr.service \
+                  str2str_rtcm_udp_client.service \
+                  str2str_rtcm_serial.service \
+                  str2str_file.service \
+                  str2str_tcp.service \
+                  rtkrcv_raw2nmea.service \
+                  rtkbase_archive.service \
+                  rtkbase_archive.timer \
+                  modem_check.service \
+                  modem_check.timer \
+                  rtkbase_gnss_web_proxy.service \
+                  ${SYSSERVICE} \
+                  ${CHECK_INTERNET_SERVICE}"
+     if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
+        serviceList="${serviceList} rtkbase_web.service"
+     fi
+     #echo serviceList=${serviceList}
+     for service_name in ${serviceList}
      do
          service_active=$(systemctl is-active "${service_name}")
          if [ "${service_active}" != "inactive" ]
@@ -481,8 +558,18 @@ add_rtkbase_user(){
    if [[ ${HAVEUSER} == "" ]]
    then
       #echo adduser --comment "RTKBase user" --disabled-password --home ${RTKBASE_PATH} ${RTKBASE_USER}
-      adduser --comment "RTKBase user" --disabled-password --home ${RTKBASE_PATH} ${RTKBASE_USER}
+      adduser --gecos "RTKBase user" --disabled-password --home ${RTKBASE_PATH} ${RTKBASE_USER}
       ExitCodeCheck $?
+      # --gecos instead --comment for raspbian 11
+   fi
+
+   HAVEUSER=`cat /etc/passwd | grep ${RTKBASE_USER}`
+   #echo HAVEUSER=${HAVEUSER}
+   if [[ ${HAVEUSER} == "" ]]
+   then
+      echo Failed to create ${RTKBASE_USER} user
+      delete_all_extracted
+      exit
    fi
 
    usermod -a -G plugdev,dialout ${RTKBASE_USER}
@@ -516,18 +603,58 @@ add_rtkbase_user(){
       mkdir ${RTKBASE_UPDATE}
       ExitCodeCheck $?
    fi
+
+   if [[ -d "${RTKBASE_GIT}" ]]
+   then
+      #echo chown -R rtkbase:rtkbase ${RTKBASE_GIT}
+      chown -R rtkbase:rtkbase ${RTKBASE_GIT}
+   fi
+}
+
+doPatch(){
+  patch -f ${1} ${2}
+  ExitCodeCheck $?
 }
 
 install_rtklib() {
     echo '################################'
     echo 'INSTALLING RTKLIB'
     echo '################################'
-    #echo chmod 711 ${BASEDIR}/${RTKLIB}/*
-    chmod 711 ${BASEDIR}/${RTKLIB}/*
-    ExitCodeCheck $?
-    #echo mv ${BASEDIR}/${RTKLIB}/* /usr/local/bin/
-    mv ${BASEDIR}/${RTKLIB}/* /usr/local/bin/
-    ExitCodeCheck $?
+    platform=$(uname -m)
+    RTKLIB_DIR=${BASEDIR}/${RTKLIB}/${platform}
+    if [[ -d ${RTKLIB_DIR} ]] && lsb_release -c | grep -q 'bookworm'; then
+       echo RtkLib copyed from ${RTKLIB_DIR}
+       LOCAL_BIN=/usr/local/bin/
+       #echo chmod 711 ${RTKLIB_DIR}/*
+       chmod 711 ${RTKLIB_DIR}/*
+       #echo mv ${RTKLIB_DIR}/* ${LOCAL_BIN}
+       mv ${RTKLIB_DIR}/* ${LOCAL_BIN}
+       ExitCodeCheck $?
+    else
+       echo RtkLib will be compiled from original and patches
+       echo Get Rtklib 2.4.3 b34j release and unnpack it
+       sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/rtklibexplorer/RTKLIB/archive/refs/tags/b34j.tar.gz | tar -xvz >/dev/null
+       #Install Rtklib app
+       RTKLIB_CURDIR=`pwd`
+       RTKLIB_GIT=${RTKLIB_CURDIR}/RTKLIB-b34j
+       RTKLIB_PATCH=${BASEDIR}/${RTKLIB}
+       doPatch ${RTKLIB_GIT}/src/stream.c ${RTKLIB_PATCH}/stream.patch
+       doPatch ${RTKLIB_GIT}/src/streamsvr.c ${RTKLIB_PATCH}/streamsvr.patch
+       doPatch ${RTKLIB_GIT}/src/rinex.c ${RTKLIB_PATCH}/rinex.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/str2str/str2str.c ${RTKLIB_PATCH}/str2str.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/str2str/gcc/makefile ${RTKLIB_PATCH}/str2str_makefile.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/convbin/convbin.c ${RTKLIB_PATCH}/convbin.patch
+       #TODO add correct CTARGET in makefile?
+       echo Compile and install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc install
+       make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc
+       make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc install
+       #deleting RTKLIB
+       rm -rf ${RTKLIB_GIT}
+    fi
     #ls -la /usr/local/bin/
     #echo rm -rf ${BASEDIR}/${RTKLIB}
     rm -rf ${BASEDIR}/${RTKLIB}
@@ -586,27 +713,41 @@ install_rtkbase_system_configure(){
   chmod +x ${RTKBASE_PATH}/${SYSCONGIG}
   ExitCodeCheck $?
 
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-  then
-     #echo mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${SYSPROXY} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${SYSPROXY}
-  chmod +x ${RTKBASE_PATH}/${SYSPROXY}
-  ExitCodeCheck $?
-
   #echo mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   ExitCodeCheck $?
 
-  if ! ischroot
-  then
+  #echo mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
+  mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
+  ExitCodeCheck $?
+  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  ExitCodeCheck $?
+
+  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+     #echo mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
+     mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
+     ExitCodeCheck $?
+  fi
+  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
+  ExitCodeCheck $?
+
+  #echo mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
+  mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
+  ExitCodeCheck $?
+
+  if ! ischroot; then
      #echo systemctl daemon-reload
      systemctl daemon-reload
   fi
+
   #echo systemctl enable ${SYSSERVICE}
   systemctl enable ${SYSSERVICE}
+  ExitCodeCheck $?
+
+  #echo systemctl enable ${CHECK_INTERNET_SERVICE}
+  systemctl enable ${CHECK_INTERNET_SERVICE}
   ExitCodeCheck $?
 }
 
@@ -627,20 +768,53 @@ install_tune_power(){
   ExitCodeCheck $?
 }
 
+correct_units(){
+   echo '################################'
+   echo 'CORRECT UNITS'
+   echo '################################'
+   for file in ${RTKBASE_GIT}/unit/str2str*
+   do
+      #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
+      sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
+      ExitCodeCheck $?
+   done
+}
+
 rtkbase_install(){
-   #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d -r -t -g
-   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d -t -g
+   #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
    ExitCodeCheck $?
    if [ $lastcode != 0 ]
    then
-      echo BUG: ${RTKBASE_INSTALL} finished with exitcode = $lastcode
+      echo BUG: ${RTKBASE_INSTALL} -j -d finished with exitcode = $lastcode
       #ls -la ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    fi
+
+   correct_units
+
+   #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
+   ExitCodeCheck $?
+   if [ $lastcode != 0 ]
+   then
+      echo BUG: ${RTKBASE_INSTALL} -t -g finished with exitcode = $lastcode
+      #ls -la ${RTKBASE_PATH}/${RTKBASE_INSTALL}
+   fi
+
    #echo rm -f ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    rm -f ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    #echo chown -R ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}
    #chown -R ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}
    #ExitCodeCheck $?
+}
+
+restart_rtkbase_if_started(){
+   if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
+      if ! ischroot
+      then
+         systemctl is-active --quiet rtkbase_web.service && sudo systemctl restart rtkbase_web.service
+      fi
+   fi
 }
 
 configure_for_unicore(){
@@ -676,6 +850,36 @@ configure_for_unicore(){
    ExitCodeCheck $?
    #echo chmod +x ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
    chmod +x ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${TAILSCALE_GET_HREF} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${TAILSCALE_GET_HREF} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
+   chmod +x ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${SYSTEM_UPGRADE} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${SYSTEM_UPGRADE} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
+   chmod +x ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${EXEC_UPDATE} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${EXEC_UPDATE} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${EXEC_UPDATE}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${EXEC_UPDATE}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${EXEC_UPDATE}
+   chmod +x ${RTKBASE_TOOLS}/${EXEC_UPDATE}
    ExitCodeCheck $?
 
    #echo mv ${BASEDIR}/${CONF980} ${RTKBASE_RECV}/
@@ -776,43 +980,50 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${PPP_CONF_PATH}
    ExitCodeCheck $?
 
-   if ! ischroot
-   then
-      systemctl is-active --quiet rtkbase_web.service && sudo systemctl restart rtkbase_web.service
-   fi
+   restart_rtkbase_if_started
 }
 
 configure_settings(){
-   if [ -f ${SETTINGS_SAVE} ]
-   then
+   if [ -f ${SETTINGS_SAVE} ]; then
       echo '################################'
       echo 'RESTORE SETTINGS'
       echo '################################'
-
-      #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
-      sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
-      ExitCodeCheck $?
    else
       echo '################################'
       echo 'CONFIGURE SETTINGS'
       echo '################################'
+   fi
 
-      #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-      if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-      then
-         #echo mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-         mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
-         ExitCodeCheck $?
-      fi
-      #echo chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
-      chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
+   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
+   then
+      #echo mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
+      mv ${BASEDIR}/${UNICORE_SETTIGNS} ${RTKBASE_PATH}/
       ExitCodeCheck $?
-      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${RECVNAME}
+   fi
+   #echo chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   chmod +x ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   ExitCodeCheck $?
+
+   if [ -f ${SETTINGS_SAVE} ]; then
+      #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
+      sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
+      ExitCodeCheck $?
+
+      source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
+      #echo version=${version} VERSION=${VERSION}
+      sudo -u "${RTKBASE_USER}" sed -i s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
+
+      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
+      ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
+      ExitCodeCheck $?
+   else
+      #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
       ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
       ExitCodeCheck $?
    fi
-   #echo rm -f ${BASEDIR}/${UNICORE_SETTIGNS}
-   rm -f ${BASEDIR}/${UNICORE_SETTIGNS}
+   #echo rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
+   rm -f ${RTKBASE_PATH}/${UNICORE_SETTIGNS}
 }
 
 configure_gnss(){
@@ -826,18 +1037,31 @@ configure_gnss(){
          #echo sleep ${LEFT_TIME}
          sleep ${LEFT_TIME}
       fi
-      #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-      ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
+
+      rtkbase_path=${RTKBASE_GIT}
+      #echo source "${rtkbase_path}/tools/opizero_temp_offset.sh"
+      source "${rtkbase_path}/tools/opizero_temp_offset.sh"
       ExitCodeCheck $?
 
-      #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-      ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-      ExitCodeCheck $?
+      for i in `seq 1 3`; do
+         #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+         ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
+         ExitCodeCheck $?
+         if [[ $lastcode == 0 ]]; then
+            break;
+         fi
+      done
 
-      if ! ischroot
-      then
-         systemctl is-active --quiet rtkbase_web.service && sudo systemctl restart rtkbase_web.service
-      fi
+      for i in `seq 1 3`; do
+         #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+         ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+         ExitCodeCheck $?
+         if [[ $lastcode == 0 ]]; then
+            break;
+         fi
+      done
+
+      restart_rtkbase_if_started
    fi
 }
 
@@ -855,6 +1079,9 @@ start_rtkbase_services(){
      #echo systemctl start "${GNSS_WEB_PROXY}"
      systemctl start "${GNSS_WEB_PROXY}"
   fi
+
+  #echo systemctl start "${CHECK_INTERNET_SERVICE}"
+  systemctl start "${CHECK_INTERNET_SERVICE}"
 }
 
 delete_garbage(){
@@ -891,6 +1118,7 @@ info_bug(){
 HAVE_RECEIVER=0
 HAVE_PHASE1=0
 HAVE_FULL=0
+CAN_REBOOT=0
 
 have_receiver(){
    return ${HAVE_RECEIVER}
@@ -901,14 +1129,19 @@ have_phase1(){
 have_full(){
    return ${HAVE_FULL}
 }
+can_reboot(){
+   return ${CAN_REBOOT}
+}
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
               ${RUNCAST_PATCH} ${SET_BASE_POS} ${UNICORE_SETTIGNS} \
-              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} ${SYSPROXY} \
+              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
-              ${PPP_CONF_PATH} ${CONFIG_ORIG}"
+              ${PPP_CONF_PATH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
+              ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
+              ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
@@ -929,6 +1162,14 @@ check_phases(){
    elif [[ ${1} == "-u" ]]
    then
       FILES_EXTRACT="${BASE_EXTRACT}"
+   elif [[ ${1} == "-U" ]]
+   then
+      FILES_EXTRACT="${BASE_EXTRACT}"
+      ONLINE_UPDATE=UPDATE
+      CAN_REBOOT=1
+   elif [[ ${1} == "-s" ]]
+   then
+      exit 0
    elif [[ ${1} != "" ]]
    then
       echo Invalid argument \"${1}\"
@@ -940,14 +1181,16 @@ check_phases(){
    #echo FILES_DELETE=${FILES_DELETE}
 }
 
+check_platform
 restart_as_root ${1}
 check_phases ${1}
 have_phase1 && export LANG=C
 unpack_files
 have_phase1 && check_version
 have_phase1 && check_boot_configiration
-have_full && do_reboot
+have_full && can_reboot && do_reboot
 have_receiver && check_port
+have_phase1 && install_tailscale
 have_phase1 && install_additional_utilies
 have_full || delete_pi_user
 have_receiver && change_hostname ${HAVE_FULL}
@@ -955,9 +1198,9 @@ stop_rtkbase_services
 have_phase1 && add_rtkbase_user
 have_phase1 && install_rtkbase_system_configure
 have_phase1 && install_tune_power
-have_phase1 && install_rtklib
 #echo cd ${RTKBASE_PATH}
 cd ${RTKBASE_PATH}
+have_phase1 && install_rtklib
 have_phase1 && copy_rtkbase_install_file
 have_phase1 && rtkbase_install
 have_phase1 && configure_for_unicore
@@ -971,6 +1214,7 @@ cd ${ORIGDIR}
 have_full || info_reboot
 have_receiver && info_open
 have_receiver || info_bug
+can_reboot || do_reboot END
 #echo exit $exitcode
 exit $exitcode
 

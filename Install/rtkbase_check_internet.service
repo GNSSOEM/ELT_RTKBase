@@ -1,0 +1,13 @@
+[Unit]
+Description=RTKBase show internet state on led
+After=local-fs.target network.target
+Wants=local-fs.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/rtkbase/rtkbase_check_internet.sh
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

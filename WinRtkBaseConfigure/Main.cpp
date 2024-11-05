@@ -176,13 +176,61 @@ void __fastcall TfmMain::cbUserClick(TObject *)
    SaveChange(NULL);
 }
 //---------------------------------------------------------------------------
+void __fastcall TfmMain::cbIPethClick(TObject *)
+{
+   bool enabled1 = cbIPeth->Checked;
+   gbEthIP->Enabled = enabled1;
+   rbEthStatic->Enabled = enabled1;
+   rbEthDHCP->Enabled = enabled1;
+   gbEthIP->Font->Color = enabled1 ? clWindowText : clGrayText;
+
+   bool enabled2 = enabled1 && rbEthStatic->Checked;
+   gbIPeth->Enabled = enabled2;
+   lbETH_IP->Enabled = enabled2;
+   edETH_IP->Enabled = enabled2;
+   lbETH_Prefix->Enabled = enabled2;
+   edETH_Prefix->Enabled = enabled2;
+   lbETH_Gate->Enabled = enabled2;
+   edETH_Gate->Enabled = enabled2;
+   lbETH_DNS->Enabled = enabled2;
+   edETH_DNS->Enabled = enabled2;
+   gbIPeth->Font->Color = enabled2 ? clWindowText : clGrayText;
+
+   SaveChange(NULL);
+}
+//---------------------------------------------------------------------------
+void __fastcall TfmMain::cbIPwifiClick(TObject *)
+{
+   bool enabled1 = cbIPwifi->Checked;
+   gbWifiIP->Enabled = enabled1;
+   rbWifiStatic->Enabled = enabled1;
+   rbWifiDHCP->Enabled = enabled1;
+   gbWifiIP->Font->Color = enabled1 ? clWindowText : clGrayText;
+
+   bool enabled2 = enabled1 && rbWifiStatic->Checked;
+   gbIPwifi->Enabled = enabled2;
+   lbWIFI_IP->Enabled = enabled2;
+   edWIFI_IP->Enabled = enabled2;
+   lbWIFI_Prefix->Enabled = enabled2;
+   edWIFI_Prefix->Enabled = enabled2;
+   lbWIFI_Gate->Enabled = enabled2;
+   edWIFI_Gate->Enabled = enabled2;
+   lbWIFI_DNS->Enabled = enabled2;
+   edWIFI_DNS->Enabled = enabled2;
+   gbIPwifi->Font->Color = enabled2 ? clWindowText : clGrayText;
+
+   SaveChange(NULL);
+}
+//---------------------------------------------------------------------------
 void __fastcall TfmMain::SaveChange(TObject *)
 {
    bool wifiOK = cbWifi->Checked && (edSSID->Text.Length() > 0);
    bool countryOK = cbCountry->Checked && (cbxCountry->ItemIndex >= 0);
    bool userOK = cbUser->Checked && (edLogin->Text.Length() > 0) &&
                  ((edPwd->Text.Length() > 0) || *sshkey);
-   bool enabled = wifiOK || countryOK || userOK;
+   bool IPethOK = cbIPeth->Checked;
+   bool IPwifiOK = cbIPwifi->Checked;
+   bool enabled = wifiOK || countryOK || userOK || IPethOK || IPwifiOK;
    btnSave->Enabled = enabled;
 }
 //---------------------------------------------------------------------------
@@ -305,6 +353,37 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
          if (*sshkey)
             fprintf(file,"SSH=\"%s\"\n", sshkey);
       }
+      if (cbIPeth->Checked) {
+         if (rbEthStatic->Checked) {
+            AnsiString ip = edETH_IP->Text;
+            AnsiString prefix = edETH_Prefix->Text;
+            if ((ip.Length() > 0) && (prefix.Length() > 0))
+               fprintf(file,"ETH_IP=\"%s/%s\"\n",ip.c_str(),prefix.c_str());
+            AnsiString gate = edETH_Gate->Text;
+            if (gate.Length() > 0)
+               fprintf(file,"ETH_GATE=\"%s\"\n", gate.c_str());
+            AnsiString dns = edETH_DNS->Text;
+            if (dns.Length() > 0)
+               fprintf(file,"ETH_DNS=\"%s\"\n", dns.c_str());
+         } else
+            fprintf(file,"ETH_IP=DHCP\n");
+      }
+      if (cbIPwifi->Checked) {
+         if (rbWifiStatic->Checked) {
+            AnsiString ip = edWIFI_IP->Text;
+            AnsiString prefix = edWIFI_Prefix->Text;
+            if ((ip.Length() > 0) && (prefix.Length() > 0))
+               fprintf(file,"WIFI_IP=\"%s/%s\"\n",ip.c_str(),prefix.c_str());
+            AnsiString gate = edWIFI_Gate->Text;
+            if (gate.Length() > 0)
+               fprintf(file,"WIFI_GATE=\"%s\"\n", gate.c_str());
+            AnsiString dns = edWIFI_DNS->Text;
+            if (dns.Length() > 0)
+               fprintf(file,"WIFI_DNS=\"%s\"\n", dns.c_str());
+         } else
+            fprintf(file,"WIFI_IP=DHCP\n");
+      }
+
       fclose(file);
       MessageDlg("RtkBase config save succesfully", mtConfirmation, TMsgDlgButtons() << mbOK, 0);
       this->Close();

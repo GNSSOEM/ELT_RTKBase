@@ -1,8 +1,19 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index 3dff915..c7bb502 100755
+index bb39670..ccfffea 100755
 --- a/web_app/server.py
 +++ b/web_app/server.py
-@@ -108,7 +108,7 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -96,8 +96,8 @@ rtk = RTKLIB(socketio,
+             )
+ 
+ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+-                 {"service_unit" : "str2str_ntrip_A.service", "name" : "ntrip_A"},
+-                 {"service_unit" : "str2str_ntrip_B.service", "name" : "ntrip_B"},
++                 {"service_unit" : "str2str_ntrip_A.service", "name" : "ntrip_A", "flag" : True},
++                 {"service_unit" : "str2str_ntrip_B.service", "name" : "ntrip_B", "flag" : True},
+                  {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
+                  {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
+                  {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
+@@ -109,7 +109,7 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
                   ]
  
  #Delay before rtkrcv will stop if no user is on status.html page
@@ -11,7 +22,7 @@ index 3dff915..c7bb502 100755
  connected_clients = 0
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
-@@ -205,12 +205,15 @@ def repaint_services_button(services_list):
+@@ -206,12 +206,23 @@ def repaint_services_button(services_list):
          result = exit-code => red button (danger)
      """ 
      for service in services_list:
@@ -24,6 +35,14 @@ index 3dff915..c7bb502 100755
 +        elif service.get("status") == "running":
 +            if service == services_list[0] and os.path.exists(os.path.join(rtkbase_path, "GNSS_coordinate_error.flg")):
 +                service["btn_color"] = "warning"
++            elif service.get("flag") == True:
++                path = os.path.join(rtkbase_path, service.get("name") + ".flg")
++                if os.path.exists(path):
++                   service["btn_color"] = "warning"
++                   with open(path, 'rt') as f:
++                       service["error"] = f.read()
++                else:
++                   service["btn_color"] = "success"
 +            else:
 +                service["btn_color"] = "success"
          elif service.get("result") == "exit-code":
@@ -32,19 +51,145 @@ index 3dff915..c7bb502 100755
          elif service.get("status") == "auto-restart":
              service["btn_color"] = "warning"
  
-@@ -502,8 +505,10 @@ def diagnostic():
+@@ -382,6 +393,92 @@ def download_update(update_path):
+     else:
+         return update_archive
+ 
++@socketio.on("check update ELT", namespace="/test")
++def check_updateELT():
++    print("Check update ELT started")
++    new_release = {}
++    source_url = "https://raw.githubusercontent.com/GNSSOEM/ELT_RTKBase/refs/heads/main/Description.json"
++    version_txt = os.path.join(rtkbase_path, "..", "version.txt")
++    try:
++        with open(version_txt, 'rt') as f:
++            current_release = int(f.read())
++        response = requests.get(source_url)
++        if response.ok:
++           response_json = response.json()
++           latest_release = int(response_json.get("version"))
++           #print("response_json=", response_json)
++           #print("current_release=", current_release)
++           #print("latest_release=", latest_release)
++           if latest_release > current_release:
++               new_release = response_json
++        else:
++           new_release = { "error" : "Description.json not downloded, error " + str(response.status_code)}
++    except Exception as e:
++        print("Check update ELT error: ", e)
++        new_release = { "error" : repr(e)}
++
++    #print("new_release=", new_release)
++    socketio.emit("new release", json.dumps(new_release), namespace="/test")
++    return new_release
++
++@socketio.on("update rtkbase ELT", namespace="/test")
++def update_rtkbaseELT(update_file=False):
++    """
++        Check if a ELT RTKBase update exists, download it and update rtkbase
++        if update_file is a link to a file, use it to update rtkbase (mainly used for dev purpose)
++    """
++    print("update rtkbase ELT started")
++
++    update_url = "https://raw.githubusercontent.com/GNSSOEM/ELT_RTKBase/refs/heads/main/install.sh"
++    update_archive = os.path.join(rtkbase_path, "..", "update", "update.sh")
++    update_dir = os.path.join(rtkbase_path, "..", "update")
++
++    if not update_file:
++        #Download update
++        #update_archive = download_update(update_url)
++        try:
++            response = requests.get(update_url)
++            if response.ok:
++                with open(update_archive, "wb") as f:
++                    f.write(response.content)
++                print("update downloaded in",update_archive)
++            else:
++                error = update_url + " not downloded, error " + str(response.status_code)
++                socketio.emit("downloading_update", json.dumps({"result": 'false', "error" : error}), namespace="/test")
++                return
++        except Exception as e:
++            error = "Error: Can't download update - " + repr(e)
++            print(error)
++            socketio.emit("downloading_update", json.dumps({"result": 'false', "error" : error}), namespace="/test")
++            return
++    else:
++        #update from file
++        update_file.save(update_archive)
++        print("update stored in",update_archive)
++
++    os.chmod(update_archive,0o755)
++    socketio.emit("downloading_update", json.dumps({"result": 'true'}), namespace="/test")
++
++    answer = subprocess.run([update_archive, "-s"], encoding="UTF-8", stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=False)
++    if answer.returncode != 0:
++        if answer.stderr != "":
++            error = answer.stderr
++        else:
++            error = answer.stdout
++        #print("update -s answer.returncode = ", answer.returncode)
++        #print("update -s error:", error)
++        socketio.emit("updating_rtkbase_stopped", json.dumps({"error" : error.splitlines()}), namespace="/test")
++        print("Checking OS release failed. Update aborted!")
++    else : #if ok, launch update script
++        exec_update=os.path.join(rtkbase_path, "tools", "exec_update.sh")
++        print("Launch update", exec_update)
++        socketio.emit("updating_rtkbase", namespace="/test")
++        rtk.shutdownBase()
++        time.sleep(1)
++        #update_service=ServiceController('rtkbase_update.service')
++        #update_service.start()
++        subprocess.Popen([exec_update, "-U"], cwd=update_dir)
++
+ @app.before_request
+ def inject_release():
+     """
+@@ -416,7 +513,7 @@ def settings_page():
+     if request.method == 'POST':
+         uploaded_file = request.files['file']
+         if uploaded_file.filename != '':
+-            update_rtkbase(uploaded_file)
++            update_rtkbaseELT(uploaded_file)
+         else:
+             print("wrong update file")
+         return ('', 204)
+@@ -503,13 +600,17 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
-+    rtkbase_gnss_web_proxy_service = {'service_unit' : 'rtkbase_gnss_web_proxy.service', 'name' : 'RTKBase Reverse Proxy for Gnss receiver Web Server'}
-+    rtkbase_gnss_web_proxy_service["active"] = ServiceController(rtkbase_gnss_web_proxy_service["service_unit"]).isActive()
++    rtkbase_check_internet_service = {'service_unit' : 'rtkbase_check_internet.service', 'name' : 'RTKBase show internet state on led'}
++    rtkbase_check_internet_service["active"] = ServiceController(rtkbase_check_internet_service["service_unit"]).isActive()
++    RtkbaseSystemConfigure_service = {'service_unit' : 'RtkbaseSystemConfigure.service', 'name' : 'RTKBase system configure at start'}
++    RtkbaseSystemConfigure_service["active"] = ServiceController(RtkbaseSystemConfigure_service["service_unit"]).isActive()
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_gnss_web_proxy_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, RtkbaseSystemConfigure_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,
-@@ -607,7 +612,7 @@ def deleteLog(json_msg):
+                                 check=False)
+-        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit']], 
++        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit'], '--reverse'],
+                                  stdout=subprocess.PIPE, 
+                                  universal_newlines=True,
+                                  check=False)
+@@ -529,11 +630,12 @@ def diagnostic():
+ def clientConnect():
+     global connected_clients
+     connected_clients += 1
+-    print("Browser client connected")
+-    if rtkbaseconfig.get("general", "updated", fallback="False").lower() == "true":
++    updated=rtkbaseconfig.get("general", "updated", fallback="Null")
++    print("Browser client connected. updated =", updated)
++    if updated != "Null":
+         rtkbaseconfig.remove_option("general", "updated")
+         rtkbaseconfig.write_file()
+-        socketio.emit("update_successful", json.dumps({"result": 'true'}), namespace="/test")
++        socketio.emit("update_successful", json.dumps({"result": updated.lower()}), namespace="/test")
+     rtk.sendState()
+ 
+ @socketio.on("disconnect", namespace="/test")
+@@ -608,7 +710,7 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -53,7 +198,7 @@ index 3dff915..c7bb502 100755
      if answer.returncode == 0 and "/dev/" in answer.stdout:
          #print("DEBUG ok stdout: ", answer.stdout)
          try:
-@@ -625,6 +630,20 @@ def detect_receiver(json_msg):
+@@ -626,6 +728,20 @@ def detect_receiver(json_msg):
      #print('DEBUG result: ', result)
      socketio.emit("gnss_detection_result", json.dumps(result), namespace="/test")
  
@@ -74,7 +219,7 @@ index 3dff915..c7bb502 100755
  @socketio.on("configure_receiver", namespace="/test")
  def configure_receiver(brand="", model=""):
      # only some receiver could be configured automaticaly
-@@ -639,7 +658,7 @@ def configure_receiver(brand="", model=""):
+@@ -640,7 +756,7 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -83,3 +228,35 @@ index 3dff915..c7bb502 100755
      #print("DEBUG - stdout: ", answer.stdout)
      #print("DEBUG - returncode: ", answer.returncode)
  
+@@ -768,6 +884,15 @@ def shutdownRtkbase():
+     #socketio.stop()
+     subprocess.check_output(["shutdown", "now"])
+ 
++@socketio.on("update and upgrade", namespace="/test")
++def upgradeSystem():
++    print("upgrade system")
++    answer = subprocess.run([os.path.join(rtkbase_path, "tools", "system_upgrade.sh")], encoding="UTF-8", stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=False)
++    if answer.returncode == 0:
++        socketio.emit("upgrade_finished", "Upgrade succesfull", namespace="/test")
++    else:
++        socketio.emit("upgrade_finished", "Upgrade NOT succesfull", namespace="/test")
++
+ @socketio.on("turn off wi-fi", namespace="/test")
+ def turnOffWiFi():
+     print("Turning off wi-fi")
+@@ -944,6 +1069,15 @@ def update_settings(json_msg):
+         elif source_section == "local_storage":
+             restartServices(("file",))
+ 
++#### Detect GNSS receiver button handler ####
++
++@socketio.on("get tailscale href", namespace="/test")
++def get_tailscale_href():
++    print("get tailscale href")
++    answer = subprocess.run([os.path.join(rtkbase_path, "tools", "tailscale_get_href.sh")], encoding="UTF-8", stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=False)
++    if answer.returncode == 0:
++        socketio.emit("tailscale_href", answer.stdout, namespace="/test")
++
+ def arg_parse():
+     parser = argparse.ArgumentParser(
+         description="RTKBase Web server",

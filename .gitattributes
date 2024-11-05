@@ -21,7 +21,7 @@
 *.sh text eol=lf
 *.service text eol=lf
 iso3166.tab text eol=lf
-config.txt text eol=lf
+config.* text eol=lf
 *.patch text eol=lf
 
 

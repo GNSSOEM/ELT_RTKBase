@@ -44,8 +44,8 @@ fi
 
 if [[ -n "${COUNTRY}" ]]
 then
-   #echo sudo raspi-config nonint do_wifi_country "${COUNTRY}"
-   sudo raspi-config nonint do_wifi_country "${COUNTRY}"
+   #echo raspi-config nonint do_wifi_country "${COUNTRY}"
+   raspi-config nonint do_wifi_country "${COUNTRY}"
    ExitCodeCheck $?
    echo Wifi country set to ${COUNTRY} -- code ${exitcode}
    WORK=Y
@@ -73,8 +73,8 @@ then
       ExitCodeCheck $?
    else
       #https://www.raspberrypi.com/documentation/computers/configuration.html
-      #echo sudo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
-      sudo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+      #echo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+      raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
       ExitCodeCheck $?
    fi
    echo Wifi SSID set to ${SSID} -- code ${exitcode}
@@ -152,10 +152,138 @@ then
          echo This ssh public key for ${LOGIN} already present
       fi
    fi
-   #echo sudo raspi-config nonint do_ssh 0
-   sudo raspi-config nonint do_ssh 0
+   #echo raspi-config nonint do_ssh 0
+   raspi-config nonint do_ssh 0
    ExitCodeCheck $?
    WORK=Y
+fi
+
+ChangeConnection(){
+   device=$1
+   ip="$2"
+   gate="$3"
+   dns="$4"
+   conname="$5"
+   #echo device=${device} ip=${ip} gate=${gate} dns=${dns} conname=${conname}
+   #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
+   UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
+   if [[ "${UUID}" = "" ]]; then
+      UUID=`nmcli --fields UUID,NAME con show | grep "${conname}" | awk -F ' ' '{print $1}'`
+      #UUID=${UUID}
+   fi
+   if [[ "${UUID}" != "" ]]; then
+      CMD="nmcli connection modify uuid \"${UUID}\""
+      if [[ "${ip}" =~ DHCP ]]; then
+         method=auto
+         ip=
+         gate=
+         dns=
+         kind=DHCP
+      else
+         method=manual
+         kind=Static
+      fi
+
+      old_method=`nmcli connection show uuid "${UUID}" | grep "ipv4.method:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_method}" != "${method}" ]]; then
+         #echo old_method=${old_method} method=${method}
+         CMD="${CMD} ipv4.method \"${method}\""
+         change=Y
+      fi
+
+      old_ip=`nmcli connection show uuid "${UUID}" | grep "ipv4.addresses:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_ip}" == "--" ]]; then
+         old_ip=
+      fi
+      if [[ "${old_ip}" != "${ip}" ]]; then
+         #echo old_ip=${old_ip} ip=${ip}
+         CMD="${CMD} ipv4.addresses \"${ip}\""
+         change=Y
+      fi
+
+      old_gate=`nmcli connection show uuid "${UUID}" | grep "ipv4.gateway:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_gate}" == "--" ]]; then
+         old_gate=
+      fi
+      if [[ "${old_gate}" != "${gate}" ]]; then
+         #echo old_gate=${old_gate} gate=${gate}
+         CMD="${CMD} ipv4.gateway \"${gate}\""
+         change=Y
+      fi
+
+      old_dns=`nmcli connection show uuid "${UUID}" | grep "ipv4.dns:" | awk -F ' ' '{print $2}'`
+      if [[ "${old_dns}" == "--" ]]; then
+         old_dns=
+      fi
+      if [[ "${old_dns}" != "${dns}" ]]; then
+         #echo old_dns=${old_dns} dns=${dns}
+         CMD="${CMD} ipv4.dns \"${dns}\""
+         change=Y
+      fi
+
+      if [[ "${change}" == "Y" ]]; then
+         #echo ${CMD}
+         eval ${CMD}
+         ExitCodeCheck $?
+         is_active=`nmcli connection show --active uuid "${UUID}" | grep "connection.id:"`
+         #echo is_active=${is_active}
+         if [[ -n "${is_active}" ]]; then
+            #echo nmcli connection down uuid \"${UUID}\"
+            nmcli connection down uuid "${UUID}"
+            ExitCodeCheck $?
+         fi
+         #echo nmcli --wait 120 connection up uuid \"${UUID}\"
+         nmcli --wait 120 connection up uuid "${UUID}"
+         ExitCodeCheck $?
+
+         #echo DEBUG=${DEBUG}
+         if [[ -n "${DEBUG}" ]]; then
+            if [[ -n "${dns}" ]]; then
+               ping_target="google.com"
+            elif [[ "${gate}" != "" ]]; then
+               ping_target="${gate}"
+            else
+               ping_target=
+            fi
+
+            if [[ -n "${ping_target}" ]]; then
+               #echo ping -4 -c 1 -W 1 -q -I ${device} ${ping_target} \>/dev/null
+               ping -4 -c 1 -W 1 -q -I ${device} ${ping_target} >/dev/null
+               if [[ $? == 0 ]]; then
+                  echo Ping OK. ${kind} ${device} configured.
+               else
+                  echo Ping failed. Restore DHCP for ${device}
+                  CMD="nmcli connection modify uuid \"${UUID}\" ipv4.method \"auto\" ipv4.addresses \"\" ipv4.gateway \"\" ipv4.dns \"\""
+                  #echo ${CMD}
+                  eval ${CMD}
+                  ExitCodeCheck $?
+                  is_active=`nmcli connection show --active uuid "${UUID}" | grep "connection.id:"`
+                  #echo is_active=${is_active}
+                  if [[ -n "${is_active}" ]]; then
+                     #echo nmcli connection down uuid \"${UUID}\"
+                     nmcli connection down uuid "${UUID}"
+                     ExitCodeCheck $?
+                  fi
+                  #echo nmcli connection up uuid \"${UUID}\"
+                  nmcli connection up uuid "${UUID}"
+                  ExitCodeCheck $?
+               fi
+            fi
+         fi
+      else
+         echo ${kind} ${device} already configured as the same
+      fi
+   else
+      echo conection for ${device} not found
+   fi
+   WORK=Y
+}
+
+if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
+   ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}" "Wired connection 1"
+fi
+if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
+   ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
 fi
 
 if [[ -z "${WORK}" ]]

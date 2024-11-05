@@ -1,7 +1,7 @@
 #!/bin/bash
 #Tar command to create a release, excluding unuseful folders and files.
 
-ARCHIVE_NAME='UM980_RPI_Hat_rtkbase.tar.xz'
+ARCHIVE_NAME='ELT_RTKBase.tar.xz'
 BUNDLE_NAME='../install.sh'
 TAR_ARG='-cJf'
 
@@ -11,13 +11,16 @@ tar --exclude-vcs \
     run_cast_sh.patch UnicoreSetBasePos.sh UnicoreSettings.sh \
     uninstall.sh rtkbase_install.sh UnicoreConfigure.sh \
     RtkbaseSystemConfigure.sh RtkbaseSystemConfigure.service \
-    RtkbaseSystemConfigureProxy.sh server_py.patch \
-    status_js.patch tune_power.sh config.txt rtklib/* \
+    server_py.patch \
+    status_js.patch tune_power.sh config.txt rtklib/*.patch \
     version.txt settings_js.patch base_html.patch \
-    Bynav_RTCM3_OUT.txt Septentrio_TEST.txt \
+    Bynav_RTCM3_OUT.txt Septentrio_TEST.txt rtklib/aarch64/* \
     Septentrio_RTCM3_OUT.txt settings_html.patch \
-    ppp_conf.patch config.original
- 
+    ppp_conf.patch config.original tailscale_get_href.sh \
+    system_upgrade.sh exec_update.sh rtkbase_network_event.sh \
+    rtkbase_check_internet.sh rtkbase_check_internet.service
+
+rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
 chmod +x $BUNDLE_NAME
 rm -f $ARCHIVE_NAME

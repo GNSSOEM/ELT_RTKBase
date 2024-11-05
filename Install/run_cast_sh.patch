@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..09f5097 100755
+index db7a656..3089bb1 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,16 +8,26 @@ BASEDIR="$(dirname "$0")"
@@ -8,8 +8,8 @@ index db7a656..09f5097 100755
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
 -in_serial="serial://${com_port}:${com_port_settings}#${receiver_format}"
 -in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format}"
-+in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s 60000"
-+in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format} -s 60000"
++in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s 60000 -d 100 -r 1000"
++in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format} -s 0 -d 100 -r 1000"
  #in_ext_tcp is mainly for dev purpose to receive a raw stream from another base
  in_ext_tcp="tcpcli://${ext_tcp_source}:${ext_tcp_port}#${receiver_format}"
  
@@ -60,9 +60,9 @@ index db7a656..09f5097 100755
 +    # For Unicore reciever setup base position to receiver (if it's not zero)
 +    if [[ "${receiver}" =~ Unicore* ]] || [[ "${receiver}" =~ Bynav ]] || [[ "${receiver}" =~ Septentrio ]]
 +    then
-+       #echo ${BASEDIR}/UnicoreSetBasePos.sh ${com_port}:${com_port_settings%%:*} "${position}" "${receiver}"
-+       ${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}"
-+       #${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}" >>${BASEDIR}/debug.log 2>&1
++       #echo ${BASEDIR}/UnicoreSetBasePos.sh ${com_port}:${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}"
++       ${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}"
++       #${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}">>${BASEDIR}/debug.log 2>&1
 +       exitcode=$?
 +       #echo UnicoreSetBasePos exitcode=${exitcode} >>${BASEDIR}/debug.log 2>&1
 +       #echo ============================================== >>${BASEDIR}/debug.log 2>&1
@@ -75,3 +75,17 @@ index db7a656..09f5097 100755
      #echo ${cast} -in ${!1} -out $out_tcp
      # What is this ${!1} ? It's variable indirection
      ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
+@@ -63,11 +89,11 @@ mkdir -p ${logdir}
+ 
+   out_caster_A)
+     #echo ${cast} -in ${!1} -out $out_caster
+-    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log &
++    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log -fg ${BASEDIR}/ntrip_A.flg &
+     ;;
+ 
+   out_caster_B)
+-    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log &
++    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log -fg ${BASEDIR}/ntrip_B.flg &
+     ;;
+ 
+   out_local_caster)
