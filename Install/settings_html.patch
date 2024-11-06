@@ -41,7 +41,7 @@ index c8f257b..f288063 100644
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
 -            <span class="col-sm-3">Rtkbase {{ g.version }}</span>
-+            <span class="col-sm-3">ELT Rtkbase 1.7.2</span>
++            <span class="col-sm-3">ELT Rtkbase 1.7.3</span>
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
