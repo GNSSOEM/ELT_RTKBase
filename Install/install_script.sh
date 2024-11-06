@@ -51,7 +51,7 @@ SERVICE_PATH=/etc/systemd/system
 NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
 BANNER=/etc/ssh/sshd_config.d/rename_user.conf
-VERSION=version.txt
+VERSION_FILE=version.txt
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -218,16 +218,10 @@ check_version(){
   echo '################################'
   echo 'CHECK VERSION'
   echo '################################'
-  if [ -f ${BASEDIR}/${VERSION} ]
-  then
-     NEW_VERSION=`cat ${BASEDIR}/${VERSION}`
-     ExitCodeCheck $?
-  fi
   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]] && [ -f ${RTKBASE_PATH}/${VERSION} ]
-  then
+  if [ -f ${RTKBASE_PATH}/${VERSION_FILE} ]; then
      UPDATE=Y
-     OLD_VERSION=`cat ${RTKBASE_PATH}/${VERSION}`
+     OLD_VERSION=`cat ${RTKBASE_PATH}/${VERSION_FILE}`
      ExitCodeCheck $?
      #echo NEW_VERSION=${NEW_VERSION} OLD_VERSION=${OLD_VERSION}
      if [ "${NEW_VERSION}" -lt "${OLD_VERSION}" ]
@@ -249,6 +243,7 @@ check_version(){
      OLD_VERSION=${NEW_VERSION}
      UPDATE=N
   fi
+  echo ${NEW_VERSION} >${RTKBASE_PATH}/${VERSION_FILE}
 }
 
 check_boot_configiration(){
@@ -688,13 +683,6 @@ copy_rtkbase_install_file(){
   #echo chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   ExitCodeCheck $?
-
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-  then
-     #echo mv ${BASEDIR}/${VERSION} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${VERSION} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
 }
 
 install_rtkbase_system_configure(){
@@ -1007,7 +995,9 @@ configure_settings(){
    sed="sudo -u ${RTKBASE_USER} sed -i"
    #echo sed=${sed}
 
-   ${sed} s/^elt_version=.*/elt_version=${NEW_VERSION}/ "${SETTINGS_DEFAULT}"
+   POINTED_VERSION=`echo ${NEW_VERSION} | sed 's/^\(.\)\(.\)\(.\)/\1.\2.\3/'`
+   #echo POINTED_VERSION=${POINTED_VERSION}
+   ${sed} s/^elt_version=.*/elt_version=${POINTED_VERSION}/ "${SETTINGS_DEFAULT}"
 
    if [ -f ${SETTINGS_SAVE} ]; then
       #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
@@ -1024,17 +1014,17 @@ configure_settings(){
       fi
 
       source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
-      #echo version=${version} VERSION=${VERSION}
+      #echo version=${version}
       ${sed} s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
 
       #echo if grep -q \"^elt_version=\" \"${SETTINGS_NOW}\"\; then
       if grep -q "^elt_version=" "${SETTINGS_NOW}"; then
          #echo ${sed} \"s/^elt_version=.*/elt_version=${NEW_VERSION}/\" \"${SETTINGS_NOW}\"
-         ${sed} "s/^elt_version=.*/elt_version=${NEW_VERSION}/" "${SETTINGS_NOW}"
+         ${sed} "s/^elt_version=.*/elt_version=${POINTED_VERSION}/" "${SETTINGS_NOW}"
       else
          echo insert elt_version into ${SETTINGS_NOW}
          #echo ${sed} "\"/^version=/a # ELT Version\\nelt_version=${NEW_VERSION}\"" \"${SETTINGS_NOW}\"
-         ${sed} "/^version=/a # ELT Version\nelt_version=${NEW_VERSION}" "${SETTINGS_NOW}"
+         ${sed} "/^version=/a # ELT Version\nelt_version=${POINTED_VERSION}" "${SETTINGS_NOW}"
       fi
 
       #echo if ! grep -q \"^cast2=\" \"${SETTINGS_NOW}\"\; then
@@ -1216,7 +1206,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${RUNCAST_PATCH} ${SET_BASE_POS} ${SETTINGS_CONF_PATCH} \
               ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
-              ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
+              ${RTKLIB}/* ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
               ${PPP_CONF_PATH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \

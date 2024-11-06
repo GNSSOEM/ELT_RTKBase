@@ -13,7 +13,7 @@ tar --exclude-vcs \
     RtkbaseSystemConfigure.sh RtkbaseSystemConfigure.service \
     server_py.patch settings_conf_default.patch \
     status_js.patch tune_power.sh config.txt rtklib/*.patch \
-    version.txt settings_js.patch base_html.patch \
+    settings_js.patch base_html.patch \
     Bynav_RTCM3_OUT.txt Septentrio_TEST.txt rtklib/aarch64/* \
     Septentrio_RTCM3_OUT.txt settings_html.patch \
     ppp_conf.patch config.original tailscale_get_href.sh \
