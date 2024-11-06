@@ -36,6 +36,7 @@ BASE_PATCH=base_html.patch
 RUNCAST_PATCH=run_cast_sh.patch
 SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
+SETTINGS_CONF_PATCH=settings_conf_default.patch
 PPP_CONF_PATH=ppp_conf.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
@@ -952,6 +953,13 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${SETTING_HTML_PATCH}
    ExitCodeCheck $?
 
+   patch -f ${SETTINGS_DEFAULT} ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SETTINGS_DEFAULT}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $?
+
    BASE_HTML=${RTKBASE_WEB}/templates/base.html
    #echo BASE_HTML=${BASE_HTML}
    patch -f ${BASE_HTML} ${BASEDIR}/${BASE_PATCH}
@@ -996,17 +1004,15 @@ configure_settings(){
    rtcm_msg="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230"
    rtcm_msg_onocoy="1005(30),1033(30),1077,1087,1097,1107,1117,1127,1137,1230(30)"
    rtcm_msg_full="1005,1006,1007,1013,1033,1019,1020,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230"
-   sed="sudo -u "${RTKBASE_USER}" sed -i"
+   sed="sudo -u ${RTKBASE_USER} sed -i"
    #echo sed=${sed}
+
+   ${sed} s/^elt_version=.*/elt_version=${NEW_VERSION}/ "${SETTINGS_DEFAULT}"
 
    if [ -f ${SETTINGS_SAVE} ]; then
       #echo sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
       sudo -u "${RTKBASE_USER}" mv ${SETTINGS_SAVE} ${SETTINGS_NOW}
       ExitCodeCheck $?
-
-      source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
-      #echo version=${version} VERSION=${VERSION}
-      sudo -u "${RTKBASE_USER}" sed -i s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
 
       if [[ ${OLD_VERSION} < 172 ]]; then
          source <( grep -v '^#' "${settings}" | grep 'rtcm_msg_a=' )
@@ -1016,7 +1022,69 @@ configure_settings(){
             ${sed} s/^rtcm_msg_a=.*/rtcm_msg_a=\'${rtcm_msg_onocoy}\'/ "${SETTINGS_NOW}"
          fi
       fi
+
+      source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
+      #echo version=${version} VERSION=${VERSION}
+      ${sed} s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
+
+      #echo if grep -q \"^elt_version=\" \"${SETTINGS_NOW}\"\; then
+      if grep -q "^elt_version=" "${SETTINGS_NOW}"; then
+         #echo ${sed} \"s/^elt_version=.*/elt_version=${NEW_VERSION}/\" \"${SETTINGS_NOW}\"
+         ${sed} "s/^elt_version=.*/elt_version=${NEW_VERSION}/" "${SETTINGS_NOW}"
+      else
+         echo insert elt_version into ${SETTINGS_NOW}
+         #echo ${sed} "\"/^version=/a # ELT Version\\nelt_version=${NEW_VERSION}\"" \"${SETTINGS_NOW}\"
+         ${sed} "/^version=/a # ELT Version\nelt_version=${NEW_VERSION}" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^cast2=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^cast2=" "${SETTINGS_NOW}"; then
+         echo insert cast2 into ${SETTINGS_NOW}
+         #echo ${sed} "\"/^cast=/a cast2=/usr/local/bin/ntripserver\"" \"${SETTINGS_NOW}\"
+         ${sed} "/^cast=/a cast2=/usr/local/bin/ntripserver" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^svr_mode_a=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^svr_mode_a=" "${SETTINGS_NOW}"; then
+         echo insert svr_mode_a and svr_login_a into ${SETTINGS_NOW}
+         #echo ${sed} "\"/^svr_port_a=/a #ntrip A caster mode]\\nsvr_mode_a=\'0\'\\n#ntrip A caster login\\nsvr_login_a=\'\'\"" \"${SETTINGS_NOW}\"
+         ${sed} "/^svr_port_a=/a #ntrip A caster mode\nsvr_mode_a=\'0\'\n#ntrip A caster login\nsvr_login_a=\'\'" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^svr_mode_b=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^svr_mode_b=" "${SETTINGS_NOW}"; then
+         echo insert svr_mode_b and svr_login_b into ${SETTINGS_NOW}
+         #echo ${sed} "\"/^svr_port_b=/a #ntrip B caster mode]\\nsvr_mode_b=\'0\'\\n#ntrip B caster login\\nsvr_login_b=\'\'\"" \"${SETTINGS_NOW}\"
+         ${sed} "/^svr_port_b=/a #ntrip B caster mode\nsvr_mode_b=\'0\'\n#ntrip B caster login\nsvr_login_b=\'\'" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^\[ntrip_E\]=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^\[ntrip_E\]" "${SETTINGS_NOW}"; then
+         echo insert [ntrip_E] into ${SETTINGS_NOW}
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_E]\n\n# NTRIP E caster options\n\n#ntrip E caster url\nsvr_addr_e=\'\'\n#ntrip E caster port\nsvr_port_e=\'2101\'\n#ntrip E caster mode\nsvr_mode_e=\'0\'\n#ntrip E caster login\nsvr_login_e=\'\'\n#ntrip E caster password\nsvr_pwd_e=\'\'\n#Mount name\nmnt_name_e=\'Your_mount_name\'\nrtcm_msg_e=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_e_receiver_options=\'\'" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^\[ntrip_D\]=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^\[ntrip_D\]" "${SETTINGS_NOW}"; then
+         echo insert [ntrip_D] into ${SETTINGS_NOW}
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_D]\n\n# NTRIP D caster options\n\n#ntrip D caster url\nsvr_addr_d=\'\'\n#ntrip D caster port\nsvr_port_d=\'2101\'\n#ntrip D caster mode\nsvr_mode_d=\'0\'\n#ntrip D caster login\nsvr_login_d=\'\'\n#ntrip D caster password\nsvr_pwd_d=\'\'\n#Mount name\nmnt_name_d=\'Your_mount_name\'\nrtcm_msg_d=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_d_receiver_options=\'\'" "${SETTINGS_NOW}"
+      fi
+
+      #echo if ! grep -q \"^\[ntrip_C\]=\" \"${SETTINGS_NOW}\"\; then
+      if ! grep -q "^\[ntrip_C\]" "${SETTINGS_NOW}"; then
+         echo insert [ntrip_C] into ${SETTINGS_NOW}
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'0\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'Your_mount_name\'\nrtcm_msg_c=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
+      fi
+
    else
+      #echo cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}
+      cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}
+      ExitCodeCheck $?
+
+      #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
+      chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
+      ExitCodeCheck $?
+
       ${sed} s/^position=.*/position=\'0\.00\ 0\.00\ 0\.00\'/ "${SETTINGS_NOW}"
       ${sed} s/^com_port=.*/com_port=\'\'/ "${SETTINGS_NOW}"
       ${sed} s/^com_port_settings=.*/com_port_settings=\'115200:8:n:1\'/ "${SETTINGS_NOW}"
@@ -1145,7 +1213,7 @@ can_reboot(){
 }
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
-              ${RUNCAST_PATCH} ${SET_BASE_POS} \
+              ${RUNCAST_PATCH} ${SET_BASE_POS} ${SETTINGS_CONF_PATCH} \
               ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
