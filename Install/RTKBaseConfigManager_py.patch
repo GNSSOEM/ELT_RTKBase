@@ -1,0 +1,22 @@
+diff --git a/web_app/RTKBaseConfigManager.py b/web_app/RTKBaseConfigManager.py
+index eabd303..6ca7567 100644
+--- a/web_app/RTKBaseConfigManager.py
++++ b/web_app/RTKBaseConfigManager.py
+@@ -120,7 +120,7 @@ class RTKBaseConfigManager:
+             and remove the single quotes.    
+         """
+         ordered_ntrip = [{"source_section" : "ntrip_A"}]
+-        for key in ("svr_addr_A", "svr_port_A", "svr_pwd_A", "mnt_name_A", "rtcm_msg_A", "ntrip_A_receiver_options"):
++        for key in ("svr_addr_A", "svr_port_A", "svr_mode_A", "svr_login_A", "svr_pwd_A", "mnt_name_A", "rtcm_msg_A", "ntrip_A_receiver_options"):
+             ordered_ntrip.append({key : self.config.get('ntrip_A', key).strip("'")})
+         return ordered_ntrip
+     
+@@ -131,7 +131,7 @@ class RTKBaseConfigManager:
+         """
+         #TODO need refactoring with get_ntrip_A_settings
+         ordered_ntrip = [{"source_section" : "ntrip_B"}]
+-        for key in ("svr_addr_B", "svr_port_B", "svr_pwd_B", "mnt_name_B", "rtcm_msg_B", "ntrip_B_receiver_options"):
++        for key in ("svr_addr_B", "svr_port_B", "svr_mode_B", "svr_login_B", "svr_pwd_B", "mnt_name_B", "rtcm_msg_B", "ntrip_B_receiver_options"):
+             ordered_ntrip.append({key : self.config.get('ntrip_B', key).strip("'")})
+         return ordered_ntrip
+ 

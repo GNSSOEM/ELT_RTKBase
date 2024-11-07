@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..bad5fcc 100644
+index 9f48006..9f1e711 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -111,7 +111,7 @@ $(document).ready(function () {
@@ -215,7 +215,7 @@ index 9f48006..bad5fcc 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +773,28 @@ $(document).ready(function () {
+@@ -735,5 +773,72 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -242,5 +242,49 @@ index 9f48006..bad5fcc 100644
 +        $("#upgrade-cancel-button").prop("hidden", false);
 +        $("#upgrade-cancel-button").html('Continue');
 +    })
++    function set_ntrip_mode(letter) {
++        const selectElem = document.getElementById("svr_mode_" + letter);
++        const index = selectElem.selectedIndex;
++        // https://developer.mozilla.org/en-US/docs/Web/API/HTMLSelectElement/selectedIndex
++        //console.log(selectElem.name + "=" + index);
++        svr_login = $("#svr_login_" + letter + "_group");
++        svr_pwd = $("#svr_pwd_" + letter + "_group");
++        mnt_name = $("#mnt_name_" + letter + "_group");
++        rtcm_msg = $("#rtcm_msg_" + letter + "_group");
++        receiver_options = $("#ntrip_" + letter + "_receiver_options_group");
++        switch(index) {
++           case 1: // NTRIP v2 TCP
++           case 2: // NTRIP v2 RTSP
++                   svr_login.prop("hidden", false);
++                   svr_pwd.prop("hidden", false);
++                   mnt_name.prop("hidden", false);
++                   rtcm_msg.prop("hidden", true);
++                   receiver_options.prop("hidden", true);
++                   break;
++           case 3: // TCP
++                   svr_login.prop("hidden", true);
++                   svr_pwd.prop("hidden", true);
++                   mnt_name.prop("hidden", true);
++                   rtcm_msg.prop("hidden", false);
++                   receiver_options.prop("hidden", false);
++                   break;
++           default: // NTRIP v1
++                   svr_login.prop("hidden", true);
++                   svr_pwd.prop("hidden", false);
++                   mnt_name.prop("hidden", false);
++                   rtcm_msg.prop("hidden", false);
++                   receiver_options.prop("hidden", false);
++        }
++    }
++
++    document.querySelectorAll("select.form-control").forEach(function(e) {
++        var letter = e.id.replace("svr_mode_", "");
++        //console.log(e.id + "(" + letter + ")");
++        e.addEventListener('click', function(ev) {
++            set_ntrip_mode(letter);
++        });
++        e.click()
++    });
++
      // end of document.ready
  });

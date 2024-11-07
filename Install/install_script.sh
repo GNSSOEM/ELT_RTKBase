@@ -38,6 +38,7 @@ SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
 SETTINGS_CONF_PATCH=settings_conf_default.patch
 PPP_CONF_PATCH=ppp_conf.patch
+CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -914,6 +915,15 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${SERVER_PATCH}
    ExitCodeCheck $?
 
+   CONFIG_MANAGER_PY=${RTKBASE_WEB}/RTKBaseConfigManager.py
+   #echo CONFIG_MANAGER_PY=${CONFIG_MANAGER_PY}
+   patch -f ${CONFIG_MANAGER_PY} ${BASEDIR}/${CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${CONFIG_MANAGER_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+
    STATUS_JS=${RTKBASE_WEB}/static/status.js
    #echo STATUS_JS=${STATUS_JS}
    patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
@@ -1204,7 +1214,7 @@ can_reboot(){
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
               ${RUNCAST_PATCH} ${SET_BASE_POS} ${SETTINGS_CONF_PATCH} \
-              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
+              ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} ${CONFIG_MANAGER_PATCH} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
