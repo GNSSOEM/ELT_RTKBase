@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..d05c881 100644
+index 9f48006..53c0251 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -111,7 +111,7 @@ $(document).ready(function () {
@@ -216,7 +216,7 @@ index 9f48006..d05c881 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +773,72 @@ $(document).ready(function () {
+@@ -735,5 +773,73 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -254,15 +254,16 @@ index 9f48006..d05c881 100644
 +        rtcm_msg = $("#rtcm_msg_" + letter + "_group");
 +        receiver_options = $("#ntrip_" + letter + "_receiver_options_group");
 +        switch(index) {
-+           case 1: // NTRIP v2 TCP
-+           case 2: // NTRIP v2 RTSP
++           case 2: // NTRIP v2 TCP
++           case 3: // NTRIP v2 RSTP
++           case 4: // NTRIP v2 UDP
 +                   svr_login.prop("hidden", false);
 +                   svr_pwd.prop("hidden", false);
 +                   mnt_name.prop("hidden", false);
 +                   rtcm_msg.prop("hidden", true);
 +                   receiver_options.prop("hidden", true);
 +                   break;
-+           case 3: // TCP
++           case 1: // TCP
 +                   svr_login.prop("hidden", true);
 +                   svr_pwd.prop("hidden", true);
 +                   mnt_name.prop("hidden", true);
