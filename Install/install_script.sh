@@ -111,20 +111,38 @@ configure_config(){
         HAVE_CORE_FREQ=`grep "^core_freq=250" ${BOOTCONFIG}`
         #echo HAVE_CORE_FREQ=${HAVE_CORE_FREQ}
 
-        PI4_SECTION=`awk '/^\[pi4\]/ {print NR + 1; exit 0; }' ${BOOTCONFIG}`
-        #echo PI4_SECTION=${PI4_SECTION}
-        if [[ ${PI4_SECTION} != "" ]]; then
-           #echo tail -n+${PI4_SECTION} ${BOOTCONFIG}
-           #tail -n+${PI4_SECTION} ${BOOTCONFIG}
-           NEXT_SECTION=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | awk '/^\[/ {print NR; exit 0; }'`
-           #echo NEXT_SECTION=${NEXT_SECTION}
-           if [[ ${NEXT_SECTION} == "" ]]; then
-              HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | grep "^otg_mode=1"`
+        START_LINE=0
+        while : ; do
+           PI4_SECTION=`tail -n+${START_LINE} ${BOOTCONFIG} | awk '/^\[pi4\]/ {print NR+1; exit 0; }'`
+           #echo before PI4_SECTION=${PI4_SECTION}
+           if [[ ${PI4_SECTION} != "" ]]; then
+              if [[ ${START_LINE} != 0 ]]; then
+                 let "PI4_SECTION=${PI4_SECTION}+${START_LINE}+1"
+                 #echo after PI4_SECTION=${PI4_SECTION} START_LINE=${START_LINE}
+              fi
+              NEXT_SECTION=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | awk '/^\[/ {print NR; exit 0; }'`
+              #echo NEXT_SECTION=${NEXT_SECTION}
+              if [[ ${NEXT_SECTION} == "" ]]; then
+                 #echo tail -n+${PI4_SECTION} ${BOOTCONFIG}
+                 #tail -n+${PI4_SECTION} ${BOOTCONFIG}
+                 HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | grep "^otg_mode=1"`
+                 break
+              else
+                 let "NEXT_SECTION=${NEXT_SECTION}-1"
+                 #echo tail -n+${PI4_SECTION} ${BOOTCONFIG} \| head -n+${NEXT_SECTION}
+                 #tail -n+${PI4_SECTION} ${BOOTCONFIG} | head -n+${NEXT_SECTION}
+                 HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | head -n+${NEXT_SECTION} | grep "^otg_mode=1"`
+              fi
+              if [[ ${HAVE_OTG} != "" ]]; then
+                 break
+              fi
+              let "START_LINE=${PI4_SECTION}-1"
            else
-              HAVE_OTG=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | head -n+${NEXT_SECTION} | grep "^otg_mode=1"`
+              break
            fi
-        fi
-        #echo HAVE_OTG=${HAVE_OTG}
+
+        done
+        #echo after loop HAVE_OTG=${HAVE_OTG}
 
         if [[ ${HAVE_UART} == "" ]] || [[ ${HAVE_MINI_BT} == "" ]] || [[ ${HAVE_CORE_FREQ} == "" ]]
         then
