@@ -1,8 +1,8 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..3089bb1 100755
+index db7a656..9b346c9 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,16 +8,26 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,78 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
@@ -10,30 +10,86 @@ index db7a656..3089bb1 100755
 -in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format}"
 +in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s 60000 -d 100 -r 1000"
 +in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format} -s 0 -d 100 -r 1000"
++in_tcp2="-R 300 -M 2 -H localhost -P ${tcp_port}"
  #in_ext_tcp is mainly for dev purpose to receive a raw stream from another base
  in_ext_tcp="tcpcli://${ext_tcp_source}:${ext_tcp_port}#${receiver_format}"
  
 -out_caster_A="ntrips://:${svr_pwd_a}@${svr_addr_a}:${svr_port_a}/${mnt_name_a}#rtcm3 -msg ${rtcm_msg_a} -p ${position}"
-+if [[ ${mnt_name_a} == TCP ]] && [[ ${svr_pwd_a} == TCP ]]
-+  then
-+    out_caster_A="tcpcli://${svr_addr_a}:${svr_port_a}#rtcm3 -msg ${rtcm_msg_a} -p ${position}"
-+  else
-+    out_caster_A="ntrips://:${svr_pwd_a}@${svr_addr_a}:${svr_port_a}/${mnt_name_a}#rtcm3 -msg ${rtcm_msg_a} -p ${position}"
-+fi
- #add receiver options if it exists
- [[ ! -z "${ntrip_a_receiver_options}" ]] && out_caster_A=""${out_caster_A}" -opt "${ntrip_a_receiver_options}""
+-#add receiver options if it exists
+-[[ ! -z "${ntrip_a_receiver_options}" ]] && out_caster_A=""${out_caster_A}" -opt "${ntrip_a_receiver_options}""
++PrepareNtripServer(){
++  name=svr_addr_${1}
++  svr_addr=${!name}
++  #echo svr_addr=${svr_addr} svr_addr_a=${svr_addr_a} name=${name} !name=${!name}
++  name=svr_port_${1}
++  svr_port=${!name}
++  name=svr_mode_${1}
++  svr_mode=${!name}
++  name=svr_login_${1}
++  svr_login=${!name}
++  name=svr_pwd_${1}
++  svr_pwd=${!name}
++  name=mnt_name_${1}
++  mnt_name=${!name}
++  name=rtcm_msg_${1}
++  rtcm_msg=${!name}
++  name=ntrip_${1}_receiver_options
++  ntrip_receiver_options=${!name}
++
++  case "${svr_mode}" in
++    1)
++       out_caster="tcpcli://${svr_addr}:${svr_port}#rtcm3 -msg ${rtcm_msg} -p ${position}"
++       ;;
++    2)
++       if [[ "${mnt_name}" == TCP ]] && [[ "${svr_pwd}" == TCP ]]; then
++          out_caster="-O 5 -a ${svr_addr} -p ${svr_port} -L ${BASEDIR}/ntrip_${2}.flg"
++       elif [[ -z "${svr_login}"  ]]; then
++          out_caster="-O 3 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
++       else
++          out_caster="-O 1 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -n ${svr_login} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
++       fi
++       ;;
++    3)
++       out_caster="-O 2 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -n ${svr_login} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
++       ;;
++    4)
++       out_caster="-O 4 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -n ${svr_login} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
++       ;;
++    *)
++       if [[ "${mnt_name}" == TCP ]] && [[ "${svr_pwd}" == TCP ]]; then
++          out_caster="tcpcli://${svr_addr}:${svr_port}#rtcm3 -msg ${rtcm_msg} -p ${position}"
++       else
++          out_caster="ntrips://:${svr_pwd}@${svr_addr}:${svr_port}/${mnt_name}#rtcm3 -msg ${rtcm_msg} -p ${position}"
++       fi
++       ;;
++  esac
  
 -out_caster_B="ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
-+if [[ ${mnt_name_b} == TCP ]] && [[ ${svr_pwd_b} == TCP ]]
-+  then
-+    out_caster_B="tcpcli://${svr_addr_b}:${svr_port_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
+-#add receiver options if it exists
+-[[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
++  #add receiver options if it exists
++  [[ ! -z "${ntrip_receiver_options}" ]] && out_caster=""${out_caster}" -opt "${ntrip_receiver_options}""
++
++  #echo out_caster_${2}=\"${out_caster}\"
++  eval out_caster_${2}=\"${out_caster}\"
++}
++
++StartNtripServer(){
++  #echo StartNtripServer $1 $2 $3
++  PrepareNtripServer $2 $3
++  #echo out_caster_${3}=\"${out_caster}\"
++  if [[ "${svr_mode}" < 2 ]]; then
++     echo ${cast} -in ${!1} -out ${out_caster} -i \"${receiver_info}\" -a \"${antenna_info}\" -t ${level} -fl ${logdir}/str2str_ntrip_${2}.log -fg ${BASEDIR}/ntrip_${2}.flg \&
++     ${cast} -in ${!1} -out ${out_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_${2}.log -fg ${BASEDIR}/ntrip_${2}.flg &
 +  else
-+    out_caster_B="ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
-+fi
- #add receiver options if it exists
- [[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
++     echo ${cast2} ${in_tcp2} ${out_caster} \&
++     ${cast2} ${in_tcp2} ${out_caster} &
++  fi
++}
  
-@@ -28,15 +38,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+ array_pos=(${position})
+ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +88,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -52,7 +108,12 @@ index db7a656..3089bb1 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -56,6 +66,22 @@ mkdir -p ${logdir}
+@@ -52,22 +112,37 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+ #add receiver options if it exists
+ [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
+ 
+-mkdir -p ${logdir}
++[[ -n "${logdir}" ]] && mkdir -p ${logdir}
  
    case "$2" in
      out_tcp)
@@ -75,17 +136,17 @@ index db7a656..3089bb1 100755
      #echo ${cast} -in ${!1} -out $out_tcp
      # What is this ${!1} ? It's variable indirection
      ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
-@@ -63,11 +89,11 @@ mkdir -p ${logdir}
+     ;;
  
    out_caster_A)
-     #echo ${cast} -in ${!1} -out $out_caster
+-    #echo ${cast} -in ${!1} -out $out_caster
 -    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log &
-+    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log -fg ${BASEDIR}/ntrip_A.flg &
++    StartNtripServer ${1} a A
      ;;
  
    out_caster_B)
 -    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log &
-+    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log -fg ${BASEDIR}/ntrip_B.flg &
++    StartNtripServer ${1} b B
      ;;
  
    out_local_caster)
