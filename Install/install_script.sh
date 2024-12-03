@@ -43,6 +43,10 @@ SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
 CHECK_INTERNET=rtkbase_check_internet.sh
 CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
+SEPTENTRIO_NAT=rtkbase_septentrio_NAT.sh
+SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
+DHCP_CONF=rtkbase_DHCP.conf
+DHCP_SERVICE=rtkbase_DHCP.service
 TUNE_POWER=tune_power.sh
 CONFIG=config.txt
 CONFIG_ORIG=config.original
@@ -539,7 +543,9 @@ stop_rtkbase_services(){
                   modem_check.timer \
                   rtkbase_gnss_web_proxy.service \
                   ${SYSSERVICE} \
-                  ${CHECK_INTERNET_SERVICE}"
+                  ${CHECK_INTERNET_SERVICE} \
+                  ${SEPTENTRIO_NAT_SERVICE} \
+                  ${DHCP_SERVICE}"
      if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
         serviceList="${serviceList} rtkbase_web.service"
      fi
@@ -747,12 +753,25 @@ install_rtkbase_system_configure(){
      mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
      ExitCodeCheck $?
   fi
-  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
+  #echo chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
   chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
   ExitCodeCheck $?
 
   #echo mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
   mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
+  ExitCodeCheck $?
+
+  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+     #echo mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
+     mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
+     ExitCodeCheck $?
+  fi
+  #echo chmod +x ${RTKBASE_PATH}/${DHCP_CONF}
+  chmod +x ${RTKBASE_PATH}/${DHCP_CONF}
+  ExitCodeCheck $?
+
+  #echo mv ${BASEDIR}/${DHCP_SERVICE} ${SERVICE_PATH}/
+  mv ${BASEDIR}/${DHCP_SERVICE} ${SERVICE_PATH}/
   ExitCodeCheck $?
 
   if ! ischroot; then
@@ -935,6 +954,18 @@ configure_for_unicore(){
    chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${TESTSEPTENTRIO}
    ExitCodeCheck $?
 
+   #echo mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
+   mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
+   ExitCodeCheck $?
+
+   #echo chmod +x ${RTKBASE_GIT}/${SEPTENTRIO_NAT}
+   chmod +x ${RTKBASE_GIT}/${SEPTENTRIO_NAT}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
+   mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
+   ExitCodeCheck $?
+
    SERVER_PY=${RTKBASE_WEB}/server.py
    #echo SERVER_PY=${SERVER_PY}
    patch -f ${SERVER_PY} ${BASEDIR}/${SERVER_PATCH}
@@ -1088,18 +1119,28 @@ start_rtkbase_services(){
   ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -s
   ExitCodeCheck $?
 
+  source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
+  ExitCodeCheck $?
+  #echo receiver=${receiver}
+
   GNSS_WEB_PROXY=rtkbase_gnss_web_proxy.service
-  webproxy_enabled=$(systemctl is-enabled "${GNSS_WEB_PROXY}")
-  webproxy_active=$(systemctl is-active "${GNSS_WEB_PROXY}")
-  #echo webproxy_enabled=${webproxy_enabled} webproxy_active=${webproxy_active}
-  if [[ "${webproxy_enabled}" == "enabled" ]] && [[ "${webproxy_active}" == "inactive" ]]
-  then
-     #echo systemctl start "${GNSS_WEB_PROXY}"
-     systemctl start "${GNSS_WEB_PROXY}"
+  if [[ "${receiver}" =~ Septentrio ]]; then
+     #echo systemctl enable --now "${GNSS_WEB_PROXY}"
+     systemctl enable --now "${GNSS_WEB_PROXY}"
+     ExitCodeCheck $?
+
+     #echo systemctl enable --now "${DHCP_SERVICE}"
+     systemctl enable --now "${DHCP_SERVICE}"
+     ExitCodeCheck $?
+
+     #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
+     systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
+     ExitCodeCheck $?
   fi
 
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
+  ExitCodeCheck $?
 }
 
 delete_garbage(){
@@ -1159,7 +1200,9 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
               ${PPP_CONF_PATH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
-              ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE}"
+              ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
+              ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
+              ${DHCP_CONF} ${DHCP_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

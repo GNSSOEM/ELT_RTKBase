@@ -18,7 +18,9 @@ tar --exclude-vcs \
     Septentrio_RTCM3_OUT.txt settings_html.patch \
     ppp_conf.patch config.original tailscale_get_href.sh \
     system_upgrade.sh exec_update.sh rtkbase_network_event.sh \
-    rtkbase_check_internet.sh rtkbase_check_internet.service
+    rtkbase_check_internet.sh rtkbase_check_internet.service \
+    rtkbase_septentrio_NAT.sh rtkbase_septentrio_NAT.service \
+    rtkbase_DHCP.conf rtkbase_DHCP.service
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

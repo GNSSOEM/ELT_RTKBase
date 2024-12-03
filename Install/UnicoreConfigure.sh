@@ -461,6 +461,8 @@ configure_septentrio_SBF(){
         echo 'Septentrio Mosaic-X5 successfuly configured'
         systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null                                                          && \
         systemctl enable --now rtkbase_gnss_web_proxy.service                                                                         && \
+        systemctl enable --now rtkbase_septentrio_NAT.service                                                                         && \
+        systemctl enable --now rtkbase_DHCP.service                                                                                   && \
         return $?
       else
         echo 'Failed to configure the Septentrio receiver on '${RECVPORT}
