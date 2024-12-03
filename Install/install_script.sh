@@ -668,6 +668,8 @@ install_rtklib() {
        doPatch ${RTKLIB_GIT}/app/consapp/str2str/str2str.c ${RTKLIB_PATCH}/str2str.patch
        doPatch ${RTKLIB_GIT}/app/consapp/str2str/gcc/makefile ${RTKLIB_PATCH}/str2str_makefile.patch
        doPatch ${RTKLIB_GIT}/app/consapp/convbin/convbin.c ${RTKLIB_PATCH}/convbin.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/convbin/gcc/makefile ${RTKLIB_PATCH}/convbin_makefile.patch
+       doPatch ${RTKLIB_GIT}/app/consapp/rtkrcv/gcc/makefile ${RTKLIB_PATCH}/rtkrcv_makefile.patch
        #TODO add correct CTARGET in makefile?
        echo Compile and install
        make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc
