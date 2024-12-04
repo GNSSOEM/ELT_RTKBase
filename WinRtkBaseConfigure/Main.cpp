@@ -311,6 +311,26 @@ int TfmMain::FindRtkbaseDevice(void)
    return Result;
 }
 //---------------------------------------------------------------------------
+AnsiString quoted(const AnsiString &str)
+{
+   AnsiString Res = "$'";
+   const char *p=str.c_str();
+   while (*p) {
+      unsigned char c=*p++;
+      switch(c) {
+         case '\\': Res += "\\\\"; break;
+         case '\'': Res += "\\\'"; break;
+         case '\"': Res += "\\\""; break;
+         default:   if ((c >= ' ') && (c < 127))
+                        Res += AnsiString(c);
+                    else
+                        Res += "\\x" + IntToHex(c,2);
+      }
+   };
+   Res += "'";
+   return Res;
+}
+//---------------------------------------------------------------------------
 void __fastcall TfmMain::btnSaveClick(TObject *)
 {
    if (cbUser->Checked && !checkLogin(edLogin->Text.c_str())) {
@@ -334,10 +354,10 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
    FILE *file = fopen(filename,"wt");
    if (file) {
       if (cbWifi->Checked) {
-         fprintf(file,"SSID=\"%s\"\n",edSSID->Text.c_str());
+         fprintf(file,"SSID=%s\n",quoted(edSSID->Text).c_str());
          AnsiString key = edKey->Text;
          if (key.Length() > 0)
-            fprintf(file,"KEY=\"%s\"\n", key.c_str());
+            fprintf(file,"KEY=%s\n", quoted(key).c_str());
          if (cbHidden->Checked)
             fprintf(file,"HIDDEN=Y\n");
       }
@@ -346,10 +366,10 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
          fprintf(file,"COUNTRY=%c%c\n",code >> 8, code & 0xFF);
       }
       if (cbUser->Checked) {
-         fprintf(file,"LOGIN=%s\n",edLogin->Text.c_str());
+         fprintf(file,"LOGIN=%s\n",quoted(edLogin->Text).c_str());
          AnsiString pwd = edPwd->Text;
          if (pwd.Length() > 0)
-            fprintf(file,"PWD=\"%s\"\n", pwd.c_str());
+            fprintf(file,"PWD=%s\n", quoted(pwd).c_str());
          if (*sshkey)
             fprintf(file,"SSH=\"%s\"\n", sshkey);
       }
