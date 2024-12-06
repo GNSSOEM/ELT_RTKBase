@@ -323,10 +323,18 @@ AnsiString quoted(const AnsiString &str)
          case '\"': Res += "\\\""; break;
          default:   if ((c >= ' ') && (c < 127))
                         Res += AnsiString(c);
-                    else
+                    else if (c < 128)
                         Res += "\\x" + IntToHex(c,2);
-      }
-   };
+                    else {
+                       int cc=c;
+                       wchar_t u[10];
+                       int n = MultiByteToWideChar(CP_THREAD_ACP, MB_PRECOMPOSED, (char *)&cc, 1, u, 4);
+                       for (int i=0; i<n; i++) {
+                           Res += "\\u" + IntToHex(u[i],4);
+                       }
+                    };
+      }; // switch(c)
+   }; // while (*p)
    Res += "'";
    return Res;
 }
