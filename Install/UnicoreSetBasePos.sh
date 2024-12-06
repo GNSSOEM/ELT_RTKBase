@@ -343,6 +343,9 @@ then
    fi
    #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
    if [[ "${receiver}" =~ Unicore ]]; then
+      if [[ "${ANTSERIAL}" == "" ]]; then
+         ANTSERIAL=0
+      fi
       #ANTINFO="\"${ANTNAME}\" \"${ANTSERIAL}\" ${ANTSETUP}"
       ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}
