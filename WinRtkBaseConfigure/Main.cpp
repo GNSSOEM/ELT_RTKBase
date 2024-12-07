@@ -322,7 +322,7 @@ AnsiString quoted(const AnsiString &str)
          case '\'': Res += "\\\'"; break;
          case '\"': Res += "\\\""; break;
          default:   if ((c >= ' ') && (c < 127))
-                        Res += AnsiString(c);
+                        Res += AnsiString(char(c));
                     else if (c < 128)
                         Res += "\\x" + IntToHex(c,2);
                     else {
