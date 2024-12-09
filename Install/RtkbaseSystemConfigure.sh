@@ -63,7 +63,7 @@ then
    fi
    #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
 
-   if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]
+   if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ] && [ ! -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]
    then
       #echo /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
       /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
