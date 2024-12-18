@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..bad5fcc 100644
+index 9f48006..c8d7f30 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -111,7 +111,7 @@ $(document).ready(function () {
@@ -99,7 +99,7 @@ index 9f48006..bad5fcc 100644
          }else if (response.new_release) {
              $("#updateModal .modal-title").text("Update available!");
 -            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
-+            $("#updateModal .modal-body").text('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
++            $("#updateModal .modal-body").html('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
              var newFeaturesArray = response['comment'].split('\r\n');
              $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
              $.each( newFeaturesArray, function( index, value ){
