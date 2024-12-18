@@ -63,11 +63,24 @@ then
    fi
    #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
 
-   if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ] && [ ! -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]
-   then
+   if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
+      if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
+         UUID=`nmcli --fields UUID,DEVICE con show | grep wlan0 | awk -F ' ' '{print $1}'`
+         if [[ "${UUID}" = "" ]]; then
+            UUID=`nmcli --fields UUID,NAME con show | grep "preconfigured" | awk -F ' ' '{print $1}'`
+            #UUID=${UUID}
+         fi
+         if [[ "${UUID}" != "" ]]; then
+            #echo nmcli connection delete uuid "${UUID}"
+            nmcli connection delete uuid "${UUID}"
+            ExitCodeCheck $?
+         fi
+      fi
       #echo /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
       /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
       ExitCodeCheck $?
+      #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
+      #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
       #echo systemctl restart NetworkManager
       systemctl restart NetworkManager
       ExitCodeCheck $?
