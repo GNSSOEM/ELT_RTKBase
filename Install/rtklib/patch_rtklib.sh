@@ -39,6 +39,8 @@ doPatch src/rinex.c rinex.patch
 doPatch app/consapp/str2str/str2str.c str2str.patch
 doPatch app/consapp/str2str/gcc/makefile str2str_makefile.patch
 doPatch app/consapp/convbin/convbin.c convbin.patch
+doPatch app/consapp/convbin/gcc/makefile convbin_makefile.patch
+doPatch app/consapp/rtkrcv/gcc/makefile rtkrcv_makefile.patch
 
 cd app/consapp/str2str/gcc
 ExitCodeCheck $?

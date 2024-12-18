@@ -35,7 +35,7 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + When speed changed in main settings, speed of receiver will be changing too
 + Configuring WiFi via an Windows application  (not only on first boot)
 + Adding users via an Windows application  (not only on first boot)
-+ Complete [documentation](./Doc/ELT_RTKBase_v1.7.3_EN.pdf) with lots of pictures
++ Complete [documentation](./Doc/ELT_RTKBase_v1.7.5_EN.pdf) with lots of pictures
 + Zeroconfig VPN by [Tailscale](https://tailscale.com)
 + System update & upgrade by button in the web-interface
 + Indication of disconnections with the NTRIP server in the web interface.

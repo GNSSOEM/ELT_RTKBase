@@ -25,6 +25,20 @@ CHECK_INTERNET_SERVICE_enabled=`systemctl is-enabled ${CHECK_INTERNET_SERVICE} 2
 [[ "${CHECK_INTERNET_SERVICE_enabled}" != "disabled" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "masked" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "" ]] && systemctl disable  ${CHECK_INTERNET_SERVICE}
 rm -f /etc/systemd/system/${CHECK_INTERNET_SERVICE}
 
+SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
+SEPTENTRIO_NAT_SERVICE_enabled=`systemctl is-enabled ${SEPTENTRIO_NAT_SERVICE} 2>/dev/null`
+#echo SEPTENTRIO_NAT_SERVICE_enabled=${SEPTENTRIO_NAT_SERVICE_enabled}
+[[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${SEPTENTRIO_NAT_SERVICE} && systemctl stop ${SEPTENTRIO_NAT_SERVICE}
+[[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "disabled" ]] && [[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "masked" ]] && [[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "" ]] && systemctl disable  ${SEPTENTRIO_NAT_SERVICE}
+rm -f /etc/systemd/system/${SEPTENTRIO_NAT_SERVICE}
+
+DHCP_SERVICE=rtkbase_DHCP.service
+DHCP_SERVICE_enabled=`systemctl is-enabled ${DHCP_SERVICE} 2>/dev/null`
+#echo DHCP_SERVICE_enabled=${DHCP_SERVICE_enabled}
+[[ "${DHCP_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${DHCP_SERVICE} && systemctl stop ${DHCP_SERVICE}
+[[ "${DHCP_SERVICE_enabled}" != "disabled" ]] && [[ "${DHCP_SERVICE_enabled}" != "masked" ]] && [[ "${DHCP_SERVICE_enabled}" != "" ]] && systemctl disable  ${DHCP_SERVICE}
+rm -f /etc/systemd/system/${DHCP_SERVICE}
+
 systemctl daemon-reload
 
 RTKBASE_UNINSTALL=${RTKBASE_PATH}/rtkbase/tools/uninstall.sh

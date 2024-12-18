@@ -1,18 +1,35 @@
 diff --git a/src/stream.c b/src/stream.c
-index f6d815e..15c7ea8 100644
+index f6d815e..5f4623e 100644
 --- a/src/stream.c
 +++ b/src/stream.c
-@@ -124,6 +124,9 @@
+@@ -108,6 +108,7 @@
+ #define NTRIP_CLI_PORT      2101        /* default ntrip-client connection port */
+ #define NTRIP_SVR_PORT      80          /* default ntrip-server connection port */
+ #define NTRIP_MAXRSP        32768       /* max size of ntrip response */
++#define NTRIP_MINRSP        16          /* max size of ntrip response */
+ #define NTRIP_MAXSTR        256         /* max length of mountpoint string */
+ #define NTRIP_RSP_OK_CLI    "ICY 200 OK\r\n" /* ntrip response: client */
+ #define NTRIP_RSP_OK_SVR    "OK\r\n"    /* ntrip response: server */
+@@ -115,6 +116,8 @@
+ #define NTRIP_RSP_TBLEND    "ENDSOURCETABLE"
+ #define NTRIP_RSP_HTTP      "HTTP/"     /* ntrip response: http */
+ #define NTRIP_RSP_ERROR     "ERROR"     /* ntrip response: error */
++#define NTRIP_RSP_NOT_FOUND "Not Found" /* ntrip v2 response: not found */
++#define NTRIP_RSP_V2UNAUTH  "Unauthorized" /* ntrip v2 response: unauthorized */
+ #define NTRIP_RSP_UNAUTH    "HTTP/1.0 401 Unauthorized\r\n"
+ #define NTRIP_RSP_ERR_PWD   "ERROR - Bad Pasword\r\n"
+ #define NTRIP_RSP_ERR_MNTP  "ERROR - Bad Mountpoint\r\n"
+@@ -124,6 +127,9 @@
  
  #define MIN(x,y)            ((x)<(y)?(x):(y))
  
 +#define MAX_PROGRESSIVE_TIMEOUT 300000 /* 5 minute = 300 000 ms */
 +#define DROP_PROGRESSIVE_TIME   180000 /* 3 minute = 180 000 ms */
-+
++#define MAX_NTRIP_CONNECT_TIME   15000 /* 15 ᥪ㭤 = 15 000 ms */
  /* macros --------------------------------------------------------------------*/
  
  #ifdef WIN32
-@@ -164,6 +167,8 @@ typedef struct {            /* file control type */
+@@ -164,6 +170,8 @@ typedef struct {            /* file control type */
  
  typedef struct {            /* tcp control type */
      int state;              /* state (0:close,1:wait,2:connect) */
@@ -21,7 +38,7 @@ index f6d815e..15c7ea8 100644
      char saddr[256];        /* address string */
      int port;               /* port */
      struct sockaddr_in addr; /* address resolved */
-@@ -446,7 +451,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
+@@ -446,7 +454,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
          free(serial);
          return NULL;
      }
@@ -30,7 +47,7 @@ index f6d815e..15c7ea8 100644
  #else
      sprintf(dev,"/dev/%.*s",(int)sizeof(port)-6,port);
      
-@@ -474,7 +479,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
+@@ -474,7 +482,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
      ios.c_cflag|=!strcmp(fctr,"rts")?CRTSCTS:0;
      tcsetattr(serial->dev,TCSANOW,&ios);
      tcflush(serial->dev,TCIOFLUSH);
@@ -39,7 +56,7 @@ index f6d815e..15c7ea8 100644
  #endif
      serial->tcpsvr=NULL;
      
-@@ -1095,6 +1100,58 @@ static int send_nb(socket_t sock, uint8_t *buff, int n)
+@@ -1095,6 +1103,58 @@ static int send_nb(socket_t sock, uint8_t *buff, int n)
      ns=send(sock,(char *)buff,n,0);
      return ns<n?-1:ns;
  }
@@ -98,7 +115,7 @@ index f6d815e..15c7ea8 100644
  /* generate tcp socket -------------------------------------------------------*/
  static int gentcp(tcp_t *tcp, int type, char *msg)
  {
-@@ -1102,13 +1159,15 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
+@@ -1102,13 +1162,15 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
  #ifdef SVR_REUSEADDR
      int opt=1;
  #endif
@@ -116,7 +133,7 @@ index f6d815e..15c7ea8 100644
          tcp->state=-1;
          return 0;
      }
-@@ -1127,9 +1186,18 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
+@@ -1127,9 +1189,18 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
          setsockopt(tcp->sock,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,
                     sizeof(opt));
  #endif
@@ -137,7 +154,7 @@ index f6d815e..15c7ea8 100644
              closesocket(tcp->sock);
              tcp->state=-1;
              return 0;
-@@ -1138,31 +1206,20 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
+@@ -1138,31 +1209,20 @@ static int gentcp(tcp_t *tcp, int type, char *msg)
      }
      else { /* client socket */
          if (!(hp=gethostbyname(tcp->saddr))) {
@@ -174,7 +191,7 @@ index f6d815e..15c7ea8 100644
  /* open tcp server -----------------------------------------------------------*/
  static tcpsvr_t *opentcpsvr(const char *path, char *msg)
  {
-@@ -1217,11 +1274,11 @@ static void updatetcpsvr(tcpsvr_t *tcpsvr, char *msg)
+@@ -1217,11 +1277,11 @@ static void updatetcpsvr(tcpsvr_t *tcpsvr, char *msg)
      }
      if (n==0) {
          tcpsvr->svr.state=1;
@@ -188,7 +205,7 @@ index f6d815e..15c7ea8 100644
  }
  /* accept client connection --------------------------------------------------*/
  static int accsock(tcpsvr_t *tcpsvr, char *msg)
-@@ -1242,7 +1299,7 @@ static int accsock(tcpsvr_t *tcpsvr, char *msg)
+@@ -1242,7 +1302,7 @@ static int accsock(tcpsvr_t *tcpsvr, char *msg)
      }
      if ((sock=accept_nb(tcpsvr->svr.sock,(struct sockaddr *)&addr,&len))==(socket_t)-1) {
          err=errsock();
@@ -197,7 +214,7 @@ index f6d815e..15c7ea8 100644
          tracet(1,"accsock: accept error sock=%d err=%d\n",tcpsvr->svr.sock,err);
          closesocket(tcpsvr->svr.sock);
          tcpsvr->svr.state=0;
-@@ -1254,11 +1311,12 @@ static int accsock(tcpsvr_t *tcpsvr, char *msg)
+@@ -1254,11 +1314,12 @@ static int accsock(tcpsvr_t *tcpsvr, char *msg)
      tcpsvr->cli[i].sock=sock;
      memcpy(&tcpsvr->cli[i].addr,&addr,sizeof(addr));
      strcpy(tcpsvr->cli[i].saddr,inet_ntoa(addr.sin_addr));
@@ -211,7 +228,7 @@ index f6d815e..15c7ea8 100644
      return 1;
  }
  /* wait socket accept --------------------------------------------------------*/
-@@ -1286,12 +1344,17 @@ static int readtcpsvr(tcpsvr_t *tcpsvr, uint8_t *buff, int n, char *msg)
+@@ -1286,12 +1347,17 @@ static int readtcpsvr(tcpsvr_t *tcpsvr, uint8_t *buff, int n, char *msg)
          if (tcpsvr->cli[i].state!=2) continue;
          
          if ((nr=recv_nb(tcpsvr->cli[i].sock,buff,n))==-1) {
@@ -234,7 +251,7 @@ index f6d815e..15c7ea8 100644
          }
          if (nr>0) {
              tcpsvr->cli[i].tact=tickget();
-@@ -1313,11 +1376,16 @@ static int writetcpsvr(tcpsvr_t *tcpsvr, uint8_t *buff, int n, char *msg)
+@@ -1313,11 +1379,16 @@ static int writetcpsvr(tcpsvr_t *tcpsvr, uint8_t *buff, int n, char *msg)
          if (tcpsvr->cli[i].state!=2) continue;
          
          if ((ns=send_nb(tcpsvr->cli[i].sock,buff,n))==-1) {
@@ -256,7 +273,7 @@ index f6d815e..15c7ea8 100644
              updatetcpsvr(tcpsvr,msg);
          }
          else {
-@@ -1374,28 +1442,46 @@ static int consock(tcpcli_t *tcpcli, char *msg)
+@@ -1374,28 +1445,46 @@ static int consock(tcpcli_t *tcpcli, char *msg)
      tracet(4,"consock: sock=%d\n",tcpcli->svr.sock);
      
      /* wait re-connect */
@@ -309,7 +326,7 @@ index f6d815e..15c7ea8 100644
      return 1;
  }
  /* open tcp client -----------------------------------------------------------*/
-@@ -1410,7 +1496,7 @@ static tcpcli_t *opentcpcli(const char *path, char *msg)
+@@ -1410,7 +1499,7 @@ static tcpcli_t *opentcpcli(const char *path, char *msg)
      *tcpcli=tcpcli0;
      decodetcppath(path,tcpcli->svr.saddr,port,NULL,NULL,NULL,NULL);
      if (sscanf(port,"%d",&tcpcli->svr.port)<1) {
@@ -318,7 +335,7 @@ index f6d815e..15c7ea8 100644
          tracet(2,"opentcp: port error port=%s\n",port);
          free(tcpcli);
          return NULL;
-@@ -1444,9 +1530,16 @@ static int waittcpcli(tcpcli_t *tcpcli, char *msg)
+@@ -1444,9 +1533,16 @@ static int waittcpcli(tcpcli_t *tcpcli, char *msg)
      if (tcpcli->svr.state==2) { /* connect */
          if (tcpcli->toinact>0&&
              (int)(tickget()-tcpcli->svr.tact)>tcpcli->toinact) {
@@ -337,7 +354,7 @@ index f6d815e..15c7ea8 100644
              return 0;
          }
      }
-@@ -1462,14 +1555,15 @@ static int readtcpcli(tcpcli_t *tcpcli, uint8_t *buff, int n, char *msg)
+@@ -1462,14 +1558,15 @@ static int readtcpcli(tcpcli_t *tcpcli, uint8_t *buff, int n, char *msg)
      if (!waittcpcli(tcpcli,msg)) return 0;
      
      if ((nr=recv_nb(tcpcli->svr.sock,buff,n))==-1) {
@@ -360,7 +377,7 @@ index f6d815e..15c7ea8 100644
          return 0;
      }
      if (nr>0) tcpcli->svr.tact=tickget();
-@@ -1486,11 +1580,16 @@ static int writetcpcli(tcpcli_t *tcpcli, uint8_t *buff, int n, char *msg)
+@@ -1486,11 +1583,16 @@ static int writetcpcli(tcpcli_t *tcpcli, uint8_t *buff, int n, char *msg)
      if (!waittcpcli(tcpcli,msg)) return 0;
      
      if ((ns=send_nb(tcpcli->svr.sock,buff,n))==-1) {
@@ -382,7 +399,7 @@ index f6d815e..15c7ea8 100644
          return 0;
      }
      if (ns>0) tcpcli->svr.tact=tickget();
-@@ -1591,27 +1690,28 @@ static int rspntrip_s(ntrip_t *ntrip, char *msg)
+@@ -1591,27 +1693,52 @@ static int rspntrip_s(ntrip_t *ntrip, char *msg)
          ntrip->nb-=p-q;
          for (i=0;i<ntrip->nb;i++) *q++=*p++;
          ntrip->state=2;
@@ -403,6 +420,22 @@ index f6d815e..15c7ea8 100644
          ntrip->state=0;
 -        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon);
 +        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
++    }
++    else if ((p=strstr((char *)ntrip->buff,NTRIP_RSP_NOT_FOUND))) { /* v2 Not Found */
++        sprintf(msg,"ntrip server mountpoint is INVALID for %s/%s",ntrip->tcp->svr.saddr,ntrip->mntpnt);
++        tracet(3,"rspntrip_s: %s nb=%d\n",msg,ntrip->nb);
++        ntrip->nb=0;
++        ntrip->buff[0]='\0';
++        ntrip->state=0;
++        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
++    }
++    else if ((p=strstr((char *)ntrip->buff,NTRIP_RSP_V2UNAUTH))) { /* v2 Unauthorized */
++        sprintf(msg,"ntrip server password is INVALID for %s/%s",ntrip->tcp->svr.saddr,ntrip->mntpnt);
++        tracet(3,"rspntrip_s: %s nb=%d\n",msg,ntrip->nb);
++        ntrip->nb=0;
++        ntrip->buff[0]='\0';
++        ntrip->state=0;
++        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
      }
      else if (ntrip->nb>=NTRIP_MAXRSP) { /* buffer overflow */
 -        sprintf(msg,"response overflow");
@@ -413,10 +446,18 @@ index f6d815e..15c7ea8 100644
          ntrip->state=0;
 -        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon);
 +        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
++    } else if ((ntrip->nb>=NTRIP_MINRSP) && (p=strchr((char *)ntrip->buff,'\r'))) {
++        *p=0;
++        sprintf(msg,"ntrip server error %s",(char *)ntrip->buff);
++        tracet(3,"rspntrip_s: %s nb=%d\n",msg,ntrip->nb);
++        ntrip->nb=0;
++        ntrip->buff[0]='\0';
++        ntrip->state=0;
++        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
      }
      tracet(5,"rspntrip_s: exit state=%d nb=%d\n",ntrip->state,ntrip->nb);
      return 0;
-@@ -1632,19 +1732,20 @@ static int rspntrip_c(ntrip_t *ntrip, char *msg)
+@@ -1632,19 +1759,20 @@ static int rspntrip_c(ntrip_t *ntrip, char *msg)
          ntrip->nb-=p-q;
          for (i=0;i<ntrip->nb;i++) *q++=*p++;
          ntrip->state=2;
@@ -440,7 +481,7 @@ index f6d815e..15c7ea8 100644
          tracet(2,"rspntrip_c: no mount point nb=%d\n",ntrip->nb);
          ntrip->nb=0;
          ntrip->buff[0]='\0';
-@@ -1652,24 +1753,24 @@ static int rspntrip_c(ntrip_t *ntrip, char *msg)
+@@ -1652,24 +1780,24 @@ static int rspntrip_c(ntrip_t *ntrip, char *msg)
          /* increase subsequent disconnect time to avoid too many reconnect requests */
          if (ntrip->tcp->tirecon>300000) ntrip->tcp->tirecon=ntrip->tcp->tirecon*5/4;
  
@@ -472,7 +513,39 @@ index f6d815e..15c7ea8 100644
      }
      tracet(5,"rspntrip_c: exit state=%d nb=%d\n",ntrip->state,ntrip->nb);
      return 0;
-@@ -1713,6 +1814,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
+@@ -1682,10 +1810,29 @@ static int waitntrip(ntrip_t *ntrip, char *msg)
+     
+     tracet(4,"waitntrip: state=%d nb=%d\n",ntrip->state,ntrip->nb);
+     
+-    if (ntrip->state<0) return 0; /* error */
++    if (ntrip->state<0) { /* error */
++        sprintf(msg,"ntrip state (%d) error",ntrip->state);
++        tracet(2,"waitntrip: ntrip state (%d) error\n",ntrip->state);
++        ntrip->state=0;
++        return 0;
++    }
+     
+     if (ntrip->tcp->svr.state<2) ntrip->state=0; /* tcp disconnected */
+-    
++
++    if ((ntrip->state<2) && !(ntrip->tcp->svr.state<2)) { /* check connect */
++        if ((int)(tickget()-ntrip->tcp->svr.tdis)>=MAX_NTRIP_CONNECT_TIME) {
++            if (ntrip->nb) {
++               ntrip->buff[ntrip->nb]='\0';
++               sprintf(msg,"ntrip connection timeout from %s (server answer: %s)",ntrip->tcp->svr.saddr, ntrip->buff);
++            } else {
++               sprintf(msg,"ntrip connection no answer from %s",ntrip->tcp->svr.saddr);
++            }
++            tracet(2,"waitntrip: ntrip connection answer timeout %s sock=%d\n",ntrip->buff,ntrip->tcp->svr.sock);
++            discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
++            return 0;
++        }
++    }
++
+     if (ntrip->state==0) { /* send request */
+         if (!(ntrip->type==0?reqntrip_s(ntrip,msg):reqntrip_c(ntrip,msg))) {
+             return 0;
+@@ -1713,6 +1860,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
      char addr[256]="",port[256]="",tpath[MAXSTRPATH];
      
      tracet(3,"openntrip: path=%s type=%d\n",path,type);
@@ -480,7 +553,7 @@ index f6d815e..15c7ea8 100644
      
      if (!(ntrip=(ntrip_t *)malloc(sizeof(ntrip_t)))) return NULL;
      
-@@ -1744,6 +1846,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
+@@ -1744,6 +1892,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
          free(ntrip);
          return NULL;
      }
@@ -488,7 +561,7 @@ index f6d815e..15c7ea8 100644
      return ntrip;
  }
  /* close ntrip ---------------------------------------------------------------*/
-@@ -1753,6 +1856,7 @@ static void closentrip(ntrip_t *ntrip)
+@@ -1753,6 +1902,7 @@ static void closentrip(ntrip_t *ntrip)
      
      closetcpcli(ntrip->tcp);
      free(ntrip);
@@ -496,7 +569,7 @@ index f6d815e..15c7ea8 100644
  }
  /* read ntrip ----------------------------------------------------------------*/
  static int readntrip(ntrip_t *ntrip, uint8_t *buff, int n, char *msg)
-@@ -1860,7 +1964,7 @@ static void discon_ntripc(ntripc_t *ntripc, int i)
+@@ -1860,7 +2010,7 @@ static void discon_ntripc(ntripc_t *ntripc, int i)
  {
      tracet(3,"discon_ntripc: i=%d\n",i);
      
@@ -505,7 +578,7 @@ index f6d815e..15c7ea8 100644
      ntripc->con[i].nb=0;
      ntripc->con[i].buff[0]='\0';
      ntripc->con[i].state=0;
-@@ -1942,7 +2046,7 @@ static void rsp_ntripc(ntripc_t *ntripc, int i)
+@@ -1942,7 +2092,7 @@ static void rsp_ntripc(ntripc_t *ntripc, int i)
      con->state=1;
      strcpy(con->mntpnt,mntpnt);
  }
@@ -514,7 +587,7 @@ index f6d815e..15c7ea8 100644
  static void wait_ntripc(ntripc_t *ntripc, char *msg)
  {
      uint8_t *buff;
-@@ -1962,11 +2066,15 @@ static void wait_ntripc(ntripc_t *ntripc, char *msg)
+@@ -1962,11 +2112,15 @@ static void wait_ntripc(ntripc_t *ntripc, char *msg)
          nmax=NTRIP_MAXRSP-ntripc->con[i].nb-1;
          
          if ((n=recv_nb(ntripc->tcp->cli[i].sock,buff,nmax))==-1) {
@@ -534,7 +607,7 @@ index f6d815e..15c7ea8 100644
              continue;
          }
          if (n<=0) continue;
-@@ -1991,11 +2099,15 @@ static int readntripc(ntripc_t *ntripc, uint8_t *buff, int n, char *msg)
+@@ -1991,11 +2145,15 @@ static int readntripc(ntripc_t *ntripc, uint8_t *buff, int n, char *msg)
          nr=recv_nb(ntripc->tcp->cli[i].sock,buff,n);
          
          if (nr<0) {
@@ -554,7 +627,7 @@ index f6d815e..15c7ea8 100644
          }
          else if (nr>0) {
              ntripc->tcp->cli[i].tact=tickget();
-@@ -2019,10 +2131,15 @@ static int writentripc(ntripc_t *ntripc, uint8_t *buff, int n, char *msg)
+@@ -2019,10 +2177,15 @@ static int writentripc(ntripc_t *ntripc, uint8_t *buff, int n, char *msg)
          ns=send_nb(ntripc->tcp->cli[i].sock,buff,n);
          
          if (ns<n) {
@@ -574,7 +647,7 @@ index f6d815e..15c7ea8 100644
              discon_ntripc(ntripc,i);
          }
          else {
-@@ -2066,7 +2183,7 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
+@@ -2066,7 +2229,7 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
  {
      udp_t *udp;
      struct hostent *hp;
@@ -583,7 +656,7 @@ index f6d815e..15c7ea8 100644
      
      tracet(3,"genudp: type=%d\n",type);
      
-@@ -2078,13 +2195,14 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
+@@ -2078,13 +2241,14 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
      
      if ((udp->sock=socket(AF_INET,SOCK_DGRAM,0))==(socket_t)-1) {
          free(udp);
@@ -600,7 +673,7 @@ index f6d815e..15c7ea8 100644
      }
      memset(&udp->addr,0,sizeof(udp->addr));
      udp->addr.sin_family=AF_INET;
-@@ -2096,8 +2214,9 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
+@@ -2096,8 +2260,9 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
          setsockopt(udp->sock,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt, sizeof(opt));
  #endif
          if (bind(udp->sock,(struct sockaddr *)&udp->addr,sizeof(udp->addr))==-1) {
@@ -612,7 +685,7 @@ index f6d815e..15c7ea8 100644
              closesocket(udp->sock);
              free(udp);
              return NULL;
-@@ -2108,10 +2227,10 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
+@@ -2108,10 +2273,10 @@ static udp_t *genudp(int type, int port, const char *saddr, char *msg)
              setsockopt(udp->sock,SOL_SOCKET,SO_BROADCAST,(const char *)&opt,
                         sizeof(opt))==-1) {
              tracet(2,"genudp: setsockopt error sock=%d err=%d\n",udp->sock,errsock());
@@ -625,7 +698,7 @@ index f6d815e..15c7ea8 100644
              closesocket(udp->sock);
              free(udp);
              return NULL;
-@@ -2131,7 +2250,7 @@ static udp_t *openudpsvr(const char *path, char *msg)
+@@ -2131,7 +2296,7 @@ static udp_t *openudpsvr(const char *path, char *msg)
      decodetcppath(path,NULL,sport,NULL,NULL,NULL,NULL);
      
      if (sscanf(sport,"%d",&port)<1) {
@@ -634,7 +707,7 @@ index f6d815e..15c7ea8 100644
          tracet(2,"openudpsvr: port error port=%s\n",port);
          return NULL;
      }
-@@ -2190,7 +2309,7 @@ static udp_t *openudpcli(const char *path, char *msg)
+@@ -2190,7 +2355,7 @@ static udp_t *openudpcli(const char *path, char *msg)
      decodetcppath(path,saddr,sport,NULL,NULL,NULL,NULL);
      
      if (sscanf(sport,"%d",&port)<1) {
@@ -643,7 +716,7 @@ index f6d815e..15c7ea8 100644
          tracet(2,"openudpcli: port error port=%s\n",sport);
          return NULL;
      }
-@@ -2440,7 +2559,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
+@@ -2440,7 +2605,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
      }
      if (ftp->state<=0) { /* ftp/http not executed? */
          ftp->state=1;
@@ -652,7 +725,7 @@ index f6d815e..15c7ea8 100644
      
  #ifdef WIN32
          if (!(ftp->thread=CreateThread(NULL,0,ftpthread,ftp,0,NULL))) {
-@@ -2473,7 +2592,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
+@@ -2473,7 +2638,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
      ftp->tnext=nextdltime(ftp->topts,1);
      ftp->state=0;
      
@@ -661,7 +734,7 @@ index f6d815e..15c7ea8 100644
      
      return (int)(p-buff);
  }
-@@ -2936,7 +3055,11 @@ extern int strstat(stream_t *stream, char *msg)
+@@ -2936,7 +3101,11 @@ extern int strstat(stream_t *stream, char *msg)
      
      strlock(stream);
      if (msg) {

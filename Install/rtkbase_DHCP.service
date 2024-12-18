@@ -1,0 +1,13 @@
+[Unit]
+Description=RTKBase DHCP server for Septentrio
+After=local-fs.target network.target
+Wants=local-fs.target network.target
+
+[Service]
+Type=simple
+ExecStart=busybox udhcpd -f /usr/local/rtkbase/rtkbase_DHCP.conf
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

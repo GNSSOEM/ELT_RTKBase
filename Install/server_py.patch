@@ -1,5 +1,4 @@
-diff --git a/web_app/server.py b/web_app/server.py
-index bb39670..7de1dcc 100755
+index bb39670..c6f47b8 100755
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -96,8 +96,8 @@ rtk = RTKLIB(socketio,
@@ -160,7 +159,7 @@ index bb39670..7de1dcc 100755
          else:
              print("wrong update file")
          return ('', 204)
-@@ -503,13 +601,17 @@ def diagnostic():
+@@ -503,13 +600,21 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -168,9 +167,13 @@ index bb39670..7de1dcc 100755
 +    rtkbase_check_internet_service["active"] = ServiceController(rtkbase_check_internet_service["service_unit"]).isActive()
 +    RtkbaseSystemConfigure_service = {'service_unit' : 'RtkbaseSystemConfigure.service', 'name' : 'RTKBase system configure at start'}
 +    RtkbaseSystemConfigure_service["active"] = ServiceController(RtkbaseSystemConfigure_service["service_unit"]).isActive()
++    rtkbase_septentrio_NAT_service = {'service_unit' : 'rtkbase_septentrio_NAT.service', 'name' : 'RTKBase configure Septentrio NAT at start'}
++    rtkbase_septentrio_NAT_service["active"] = ServiceController(rtkbase_septentrio_NAT_service["service_unit"]).isActive()
++    rtkbase_DHCP_service = {'service_unit' : 'rtkbase_DHCP.service', 'name' : 'RTKBase DHCP server for Septentrio'}
++    rtkbase_DHCP_service["active"] = ServiceController(rtkbase_DHCP_service["service_unit"]).isActive()
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, RtkbaseSystemConfigure_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,
@@ -180,7 +183,7 @@ index bb39670..7de1dcc 100755
                                   stdout=subprocess.PIPE, 
                                   universal_newlines=True,
                                   check=False)
-@@ -529,11 +631,12 @@ def diagnostic():
+@@ -529,11 +634,12 @@ def diagnostic():
  def clientConnect():
      global connected_clients
      connected_clients += 1
@@ -196,7 +199,7 @@ index bb39670..7de1dcc 100755
      rtk.sendState()
  
  @socketio.on("disconnect", namespace="/test")
-@@ -608,7 +711,7 @@ def deleteLog(json_msg):
+@@ -608,7 +714,7 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -205,7 +208,7 @@ index bb39670..7de1dcc 100755
      if answer.returncode == 0 and "/dev/" in answer.stdout:
          #print("DEBUG ok stdout: ", answer.stdout)
          try:
-@@ -626,6 +729,20 @@ def detect_receiver(json_msg):
+@@ -626,6 +732,20 @@ def detect_receiver(json_msg):
      #print('DEBUG result: ', result)
      socketio.emit("gnss_detection_result", json.dumps(result), namespace="/test")
  
@@ -226,7 +229,7 @@ index bb39670..7de1dcc 100755
  @socketio.on("configure_receiver", namespace="/test")
  def configure_receiver(brand="", model=""):
      # only some receiver could be configured automaticaly
-@@ -640,7 +757,7 @@ def configure_receiver(brand="", model=""):
+@@ -640,7 +760,7 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -235,7 +238,7 @@ index bb39670..7de1dcc 100755
      #print("DEBUG - stdout: ", answer.stdout)
      #print("DEBUG - returncode: ", answer.returncode)
  
-@@ -768,6 +885,15 @@ def shutdownRtkbase():
+@@ -768,6 +888,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -251,7 +254,7 @@ index bb39670..7de1dcc 100755
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -846,7 +972,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -846,7 +975,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -265,7 +268,7 @@ index bb39670..7de1dcc 100755
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -944,6 +1075,15 @@ def update_settings(json_msg):
+@@ -944,6 +1078,15 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  

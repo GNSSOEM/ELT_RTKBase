@@ -1,5 +1,5 @@
 {
-  "version": "173",
-  "new_release": "v1.7.3",
-  "comment": "Support for static IP addresses\r\nLots of fixes"
+  "version": "175",
+  "new_release": "v1.7.5",
+  "comment": "Internet access for Spetentrio Mosaic\r\nAny symbols in Wifi SSID and passwords\r\nSeveral important fixes"
 }
