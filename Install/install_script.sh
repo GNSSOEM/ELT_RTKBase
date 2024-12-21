@@ -652,8 +652,9 @@ install_rtklib() {
        ExitCodeCheck $?
     else
        echo RtkLib will be compiled from original and patches
-       echo Get Rtklib 2.4.3 b34j release and unnpack it
+       echo Get Rtklib 2.4.3 b34j release and unpack it
        sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/rtklibexplorer/RTKLIB/archive/refs/tags/b34j.tar.gz | tar -xvz >/dev/null
+       ExitCodeCheck $?
        #Install Rtklib app
        RTKLIB_CURDIR=`pwd`
        RTKLIB_GIT=${RTKLIB_CURDIR}/RTKLIB-b34j
@@ -667,15 +668,33 @@ install_rtklib() {
        doPatch ${RTKLIB_GIT}/app/consapp/convbin/gcc/makefile ${RTKLIB_PATCH}/convbin_makefile.patch
        doPatch ${RTKLIB_GIT}/app/consapp/rtkrcv/gcc/makefile ${RTKLIB_PATCH}/rtkrcv_makefile.patch
        #TODO add correct CTARGET in makefile?
-       echo Compile and install
+       echo Compile and install Rtklib
        make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc
+       ExitCodeCheck $?
        make -s --directory=${RTKLIB_GIT}/app/consapp/str2str/gcc install
+       ExitCodeCheck $?
        make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc
+       ExitCodeCheck $?
        make -s --directory=${RTKLIB_GIT}/app/consapp/rtkrcv/gcc install
+       ExitCodeCheck $?
        make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc
+       ExitCodeCheck $?
        make -s --directory=${RTKLIB_GIT}/app/consapp/convbin/gcc install
+       ExitCodeCheck $?
        #deleting RTKLIB
        rm -rf ${RTKLIB_GIT}
+
+       echo Get ntripserver release and unpack it
+       sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/GNSSOEM/ntripserver/archive/refs/heads/main.tar.gz | tar -xvz >/dev/null
+       ExitCodeCheck $?
+       #Install ntripserver app
+       NTRIPSERVER_CURDIR=`pwd`
+       NTRIPSERVER_GIT=${NTRIPSERVER_CURDIR}/ntripserver-main
+       echo Compile and install ntripserver
+       make -s --directory=${NTRIPSERVER_GIT} install
+       ExitCodeCheck $?
+       #deleting ntripserver
+       rm -rf ${NTRIPSERVER_GIT}
     fi
     #ls -la /usr/local/bin/
     #echo rm -rf ${BASEDIR}/${RTKLIB}
