@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..9b346c9 100755
+index db7a656..b74f25f 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,78 @@ BASEDIR="$(dirname "$0")"
@@ -79,8 +79,8 @@ index db7a656..9b346c9 100755
 +  PrepareNtripServer $2 $3
 +  #echo out_caster_${3}=\"${out_caster}\"
 +  if [[ "${svr_mode}" < 2 ]]; then
-+     echo ${cast} -in ${!1} -out ${out_caster} -i \"${receiver_info}\" -a \"${antenna_info}\" -t ${level} -fl ${logdir}/str2str_ntrip_${2}.log -fg ${BASEDIR}/ntrip_${2}.flg \&
-+     ${cast} -in ${!1} -out ${out_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_${2}.log -fg ${BASEDIR}/ntrip_${2}.flg &
++     echo ${cast} -in ${!1} -out ${out_caster} -i \"${receiver_info}\" -a \"${antenna_info}\" -t ${level} -fl ${logdir}/str2str_ntrip_${3}.log -fg ${BASEDIR}/ntrip_${3}.flg \&
++     ${cast} -in ${!1} -out ${out_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_${3}.log -fg ${BASEDIR}/ntrip_${3}.flg &
 +  else
 +     echo ${cast2} ${in_tcp2} ${out_caster} \&
 +     ${cast2} ${in_tcp2} ${out_caster} &
