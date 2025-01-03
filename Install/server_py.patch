@@ -30,7 +30,7 @@ index bb39670..3e00d70 100755
  connected_clients = 0
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
-@@ -206,12 +207,23 @@ def repaint_services_button(services_list):
+@@ -206,20 +207,33 @@ def repaint_services_button(services_list):
          result = exit-code => red button (danger)
      """ 
      for service in services_list:
@@ -38,19 +38,19 @@ index bb39670..3e00d70 100755
 -            service["btn_color"] = "success"
 -        #elif service.get("status") == "dead":
 -        #    service["btn_color"] = "danger"
++        isflag = None
++        if service.get("flag") == True:
++            path = os.path.join(rtkbase_path, service.get("name") + ".flg")
++            isflag = os.path.exists(path)
++            if isflag:
++               if service.get("status") != "dead":
++                  with open(path, 'rt') as f:
++                      service["error"] = f.read()
 +        if service.get("status") == "start":
 +            service["btn_color"] = "info"
 +        elif service.get("status") == "running":
-+            if service == services_list[0] and os.path.exists(os.path.join(rtkbase_path, "GNSS_coordinate_error.flg")):
++            if isflag:
 +                service["btn_color"] = "warning"
-+            elif service.get("flag") == True:
-+                path = os.path.join(rtkbase_path, service.get("name") + ".flg")
-+                if os.path.exists(path):
-+                   service["btn_color"] = "warning"
-+                   with open(path, 'rt') as f:
-+                       service["error"] = f.read()
-+                else:
-+                   service["btn_color"] = "success"
 +            else:
 +                service["btn_color"] = "success"
          elif service.get("result") == "exit-code":
@@ -58,8 +58,19 @@ index bb39670..3e00d70 100755
 +            service["btn_color"] = "danger"
          elif service.get("status") == "auto-restart":
              service["btn_color"] = "warning"
+-
+         if service.get("state_ok") == False:
+             service["btn_off_color"] = "outline-danger"
+         elif service.get("state_ok") == True:
+             service["btn_off_color"] = "outline-secondary"
  
-@@ -382,12 +394,99 @@ def download_update(update_path):
++        #if service.get("flag") == True:
++        #   print(service.get("name"), service.get("status"), service.get("result"), service.get("state_ok"))
++
+     return services_list
+ 
+ def old_get_cpu_temp():
+@@ -382,12 +396,99 @@ def download_update(update_path):
      else:
          return update_archive
  
