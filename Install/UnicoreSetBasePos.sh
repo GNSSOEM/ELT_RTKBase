@@ -3,7 +3,7 @@
 
 BASEDIR=`realpath $(dirname "$0")`
 OLDCONF=${BASEDIR}/receiver.conf
-BADPOSFILE=${BASEDIR}/GNSS_coordinate_error.flg
+BADPOSFILE=${BASEDIR}/main.flg
 #DEBUGLOG="${BASEDIR}/debug.log"
 ZEROPOS="0.00 0.00 0.00"
 com_port=${1}
@@ -285,21 +285,26 @@ then
    SAVECONF=Y
 fi
 
-if [[ "${BADPOS}" != "" ]]
+if [[ "${BADPOS}" == "" ]]
 then
    if [[ -f ${BADPOSFILE} ]]
    then
       BADNOW=Y
+      BADPOS=N
    else
       BADNOW=N
    fi
-   #echo BADPOS=${BADPOS} BADNOW=${BADNOW} BADPOSFILE=${BADPOSFILE}
+fi
+
+if [[ "${BADPOS}" != "" ]]
+then
+   echo BADPOS=${BADPOS} BADNOW=${BADNOW} BADPOSFILE=${BADPOSFILE}
    if [[ ${BADPOS} != ${BADNOW} ]]
    then
       if [[ ${BADPOS} == Y ]]
       then
-         #echo cp /dev/null ${BADPOSFILE}
-         cp /dev/null ${BADPOSFILE}
+         #echo \"Bad coordinates\" \>${BADPOSFILE}
+         echo "Bad coordinates" >${BADPOSFILE}
       else
          #echo rm -f ${BADPOSFILE}
          rm -f ${BADPOSFILE}

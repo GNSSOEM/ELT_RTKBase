@@ -1,8 +1,16 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..512f60e 100644
+index c8f257b..945bacf 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
-@@ -35,7 +35,7 @@
+@@ -28,6 +28,7 @@
+         <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+       </svg>
+     </a>
++    <span id="main-error"></span>
+     </div>
+   </div>
+       <form id="{{ main_settings.pop(0).source_section }}" class="collapse was-validated">
+@@ -35,7 +36,7 @@
          <div class="form-group row">
          <label for="position" class="col-sm-3 col-form-label">Base coordinates: </label>
          <div class="col-sm-9">
@@ -11,7 +19,7 @@ index c8f257b..512f60e 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -119,9 +119,24 @@
+@@ -119,9 +120,24 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -36,7 +44,7 @@ index c8f257b..512f60e 100644
        <div class="form-group row">
          <label for="svr_addr_A" class="col-sm-3 col-form-label">Caster address: </label>
          <div class="col-sm-9">
-@@ -136,11 +151,18 @@
+@@ -136,11 +152,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -57,7 +65,7 @@ index c8f257b..512f60e 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -154,24 +176,24 @@
+@@ -154,24 +177,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -88,7 +96,7 @@ index c8f257b..512f60e 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -193,9 +215,24 @@
+@@ -193,9 +216,24 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -113,7 +121,7 @@ index c8f257b..512f60e 100644
        <div class="form-group row">
          <label for="svr_addr_B" class="col-sm-3 col-form-label">Caster address: </label>
          <div class="col-sm-9">
-@@ -210,11 +247,18 @@
+@@ -210,11 +248,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -134,7 +142,7 @@ index c8f257b..512f60e 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -228,24 +272,24 @@
+@@ -228,24 +273,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -165,7 +173,7 @@ index c8f257b..512f60e 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -351,7 +395,7 @@
+@@ -351,7 +396,7 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -174,7 +182,7 @@ index c8f257b..512f60e 100644
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -479,7 +523,7 @@
+@@ -479,7 +524,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -183,7 +191,7 @@ index c8f257b..512f60e 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -529,7 +573,7 @@
+@@ -529,7 +574,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -192,7 +200,7 @@ index c8f257b..512f60e 100644
          {% endif %}
        </span>
      </div>
-@@ -602,11 +646,20 @@
+@@ -602,11 +647,20 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -214,7 +222,7 @@ index c8f257b..512f60e 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -614,6 +667,7 @@
+@@ -614,6 +668,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -222,7 +230,7 @@ index c8f257b..512f60e 100644
        </div>
    </div>
      
-@@ -775,6 +829,27 @@
+@@ -775,6 +830,27 @@
    </div>
  </div>
  
