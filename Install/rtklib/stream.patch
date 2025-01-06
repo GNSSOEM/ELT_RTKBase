@@ -1,12 +1,12 @@
 diff --git a/src/stream.c b/src/stream.c
-index f6d815e..5f4623e 100644
+index f6d815e..2c323f8 100644
 --- a/src/stream.c
 +++ b/src/stream.c
 @@ -108,6 +108,7 @@
  #define NTRIP_CLI_PORT      2101        /* default ntrip-client connection port */
  #define NTRIP_SVR_PORT      80          /* default ntrip-server connection port */
  #define NTRIP_MAXRSP        32768       /* max size of ntrip response */
-+#define NTRIP_MINRSP        16          /* max size of ntrip response */
++#define NTRIP_MINRSP        14          /* min size of ntrip response */
  #define NTRIP_MAXSTR        256         /* max length of mountpoint string */
  #define NTRIP_RSP_OK_CLI    "ICY 200 OK\r\n" /* ntrip response: client */
  #define NTRIP_RSP_OK_SVR    "OK\r\n"    /* ntrip response: server */
@@ -25,7 +25,7 @@ index f6d815e..5f4623e 100644
  
 +#define MAX_PROGRESSIVE_TIMEOUT 300000 /* 5 minute = 300 000 ms */
 +#define DROP_PROGRESSIVE_TIME   180000 /* 3 minute = 180 000 ms */
-+#define MAX_NTRIP_CONNECT_TIME   15000 /* 15 ᥪ㭤 = 15 000 ms */
++#define MAX_NTRIP_CONNECT_TIME   5000  /* 5 sec    = 5 000 ms */
  /* macros --------------------------------------------------------------------*/
  
  #ifdef WIN32
@@ -399,6 +399,18 @@ index f6d815e..5f4623e 100644
          return 0;
      }
      if (ns>0) tcpcli->svr.tact=tickget();
+@@ -1538,9 +1640,9 @@ static int reqntrip_s(ntrip_t *ntrip, char *msg)
+     p+=sprintf(p,"Source-Agent: NTRIP %s\r\n",NTRIP_AGENT);
+     p+=sprintf(p,"STR: %s\r\n",ntrip->str);
+     p+=sprintf(p,"\r\n");
+-    
++
+     if (writetcpcli(ntrip->tcp,(uint8_t *)buff,p-buff,msg)!=p-buff) return 0;
+-    
++
+     tracet(3,"reqntrip_s: send request state=%d ns=%d\n",ntrip->state,p-buff);
+     tracet(5,"reqntrip_s: n=%d buff=\n%s\n",p-buff,buff);
+     ntrip->state=1;
 @@ -1591,27 +1693,52 @@ static int rspntrip_s(ntrip_t *ntrip, char *msg)
          ntrip->nb-=p-q;
          for (i=0;i<ntrip->nb;i++) *q++=*p++;
@@ -446,7 +458,7 @@ index f6d815e..5f4623e 100644
          ntrip->state=0;
 -        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon);
 +        discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
-+    } else if ((ntrip->nb>=NTRIP_MINRSP) && (p=strchr((char *)ntrip->buff,'\r'))) {
++    } else if ((ntrip->nb>=NTRIP_MINRSP) && (p=strchr((char *)ntrip->buff,'\n'))) {
 +        *p=0;
 +        sprintf(msg,"ntrip server error %s",(char *)ntrip->buff);
 +        tracet(3,"rspntrip_s: %s nb=%d\n",msg,ntrip->nb);
