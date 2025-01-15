@@ -1,5 +1,5 @@
 #!/bin/bash
-NEW_VERSION=190
+NEW_VERSION=191
 
 RTKBASE_USER=rtkbase
 RTKBASE_PATH=/usr/local/${RTKBASE_USER}
@@ -7,6 +7,7 @@ RTKBASE_GIT=${RTKBASE_PATH}/rtkbase
 RTKBASE_UPDATE=${RTKBASE_PATH}/update
 RTKBASE_TOOLS=${RTKBASE_GIT}/tools
 RTKBASE_WEB=${RTKBASE_GIT}/web_app
+RTKBASE_UNIT=${RTKBASE_GIT}/unit
 RTKBASE_RECV=${RTKBASE_GIT}/receiver_cfg
 BASEDIR=`realpath $(dirname $(readlink -f "$0"))`
 BASENAME=`basename $(readlink -f "$0")`
