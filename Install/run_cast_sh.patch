@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..b74f25f 100755
+index db7a656..501c43b 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,78 @@ BASEDIR="$(dirname "$0")"
@@ -108,7 +108,7 @@ index db7a656..b74f25f 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +112,37 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +112,49 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -147,6 +147,29 @@ index db7a656..b74f25f 100755
    out_caster_B)
 -    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log &
 +    StartNtripServer ${1} b B
++    ;;
++
++  out_caster_C)
++    StartNtripServer ${1} c C
++    ;;
++
++  out_caster_D)
++    StartNtripServer ${1} d D
++    ;;
++
++  out_caster_E)
++    StartNtripServer ${1} e E
      ;;
  
    out_local_caster)
+@@ -105,5 +192,9 @@ mkdir -p ${logdir}
+       ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
+     fi
+     ;;
+-    
++
++  *)
++    echo Service "$2" unknown
++    ;;
++
+   esac

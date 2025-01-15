@@ -1,7 +1,16 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..4a00905 100644
+index 9f48006..57fa920 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
+@@ -79,7 +79,7 @@ $(document).ready(function () {
+     // View/hide password buttons for: Ntrip A, Ntrip B and Local caster
+     document.querySelectorAll(".input-group-append").forEach(function(e) {
+         var name = e.querySelector("button").id.replace("_button", "");
+-        if (!["svr_pwd_A", "svr_pwd_B", "local_ntripc_pwd", "rtcm_client_pwd"].includes(name))
++        if (!["svr_pwd_A", "svr_pwd_B", "svr_pwd_C", "svr_pwd_D", "svr_pwd_E", "local_ntripc_pwd", "rtcm_client_pwd"].includes(name))
+             return;
+ 
+         var button = $("#" + name + "_button");
 @@ -111,7 +111,7 @@ $(document).ready(function () {
      socket.on("services status", function(msg) {
          // gestion des services
@@ -51,7 +60,218 @@ index 9f48006..4a00905 100644
          
          // event for switching on/off service on user mouse click
          //TODO When the switch changes its position, this event seems attached before
-@@ -334,6 +351,7 @@ $(document).ready(function () {
+@@ -198,11 +215,113 @@ $(document).ready(function () {
+             socket.emit("services switch", {"name" : "ntrip_B", "active" : switchStatus});           
+         })
+ 
++        // ####################  NTRIP C service Switch #########################
++        var ntrip_C_Switch = $('#ntrip_C-switch');
++        // set the switch to on/off depending of the service status
++        if (servicesStatus[3].active === true) {
++            //document.querySelector("#main-switch").bootstrapToggle('on');
++            ntrip_C_Switch.bootstrapToggle('on', true);
++        } else {
++            //document.querySelector("#main-switch").bootstrapToggle('off');
++            ntrip_C_Switch.bootstrapToggle('off', true);
++        }
++        //console.log(servicesStatus[3]);
++        if (servicesStatus[3].btn_color) {
++            ntrip_C_Switch.bootstrapToggle('setOnStyle', servicesStatus[3].btn_color);
++        }
++        if (servicesStatus[3].btn_off_color) {
++            ntrip_C_Switch.bootstrapToggle('setOffStyle', servicesStatus[3].btn_off_color);
++        }
++        var ntrip_C_Error = $('#ntrip_C-error');
++        if (servicesStatus[3].error) {
++            ntrip_C_Error.text(servicesStatus[3].error);
++        } else {
++            ntrip_C_Error.text('');
++        }
++        
++        // event for switching on/off service on user mouse click
++        //TODO When the switch changes its position, this event seems attached before
++        //the switch finish its transition, then fire another event.
++        $( "#ntrip_C-switch" ).one("change", function(e) {
++            var switchStatus = $(this).prop('checked');
++            //console.log(" e : " + e);
++            //console.log("Ntrip SwitchStatus : " + switchStatus);
++            socket.emit("services switch", {"name" : "ntrip_C", "active" : switchStatus});           
++        })
++
++        // ####################  NTRIP D service Switch #########################
++        var ntrip_D_Switch = $('#ntrip_D-switch');
++        // set the switch to on/off depending of the service status
++        if (servicesStatus[4].active === true) {
++            //document.querySelector("#main-switch").bootstrapToggle('on');
++            ntrip_D_Switch.bootstrapToggle('on', true);
++        } else {
++            //document.querySelector("#main-switch").bootstrapToggle('off');
++            ntrip_D_Switch.bootstrapToggle('off', true);
++        }
++        //console.log(servicesStatus[4]);
++        if (servicesStatus[4].btn_color) {
++            ntrip_D_Switch.bootstrapToggle('setOnStyle', servicesStatus[4].btn_color);
++        }
++        if (servicesStatus[4].btn_off_color) {
++            ntrip_D_Switch.bootstrapToggle('setOffStyle', servicesStatus[4].btn_off_color);
++        }
++        var ntrip_D_Error = $('#ntrip_D-error');
++        if (servicesStatus[4].error) {
++            ntrip_D_Error.text(servicesStatus[4].error);
++        } else {
++            ntrip_D_Error.text('');
++        }
++        
++        // event for switching on/off service on user mouse click
++        //TODO When the switch changes its position, this event seems attached before
++        //the switch finish its transition, then fire another event.
++        $( "#ntrip_D-switch" ).one("change", function(e) {
++            var switchStatus = $(this).prop('checked');
++            //console.log(" e : " + e);
++            //console.log("Ntrip SwitchStatus : " + switchStatus);
++            socket.emit("services switch", {"name" : "ntrip_D", "active" : switchStatus});           
++        })
++
++        // ####################  NTRIP E service Switch #########################
++        var ntrip_E_Switch = $('#ntrip_E-switch');
++        // set the switch to on/off depending of the service status
++        if (servicesStatus[5].active === true) {
++            //document.querySelector("#main-switch").bootstrapToggle('on');
++            ntrip_E_Switch.bootstrapToggle('on', true);
++        } else {
++            //document.querySelector("#main-switch").bootstrapToggle('off');
++            ntrip_E_Switch.bootstrapToggle('off', true);
++        }
++        //console.log(servicesStatus[5]);
++        if (servicesStatus[5].btn_color) {
++            ntrip_E_Switch.bootstrapToggle('setOnStyle', servicesStatus[5].btn_color);
++        }
++        if (servicesStatus[5].btn_off_color) {
++            ntrip_E_Switch.bootstrapToggle('setOffStyle', servicesStatus[5].btn_off_color);
++        }
++        var ntrip_E_Error = $('#ntrip_E-error');
++        if (servicesStatus[5].error) {
++            ntrip_E_Error.text(servicesStatus[5].error);
++        } else {
++            ntrip_E_Error.text('');
++        }
++        
++        // event for switching on/off service on user mouse click
++        //TODO When the switch changes its position, this event seems attached before
++        //the switch finish its transition, then fire another event.
++        $( "#ntrip_E-switch" ).one("change", function(e) {
++            var switchStatus = $(this).prop('checked');
++            //console.log(" e : " + e);
++            //console.log("Ntrip SwitchStatus : " + switchStatus);
++            socket.emit("services switch", {"name" : "ntrip_E", "active" : switchStatus});           
++        })
++
+         // ################  Local NTRIP Caster service Switch #####################
+ 
+         var ntripcSwitch = $('#ntripc-switch');
+         // set the switch to on/off depending of the service status
+-        if (servicesStatus[3].active === true) {
++        if (servicesStatus[6].active === true) {
+             //document.querySelector("#main-switch").bootstrapToggle('on');
+             ntripcSwitch.bootstrapToggle('on', true);
+         } else {
+@@ -210,12 +329,12 @@ $(document).ready(function () {
+             ntripcSwitch.bootstrapToggle('off', true);
+         }
+         
+-        //console.log(servicesStatus[2]);
+-        if (servicesStatus[3].btn_color) {
+-            ntripcSwitch.bootstrapToggle('setOnStyle', servicesStatus[3].btn_color);
++        //console.log(servicesStatus[6]);
++        if (servicesStatus[6].btn_color) {
++            ntripcSwitch.bootstrapToggle('setOnStyle', servicesStatus[6].btn_color);
+         }
+-        if (servicesStatus[3].btn_off_color) {
+-            ntripcSwitch.bootstrapToggle('setOffStyle', servicesStatus[3].btn_off_color);
++        if (servicesStatus[6].btn_off_color) {
++            ntripcSwitch.bootstrapToggle('setOffStyle', servicesStatus[6].btn_off_color);
+         }
+         
+         // event for switching on/off service on user mouse click
+@@ -232,19 +351,19 @@ $(document).ready(function () {
+ 
+         var rtcmSvrSwitch = $('#rtcm_svr-switch');
+         // set the switch to on/off depending of the service status
+-        if (servicesStatus[4].active === true) {
++        if (servicesStatus[7].active === true) {
+             //document.querySelector("#main-switch").bootstrapToggle('on');
+             rtcmSvrSwitch.bootstrapToggle('on', true);
+         } else {
+             //document.querySelector("#main-switch").bootstrapToggle('off');
+             rtcmSvrSwitch.bootstrapToggle('off', true);
+         }
+-        //console.log(servicesStatus[3]);
+-        if (servicesStatus[4].btn_color) {
+-            rtcmSvrSwitch.bootstrapToggle('setOnStyle', servicesStatus[4].btn_color);
++        //console.log(servicesStatus[7]);
++        if (servicesStatus[7].btn_color) {
++            rtcmSvrSwitch.bootstrapToggle('setOnStyle', servicesStatus[7].btn_color);
+         }
+-        if (servicesStatus[4].btn_off_color) {
+-            rtcmSvrSwitch.bootstrapToggle('setOffStyle', servicesStatus[4].btn_off_color);
++        if (servicesStatus[7].btn_off_color) {
++            rtcmSvrSwitch.bootstrapToggle('setOffStyle', servicesStatus[7].btn_off_color);
+         }
+         
+         // event for switching on/off service on user mouse click
+@@ -261,19 +380,19 @@ $(document).ready(function () {
+         
+         var rtcmSerialSwitch = $('#rtcm_serial-switch');
+         // set the switch to on/off depending of the service status
+-        if (servicesStatus[5].active === true) {
++        if (servicesStatus[8].active === true) {
+             //document.querySelector("#main-switch").bootstrapToggle('on');
+             rtcmSerialSwitch.bootstrapToggle('on', true);
+         } else {
+             //document.querySelector("#main-switch").bootstrapToggle('off');
+             rtcmSerialSwitch.bootstrapToggle('off', true);
+         }
+-        //console.log(servicesStatus[4]);
+-        if (servicesStatus[5].btn_color) {
+-            rtcmSerialSwitch.bootstrapToggle('setOnStyle', servicesStatus[5].btn_color);
++        //console.log(servicesStatus[8]);
++        if (servicesStatus[8].btn_color) {
++            rtcmSerialSwitch.bootstrapToggle('setOnStyle', servicesStatus[8].btn_color);
+         }
+-        if (servicesStatus[5].btn_off_color) {
+-            rtcmSerialSwitch.bootstrapToggle('setOffStyle', servicesStatus[5].btn_off_color);
++        if (servicesStatus[8].btn_off_color) {
++            rtcmSerialSwitch.bootstrapToggle('setOffStyle', servicesStatus[8].btn_off_color);
+         }
+         
+         // event for switching on/off service on user mouse click
+@@ -290,19 +409,19 @@ $(document).ready(function () {
+ 
+         var fileSwitch = $('#file-switch');
+         // set the switch to on/off depending of the service status
+-        if (servicesStatus[6].active === true) {
++        if (servicesStatus[9].active === true) {
+             //document.querySelector("#main-switch").bootstrapToggle('on');
+             fileSwitch.bootstrapToggle('on', true);
+         } else {
+             //document.querySelector("#main-switch").bootstrapToggle('off');
+             fileSwitch.bootstrapToggle('off', true);
+         }
+-        //console.log(servicesStatus[5]);
+-        if (servicesStatus[6].btn_color) {
+-            fileSwitch.bootstrapToggle('setOnStyle', servicesStatus[6].btn_color);
++        //console.log(servicesStatus[9]);
++        if (servicesStatus[9].btn_color) {
++            fileSwitch.bootstrapToggle('setOnStyle', servicesStatus[9].btn_color);
+         }
+-        if (servicesStatus[6].btn_off_color) {
+-            fileSwitch.bootstrapToggle('setOffStyle', servicesStatus[6].btn_off_color);
++        if (servicesStatus[9].btn_off_color) {
++            fileSwitch.bootstrapToggle('setOffStyle', servicesStatus[9].btn_off_color);
+         }
+         
+         // event for switching on/off service on user mouse click
+@@ -334,6 +453,7 @@ $(document).ready(function () {
          detectApplyBtnElt.innerText = "Apply";
          detectApplyBtnElt.setAttribute('disabled', '');
          detectApplyBtnElt.removeAttribute('data-dismiss');
@@ -59,7 +279,7 @@ index 9f48006..4a00905 100644
          detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Detecting GNSS receiver...';
          socket.emit("detect_receiver", {"then_configure" : false});
          $('#detectModal').modal();
-@@ -347,8 +365,19 @@ $(document).ready(function () {
+@@ -347,8 +467,19 @@ $(document).ready(function () {
          if (response['result'] === 'success') {
              detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
@@ -79,7 +299,7 @@ index 9f48006..4a00905 100644
                  // NEW METHOD from https://stackoverflow.com/questions/35154348/trigger-form-submission-with-javascript
                  document.getElementById("main").dispatchEvent(new SubmitEvent('submit', {cancelable: true}));
                  if (response['then_configure']) {
-@@ -381,7 +410,7 @@ $(document).ready(function () {
+@@ -381,7 +512,7 @@ $(document).ready(function () {
          detectApplyBtnElt.onclick = function (){}; //remove the previous attached event which launched the gnss configuration
          detectApplyBtnElt.innerText = "Close";
          detectApplyBtnElt.setAttribute('disabled', '');
@@ -88,7 +308,7 @@ index 9f48006..4a00905 100644
          detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Configuring GNSS receiver...';
          socket.emit("configure_receiver");
          $('#detectModal').modal();
-@@ -419,20 +448,24 @@ $(document).ready(function () {
+@@ -419,20 +550,24 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -117,7 +337,7 @@ index 9f48006..4a00905 100644
              var newFeaturesArray = response['comment'].split('\r\n');
              $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
              $.each( newFeaturesArray, function( index, value ){
-@@ -460,14 +493,18 @@ $(document).ready(function () {
+@@ -460,14 +595,18 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data
                  });
@@ -138,7 +358,7 @@ index 9f48006..4a00905 100644
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-@@ -477,11 +514,11 @@ $(document).ready(function () {
+@@ -477,11 +616,11 @@ $(document).ready(function () {
  
      socket.on("downloading_update", function(msg) {
          response = JSON.parse(msg);
@@ -152,7 +372,7 @@ index 9f48006..4a00905 100644
              $("#start-update-button").html('Update...');
              $("#cancel-button").prop("disabled", false);
          }
-@@ -489,13 +526,13 @@ $(document).ready(function () {
+@@ -489,13 +628,13 @@ $(document).ready(function () {
  
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
@@ -168,7 +388,7 @@ index 9f48006..4a00905 100644
          $("#start-update-button").prop("disabled", true);
          $("#cancel-button").prop("disabled", false);
      })
-@@ -505,16 +542,21 @@ $(document).ready(function () {
+@@ -505,16 +644,21 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -199,7 +419,7 @@ index 9f48006..4a00905 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -531,14 +573,6 @@ $(document).ready(function () {
+@@ -531,14 +675,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -214,7 +434,7 @@ index 9f48006..4a00905 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -703,6 +737,15 @@ $(document).ready(function () {
+@@ -703,6 +839,15 @@ $(document).ready(function () {
            };
        };
  
@@ -230,7 +450,7 @@ index 9f48006..4a00905 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +778,73 @@ $(document).ready(function () {
+@@ -735,5 +880,73 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

@@ -1,5 +1,5 @@
 diff --git a/web_app/RTKBaseConfigManager.py b/web_app/RTKBaseConfigManager.py
-index eabd303..6ca7567 100644
+index eabd303..33d5f48 100644
 --- a/web_app/RTKBaseConfigManager.py
 +++ b/web_app/RTKBaseConfigManager.py
 @@ -120,7 +120,7 @@ class RTKBaseConfigManager:
@@ -11,7 +11,7 @@ index eabd303..6ca7567 100644
              ordered_ntrip.append({key : self.config.get('ntrip_A', key).strip("'")})
          return ordered_ntrip
      
-@@ -131,7 +131,7 @@ class RTKBaseConfigManager:
+@@ -131,10 +131,43 @@ class RTKBaseConfigManager:
          """
          #TODO need refactoring with get_ntrip_A_settings
          ordered_ntrip = [{"source_section" : "ntrip_B"}]
@@ -20,3 +20,49 @@ index eabd303..6ca7567 100644
              ordered_ntrip.append({key : self.config.get('ntrip_B', key).strip("'")})
          return ordered_ntrip
  
++    def get_ntrip_C_settings(self):
++        """
++            Get a subset of the settings from the ntrip B section in an ordered object
++            and remove the single quotes.    
++        """
++        #TODO need refactoring with get_ntrip_A_settings
++        ordered_ntrip = [{"source_section" : "ntrip_C"}]
++        for key in ("svr_addr_C", "svr_port_C", "svr_mode_C", "svr_login_C", "svr_pwd_C", "mnt_name_C", "rtcm_msg_C", "ntrip_C_receiver_options"):
++            ordered_ntrip.append({key : self.config.get('ntrip_C', key).strip("'")})
++        return ordered_ntrip
++
++    def get_ntrip_D_settings(self):
++        """
++            Get a subset of the settings from the ntrip B section in an ordered object
++            and remove the single quotes.    
++        """
++        #TODO need refactoring with get_ntrip_A_settings
++        ordered_ntrip = [{"source_section" : "ntrip_D"}]
++        for key in ("svr_addr_D", "svr_port_D", "svr_mode_D", "svr_login_D", "svr_pwd_D", "mnt_name_D", "rtcm_msg_D", "ntrip_D_receiver_options"):
++            ordered_ntrip.append({key : self.config.get('ntrip_D', key).strip("'")})
++        return ordered_ntrip
++
++    def get_ntrip_E_settings(self):
++        """
++            Get a subset of the settings from the ntrip B section in an ordered object
++            and remove the single quotes.    
++        """
++        #TODO need refactoring with get_ntrip_A_settings
++        ordered_ntrip = [{"source_section" : "ntrip_E"}]
++        for key in ("svr_addr_E", "svr_port_E", "svr_mode_E", "svr_login_E", "svr_pwd_E", "mnt_name_E", "rtcm_msg_E", "ntrip_E_receiver_options"):
++            ordered_ntrip.append({key : self.config.get('ntrip_E', key).strip("'")})
++        return ordered_ntrip
++
+     def get_local_ntripc_settings(self):
+         """
+             Get a subset of the settings from the local ntrip section in an ordered object
+@@ -214,6 +247,9 @@ class RTKBaseConfigManager:
+         ordered_settings['main'] = self.get_main_settings()
+         ordered_settings['ntrip_A'] = self.get_ntrip_A_settings()
+         ordered_settings['ntrip_B'] = self.get_ntrip_B_settings()
++        ordered_settings['ntrip_C'] = self.get_ntrip_C_settings()
++        ordered_settings['ntrip_D'] = self.get_ntrip_D_settings()
++        ordered_settings['ntrip_E'] = self.get_ntrip_E_settings()
+         ordered_settings['local_ntripc'] = self.get_local_ntripc_settings()
+         ordered_settings['file'] = self.get_file_settings()
+         ordered_settings['rtcm_svr'] = self.get_rtcm_svr_settings()

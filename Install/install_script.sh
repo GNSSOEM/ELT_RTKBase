@@ -58,6 +58,9 @@ NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
 BANNER=/etc/ssh/sshd_config.d/rename_user.conf
 VERSION_FILE=version.txt
+NTRIP_C=str2str_ntrip_C.service
+NTRIP_D=str2str_ntrip_D.service
+NTRIP_E=str2str_ntrip_E.service
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -730,6 +733,16 @@ copy_rtkbase_install_file(){
   #echo chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   ExitCodeCheck $?
+
+  echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
+  mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
+  ExitCodeCheck $?
+  echo mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
+  mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
+  ExitCodeCheck $?
+  echo mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
+  mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
+  ExitCodeCheck $?
 }
 
 install_rtkbase_system_configure(){
@@ -1303,7 +1316,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
               ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
-              ${DHCP_CONF} ${DHCP_SERVICE}"
+              ${DHCP_CONF} ${DHCP_SERVICE} ${NTRIP_C} ${NTRIP_D} ${NTRIP_E}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
