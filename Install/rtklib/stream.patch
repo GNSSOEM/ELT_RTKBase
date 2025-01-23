@@ -557,15 +557,16 @@ index f6d815e..2c323f8 100644
      if (ntrip->state==0) { /* send request */
          if (!(ntrip->type==0?reqntrip_s(ntrip,msg):reqntrip_c(ntrip,msg))) {
              return 0;
-@@ -1713,6 +1860,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
+@@ -1713,7 +1866,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
      char addr[256]="",port[256]="",tpath[MAXSTRPATH];
      
      tracet(3,"openntrip: path=%s type=%d\n",path,type);
-+    flagcreate("Starting...");
-     
+-    
++
      if (!(ntrip=(ntrip_t *)malloc(sizeof(ntrip_t)))) return NULL;
      
-@@ -1744,6 +1892,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
+     ntrip->state=0;
+@@ -1744,6 +1897,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
          free(ntrip);
          return NULL;
      }
@@ -573,7 +574,7 @@ index f6d815e..2c323f8 100644
      return ntrip;
  }
  /* close ntrip ---------------------------------------------------------------*/
-@@ -1753,6 +1902,7 @@ static void closentrip(ntrip_t *ntrip)
+@@ -1753,6 +1907,7 @@ static void closentrip(ntrip_t *ntrip)
      
      closetcpcli(ntrip->tcp);
      free(ntrip);
@@ -581,7 +582,7 @@ index f6d815e..2c323f8 100644
  }
  /* read ntrip ----------------------------------------------------------------*/
  static int readntrip(ntrip_t *ntrip, uint8_t *buff, int n, char *msg)
-@@ -1860,7 +2010,7 @@ static void discon_ntripc(ntripc_t *ntripc, int i)
+@@ -1860,7 +2015,7 @@ static void discon_ntripc(ntripc_t *ntripc, int i)
  {
      tracet(3,"discon_ntripc: i=%d\n",i);
      
@@ -590,7 +591,7 @@ index f6d815e..2c323f8 100644
      ntripc->con[i].nb=0;
      ntripc->con[i].buff[0]='\0';
      ntripc->con[i].state=0;
-@@ -1942,7 +2092,7 @@ static void rsp_ntripc(ntripc_t *ntripc, int i)
+@@ -1942,7 +2097,7 @@ static void rsp_ntripc(ntripc_t *ntripc, int i)
      con->state=1;
      strcpy(con->mntpnt,mntpnt);
  }
@@ -599,7 +600,7 @@ index f6d815e..2c323f8 100644
  static void wait_ntripc(ntripc_t *ntripc, char *msg)
  {
      uint8_t *buff;
-@@ -1962,11 +2112,15 @@ static void wait_ntripc(ntripc_t *ntripc, char *msg)
+@@ -1962,11 +2117,15 @@ static void wait_ntripc(ntripc_t *ntripc, char *msg)
          nmax=NTRIP_MAXRSP-ntripc->con[i].nb-1;
          
          if ((n=recv_nb(ntripc->tcp->cli[i].sock,buff,nmax))==-1) {
@@ -710,7 +711,7 @@ index f6d815e..2c323f8 100644
              closesocket(udp->sock);
              free(udp);
              return NULL;
-@@ -2131,7 +2296,7 @@ static udp_t *openudpsvr(const char *path, char *msg)
+@@ -2131,7 +2301,7 @@ static udp_t *openudpsvr(const char *path, char *msg)
      decodetcppath(path,NULL,sport,NULL,NULL,NULL,NULL);
      
      if (sscanf(sport,"%d",&port)<1) {
@@ -719,7 +720,7 @@ index f6d815e..2c323f8 100644
          tracet(2,"openudpsvr: port error port=%s\n",port);
          return NULL;
      }
-@@ -2190,7 +2355,7 @@ static udp_t *openudpcli(const char *path, char *msg)
+@@ -2190,7 +2360,7 @@ static udp_t *openudpcli(const char *path, char *msg)
      decodetcppath(path,saddr,sport,NULL,NULL,NULL,NULL);
      
      if (sscanf(sport,"%d",&port)<1) {
@@ -728,7 +729,7 @@ index f6d815e..2c323f8 100644
          tracet(2,"openudpcli: port error port=%s\n",sport);
          return NULL;
      }
-@@ -2440,7 +2605,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
+@@ -2440,7 +2610,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
      }
      if (ftp->state<=0) { /* ftp/http not executed? */
          ftp->state=1;
@@ -737,7 +738,7 @@ index f6d815e..2c323f8 100644
      
  #ifdef WIN32
          if (!(ftp->thread=CreateThread(NULL,0,ftpthread,ftp,0,NULL))) {
-@@ -2473,7 +2638,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
+@@ -2473,7 +2643,7 @@ static int readftp(ftp_t *ftp, uint8_t *buff, int n, char *msg)
      ftp->tnext=nextdltime(ftp->topts,1);
      ftp->state=0;
      
@@ -746,7 +747,33 @@ index f6d815e..2c323f8 100644
      
      return (int)(p-buff);
  }
-@@ -2936,7 +3101,11 @@ extern int strstat(stream_t *stream, char *msg)
+@@ -2732,7 +2902,13 @@ extern void strinit(stream_t *stream)
+ extern int stropen(stream_t *stream, int type, int mode, const char *path)
+ {
+     tracet(3,"stropen: type=%d mode=%d path=%s\n",type,mode,path);
+-    
++
++    static int first = 1;
++    if (first) {
++       flagcreate("Starting...");
++       first = 0;
++    }
++
+     stream->type=type;
+     stream->mode=mode;
+     strcpy(stream->path,path);
+@@ -2745,7 +2921,9 @@ extern int stropen(stream_t *stream, int type, int mode, const char *path)
+         case STR_SERIAL  : stream->port=openserial(path,mode,stream->msg); break;
+         case STR_FILE    : stream->port=openfile  (path,mode,stream->msg); break;
+         case STR_TCPSVR  : stream->port=opentcpsvr(path,     stream->msg); break;
+-        case STR_TCPCLI  : stream->port=opentcpcli(path,     stream->msg); break;
++        case STR_TCPCLI  : stream->port=opentcpcli(path,     stream->msg);
++                           ((tcpcli_t *)stream->port)->svr.use_flag=1;
++                           break;
+         case STR_NTRIPSVR: stream->port=openntrip (path,0,   stream->msg); break;
+         case STR_NTRIPCLI: stream->port=openntrip (path,1,   stream->msg); break;
+         case STR_NTRIPCAS: stream->port=openntripc(path,     stream->msg); break;
+@@ -2936,7 +3114,11 @@ extern int strstat(stream_t *stream, char *msg)
      
      strlock(stream);
      if (msg) {
