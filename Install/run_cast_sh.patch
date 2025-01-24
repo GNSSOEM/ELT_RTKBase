@@ -76,6 +76,7 @@ index db7a656..b511b12 100755
 +
 +StartNtripServer(){
 +  #echo StartNtripServer $1 $2 $3
++  echo Starting... >${BASEDIR}/ntrip_${3}.flg
 +  PrepareNtripServer $2 $3
 +  #echo out_caster_${3}=\"${out_caster}\"
 +  if [[ "${svr_mode}" < 2 ]]; then
