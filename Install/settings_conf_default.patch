@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index e806217..af7a701 100644
+index e806217..73748bb 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -19,23 +19,31 @@ index e806217..af7a701 100644
  #Web frontend port
  web_port=80
  #set true if you want to enter a password to open the web gui.
-@@ -84,6 +87,10 @@ min_free_space='500'
- svr_addr_a='caster.centipede.fr'
+@@ -81,9 +84,13 @@ min_free_space='500'
+ # NTRIP A caster options
+ 
+ #ntrip A caster url
+-svr_addr_a='caster.centipede.fr'
++svr_addr_a='servers.onocoy.com'
  #ntrip A caster port
  svr_port_a='2101'
 +#ntrip A caster mode
-+svr_mode_a='0'
++svr_mode_a='2'
 +#ntrip A caster login
 +svr_login_a=''
  #ntrip A caster password
  svr_pwd_a=''
  #Mount name
-@@ -100,6 +107,10 @@ ntrip_a_receiver_options=''
- svr_addr_b='caster.centipede.fr'
+@@ -97,9 +104,13 @@ ntrip_a_receiver_options=''
+ # NTRIP B caster options
+ 
+ #ntrip B caster url
+-svr_addr_b='caster.centipede.fr'
++svr_addr_b='ntrip.rtkdirect.com'
  #ntrip B caster port
  svr_port_b='2101'
 +#ntrip B caster mode
-+svr_mode_b='0'
++svr_mode_b='2'
 +#ntrip B caster login
 +svr_login_b=''
  #ntrip B caster password
@@ -50,11 +58,11 @@ index e806217..af7a701 100644
 +# NTRIP C caster options
 +
 +#ntrip C caster url
-+svr_addr_c=''
++svr_addr_c='rtk2go.com'
 +#ntrip C caster port
 +svr_port_c='2101'
 +#ntrip C caster mode
-+svr_mode_c='0'
++svr_mode_c='2'
 +#ntrip C caster login
 +svr_login_c=''
 +#ntrip C caster password
@@ -70,7 +78,7 @@ index e806217..af7a701 100644
 +# NTRIP D caster options
 +
 +#ntrip D caster url
-+svr_addr_d=''
++svr_addr_d='caster.emlid.com'
 +#ntrip D caster port
 +svr_port_d='2101'
 +#ntrip D caster mode
@@ -90,11 +98,11 @@ index e806217..af7a701 100644
 +# NTRIP E caster options
 +
 +#ntrip E caster url
-+svr_addr_e=''
++svr_addr_e='caster.centipede.fr'
 +#ntrip E caster port
 +svr_port_e='2101'
 +#ntrip E caster mode
-+svr_mode_e='0'
++svr_mode_e='2'
 +#ntrip E caster login
 +svr_login_e=''
 +#ntrip E caster password

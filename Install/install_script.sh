@@ -1145,19 +1145,19 @@ configure_settings(){
       #echo if ! grep -q \"^\[ntrip_E\]=\" \"${SETTINGS_NOW}\"\; then
       if ! grep -q "^\[ntrip_E\]" "${SETTINGS_NOW}"; then
          echo insert [ntrip_E] into ${SETTINGS_NOW}
-         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_E]\n\n# NTRIP E caster options\n\n#ntrip E caster url\nsvr_addr_e=\'\'\n#ntrip E caster port\nsvr_port_e=\'2101\'\n#ntrip E caster mode\nsvr_mode_e=\'0\'\n#ntrip E caster login\nsvr_login_e=\'\'\n#ntrip E caster password\nsvr_pwd_e=\'\'\n#Mount name\nmnt_name_e=\'Your_mount_name\'\nrtcm_msg_e=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_e_receiver_options=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_E]\n\n# NTRIP E caster options\n\n#ntrip E caster url\nsvr_addr_e=\'caster\.centipede\.fr\'\n#ntrip E caster port\nsvr_port_e=\'2101\'\n#ntrip E caster mode\nsvr_mode_e=\'2\'\n#ntrip E caster login\nsvr_login_e=\'\'\n#ntrip E caster password\nsvr_pwd_e=\'\'\n#Mount name\nmnt_name_e=\'Your_mount_name\'\nrtcm_msg_e=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_e_receiver_options=\'\'" "${SETTINGS_NOW}"
       fi
 
       #echo if ! grep -q \"^\[ntrip_D\]=\" \"${SETTINGS_NOW}\"\; then
       if ! grep -q "^\[ntrip_D\]" "${SETTINGS_NOW}"; then
          echo insert [ntrip_D] into ${SETTINGS_NOW}
-         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_D]\n\n# NTRIP D caster options\n\n#ntrip D caster url\nsvr_addr_d=\'\'\n#ntrip D caster port\nsvr_port_d=\'2101\'\n#ntrip D caster mode\nsvr_mode_d=\'0\'\n#ntrip D caster login\nsvr_login_d=\'\'\n#ntrip D caster password\nsvr_pwd_d=\'\'\n#Mount name\nmnt_name_d=\'Your_mount_name\'\nrtcm_msg_d=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_d_receiver_options=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_D]\n\n# NTRIP D caster options\n\n#ntrip D caster url\nsvr_addr_d=\'caster\.emlid\.com\'\n#ntrip D caster port\nsvr_port_d=\'2101\'\n#ntrip D caster mode\nsvr_mode_d=\'0\'\n#ntrip D caster login\nsvr_login_d=\'\'\n#ntrip D caster password\nsvr_pwd_d=\'\'\n#Mount name\nmnt_name_d=\'Your_mount_name\'\nrtcm_msg_d=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_d_receiver_options=\'\'" "${SETTINGS_NOW}"
       fi
 
       #echo if ! grep -q \"^\[ntrip_C\]=\" \"${SETTINGS_NOW}\"\; then
       if ! grep -q "^\[ntrip_C\]" "${SETTINGS_NOW}"; then
          echo insert [ntrip_C] into ${SETTINGS_NOW}
-         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'0\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'Your_mount_name\'\nrtcm_msg_c=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'rtk2go\.com\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'2\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'Your_mount_name\'\nrtcm_msg_c=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
       fi
 
    else
