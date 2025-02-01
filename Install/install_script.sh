@@ -735,13 +735,13 @@ copy_rtkbase_install_file(){
   chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   ExitCodeCheck $?
 
-  echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
+  #echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
   mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
   ExitCodeCheck $?
-  echo mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
+  #echo mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
   mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
   ExitCodeCheck $?
-  echo mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
+  #echo mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
   mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
   ExitCodeCheck $?
 }
