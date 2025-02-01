@@ -57,6 +57,7 @@ SERVICE_PATH=/etc/systemd/system
 NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
 BANNER=/etc/ssh/sshd_config.d/rename_user.conf
+FAVICON=favicon.ico
 VERSION_FILE=version.txt
 NTRIP_C=str2str_ntrip_C.service
 NTRIP_D=str2str_ntrip_D.service
@@ -990,6 +991,14 @@ configure_for_unicore(){
    mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
    ExitCodeCheck $?
 
+   WEB_IMAGES=${RTKBASE_WEB}/static/images
+   #echo mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
+   mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WEB_IMAGES}/${FAVICON}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${WEB_IMAGES}/${FAVICON}
+   ExitCodeCheck $?
+
    SERVER_PY=${RTKBASE_WEB}/server.py
    #echo SERVER_PY=${SERVER_PY}
    patch -f ${SERVER_PY} ${BASEDIR}/${SERVER_PATCH}
@@ -1316,7 +1325,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
               ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
-              ${DHCP_CONF} ${DHCP_SERVICE} ${NTRIP_C} ${NTRIP_D} ${NTRIP_E}"
+              ${DHCP_CONF} ${DHCP_SERVICE} ${NTRIP_C} ${NTRIP_D} ${NTRIP_E} ${FAVICON}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

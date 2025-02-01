@@ -21,7 +21,7 @@ tar --exclude-vcs \
     rtkbase_check_internet.sh rtkbase_check_internet.service \
     rtkbase_septentrio_NAT.sh rtkbase_septentrio_NAT.service \
     rtkbase_DHCP.conf rtkbase_DHCP.service str2str_ntrip_C.service \
-    str2str_ntrip_D.service str2str_ntrip_E.service
+    str2str_ntrip_D.service str2str_ntrip_E.service favicon.ico
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
