@@ -2,7 +2,16 @@ diff --git a/web_app/templates/base.html b/web_app/templates/base.html
 index 4a7ecb4..50a2a89 100644
 --- a/web_app/templates/base.html
 +++ b/web_app/templates/base.html
-@@ -28,7 +28,12 @@
+@@ -10,6 +10,8 @@
+     {% block styles %}
+     <!-- Bootstrap CSS -->
+     <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-4.6.1.min.css') }}">
++    <link rel="icon" type="image/vnd.microsoft.icon" href="../static/images/favicon.ico">
++    <link rel="shortcut icon" type="image/x-icon" href="../static/images/favicon.ico">
+     {% endblock %}
+ 
+     <title>RTKBase</title>
+@@ -28,7 +30,12 @@
      {% block content %}{% endblock %}
    </main>
      <footer style="flex-grow: 0; display: block;"></footer>
