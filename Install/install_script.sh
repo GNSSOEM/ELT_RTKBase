@@ -1300,6 +1300,7 @@ info_bug(){
 HAVE_RECEIVER=0
 HAVE_PHASE1=0
 HAVE_FULL=0
+HAVE_RPI=0
 CAN_REBOOT=0
 
 have_receiver(){
@@ -1310,6 +1311,9 @@ have_phase1(){
 }
 have_full(){
    return ${HAVE_FULL}
+}
+have_rpi(){
+   return ${HAVE_RPI}
 }
 can_reboot(){
    return ${CAN_REBOOT}
@@ -1354,6 +1358,9 @@ check_phases(){
    elif [[ ${1} == "-s" ]]
    then
       exit 0
+   elif [[ ${1} == "-w" ]]
+   then
+      HAVE_RPI=1
    elif [[ ${1} != "" ]]
    then
       echo Invalid argument \"${1}\"
@@ -1365,18 +1372,18 @@ check_phases(){
    #echo FILES_DELETE=${FILES_DELETE}
 }
 
-check_platform
+have_rpi && check_platform
 restart_as_root ${1}
 check_phases ${1}
 have_phase1 && export LANG=C
 unpack_files
 have_phase1 && check_version
-have_phase1 && check_boot_configiration
-have_full && can_reboot && do_reboot
-have_receiver && check_port
+have_rpi && have_phase1 && check_boot_configiration
+have_rpi && have_full && can_reboot && do_reboot
+have_rpi && have_receiver && check_port
 have_phase1 && install_tailscale
 have_phase1 && install_additional_utilies
-have_full || delete_pi_user
+have_rpi && have_full || delete_pi_user
 have_receiver && change_hostname ${HAVE_FULL}
 stop_rtkbase_services
 have_phase1 && add_rtkbase_user
