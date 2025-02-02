@@ -40,6 +40,7 @@ SETTING_HTML_PATCH=settings_html.patch
 SETTINGS_CONF_PATCH=settings_conf_default.patch
 PPP_CONF_PATCH=ppp_conf.patch
 CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
+OPIZERO_TEMP_PATCH=opizero_temp_offset.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -1078,6 +1079,13 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${PPP_CONF_PATCH}
    ExitCodeCheck $?
 
+   OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
+   #echo OPIZERO_TEMP=${OPIZERO_TEMP}
+   patch -f ${OPIZERO_TEMP} ${BASEDIR}/${OPIZERO_TEMP_PATCH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${OPIZERO_TEMP_PATCH}
+   ExitCodeCheck $?
+
    restart_rtkbase_if_started
 }
 
@@ -1210,9 +1218,8 @@ configure_gnss(){
          sleep ${LEFT_TIME}
       fi
 
-      rtkbase_path=${RTKBASE_GIT}
-      #echo source "${rtkbase_path}/tools/opizero_temp_offset.sh"
-      source "${rtkbase_path}/tools/opizero_temp_offset.sh"
+      #echo source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
+      source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
       ExitCodeCheck $?
 
       for i in `seq 1 3`; do
@@ -1329,7 +1336,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
               ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
-              ${DHCP_CONF} ${DHCP_SERVICE} ${NTRIP_C} ${NTRIP_D} ${NTRIP_E} ${FAVICON}"
+              ${DHCP_CONF} ${DHCP_SERVICE} ${NTRIP_C} ${NTRIP_D} ${NTRIP_E} \
+              ${FAVICON} ${OPIZERO_TEMP_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
