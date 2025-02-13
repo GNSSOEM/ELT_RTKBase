@@ -18,7 +18,7 @@ index f6d815e..6365a77 100644
  #define NTRIP_MAXSTR        256         /* max length of mountpoint string */
  #define NTRIP_RSP_OK_CLI    "ICY 200 OK\r\n" /* ntrip response: client */
  #define NTRIP_RSP_OK_SVR    "OK\r\n"    /* ntrip response: server */
-@@ -115,6 +117,8 @@
+@@ -115,15 +117,21 @@
  #define NTRIP_RSP_TBLEND    "ENDSOURCETABLE"
  #define NTRIP_RSP_HTTP      "HTTP/"     /* ntrip response: http */
  #define NTRIP_RSP_ERROR     "ERROR"     /* ntrip response: error */
@@ -27,7 +27,10 @@ index f6d815e..6365a77 100644
  #define NTRIP_RSP_UNAUTH    "HTTP/1.0 401 Unauthorized\r\n"
  #define NTRIP_RSP_ERR_PWD   "ERROR - Bad Pasword\r\n"
  #define NTRIP_RSP_ERR_MNTP  "ERROR - Bad Mountpoint\r\n"
-@@ -124,6 +128,9 @@
++#define MIN_PAUSE_AT_EMPTY  15000       /* min pause for EMPTY response */
+ 
+ #define FTP_CMD             "wget"      /* ftp/http command */
+ #define FTP_TIMEOUT         30          /* ftp/http timeout (s) */
  
  #define MIN(x,y)            ((x)<(y)?(x):(y))
  
@@ -37,7 +40,7 @@ index f6d815e..6365a77 100644
  /* macros --------------------------------------------------------------------*/
  
  #ifdef WIN32
-@@ -164,6 +171,8 @@ typedef struct {            /* file control type */
+@@ -164,6 +172,8 @@ typedef struct {            /* file control type */
  
  typedef struct {            /* tcp control type */
      int state;              /* state (0:close,1:wait,2:connect) */
@@ -46,7 +49,7 @@ index f6d815e..6365a77 100644
      char saddr[256];        /* address string */
      int port;               /* port */
      struct sockaddr_in addr; /* address resolved */
-@@ -446,7 +455,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
+@@ -446,7 +456,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
          free(serial);
          return NULL;
      }
@@ -55,7 +58,7 @@ index f6d815e..6365a77 100644
  #else
      sprintf(dev,"/dev/%.*s",(int)sizeof(port)-6,port);
      
-@@ -474,7 +483,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
+@@ -474,7 +484,7 @@ static serial_t *openserial(const char *path, int mode, char *msg)
      ios.c_cflag|=!strcmp(fctr,"rts")?CRTSCTS:0;
      tcsetattr(serial->dev,TCSANOW,&ios);
      tcflush(serial->dev,TCIOFLUSH);
@@ -578,6 +581,7 @@ index f6d815e..6365a77 100644
 +            }
 +            tracet(2,"waitntrip: ntrip connection answer timeout %s sock=%d\n",ntrip->buff,ntrip->tcp->svr.sock);
 +            discontcp(&ntrip->tcp->svr,ntrip->tcp->tirecon,msg);
++            ntrip->state=0;
 +            return 0;
 +        }
 +    }
@@ -585,7 +589,33 @@ index f6d815e..6365a77 100644
      if (ntrip->state==0) { /* send request */
          if (!(ntrip->type==0?reqntrip_s(ntrip,msg):reqntrip_c(ntrip,msg))) {
              return 0;
-@@ -1713,7 +1868,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
+@@ -1694,8 +1852,23 @@ static int waitntrip(ntrip_t *ntrip, char *msg)
+     }
+     if (ntrip->state==1) { /* read response */
+         p=(char *)ntrip->buff+ntrip->nb;
+-        if ((n=readtcpcli(ntrip->tcp,(uint8_t *)p,NTRIP_MAXRSP-ntrip->nb-1,msg))==0) {
+-            tracet(5,"waitntrip: readtcp n=%d\n",n);
++        n=readtcpcli(ntrip->tcp,(uint8_t *)p,NTRIP_MAXRSP-ntrip->nb-1,msg);
++        tracet((ntrip->tcp->svr.state ? 5 : 3),"waitntrip: readtcp n=%d nb=%d tcp_state=%d\n",
++               n, ntrip->nb, ntrip->tcp->svr.state);
++        if (n==0) {
++           if (!ntrip->tcp->svr.state) {
++               if (ntrip->nb) {
++                  sprintf(msg,"NTRIP connection recv disconnected by %s",ntrip->tcp->svr.saddr);
++                  ntrip->type==0?rspntrip_s(ntrip,msg):rspntrip_c(ntrip,msg);
++               } else {
++                  if (ntrip->tcp->svr.tcon < MIN_PAUSE_AT_EMPTY)
++                     ntrip->tcp->svr.tcon = MIN_PAUSE_AT_EMPTY;
++                  sprintf(msg,"NTRIP connection recv disconnected by %s with EMPTY response",ntrip->tcp->svr.saddr);
++               }
++               if (ntrip->tcp->svr.use_flag)
++                  flagcreate(msg);
++               ntrip->state=0;
++            }
+             return 0;
+         }
+         ntrip->nb+=n; ntrip->buff[ntrip->nb]='\0';
+@@ -1713,7 +1886,7 @@ static ntrip_t *openntrip(const char *path, int type, char *msg)
      char addr[256]="",port[256]="",tpath[MAXSTRPATH];
      
      tracet(3,"openntrip: path=%s type=%d\n",path,type);
