@@ -438,9 +438,13 @@ index f6d815e..bf5d654 100644
          return 0;
      }
      if (ns>0) tcpcli->svr.tact=tickget();
-@@ -1538,9 +1650,9 @@ static int reqntrip_s(ntrip_t *ntrip, char *msg)
+@@ -1536,11 +1648,12 @@ static int reqntrip_s(ntrip_t *ntrip, char *msg)
+     
+     p+=sprintf(p,"SOURCE %s %s\r\n",ntrip->passwd,ntrip->mntpnt);
      p+=sprintf(p,"Source-Agent: NTRIP %s\r\n",NTRIP_AGENT);
-     p+=sprintf(p,"STR: %s\r\n",ntrip->str);
+-    p+=sprintf(p,"STR: %s\r\n",ntrip->str);
++    if (*ntrip->str)
++       p+=sprintf(p,"STR: %s\r\n",ntrip->str);
      p+=sprintf(p,"\r\n");
 -    
 +
@@ -450,7 +454,7 @@ index f6d815e..bf5d654 100644
      tracet(3,"reqntrip_s: send request state=%d ns=%d\n",ntrip->state,p-buff);
      tracet(5,"reqntrip_s: n=%d buff=\n%s\n",p-buff,buff);
      ntrip->state=1;
-@@ -1591,27 +1703,52 @@ static int rspntrip_s(ntrip_t *ntrip, char *msg)
+@@ -1591,27 +1704,52 @@ static int rspntrip_s(ntrip_t *ntrip, char *msg)
          ntrip->nb-=p-q;
          for (i=0;i<ntrip->nb;i++) *q++=*p++;
          ntrip->state=2;
