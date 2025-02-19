@@ -35,7 +35,7 @@ index f6d815e..bf5d654 100644
  #define MIN(x,y)            ((x)<(y)?(x):(y))
  
 +#define MAX_PROGRESSIVE_TIMEOUT 300000 /* 5 minute = 300 000 ms */
-+#define DROP_PROGRESSIVE_TIME   180000 /* 3 minute = 180 000 ms */
++#define DROP_PROGRESSIVE_TIME   30000  /* 30 sec   = 30 000 ms */
 +#define MAX_NTRIP_CONNECT_TIME   5000  /* 5 sec    = 5 000 ms */
  /* macros --------------------------------------------------------------------*/
  
@@ -387,7 +387,7 @@ index f6d815e..bf5d654 100644
 +        }
 +        if (tcpcli->svr.tcon&&
 +            (int)(tickget()-tcpcli->svr.tdis)>=DROP_PROGRESSIVE_TIME) {
-+            sprintf(msg,"tcp client clean progressive timeout %s",tcpcli->svr.saddr);
++            //sprintf(msg,"tcp client clean progressive timeout %s",tcpcli->svr.saddr);
 +            tracet(2,"waittcpcli: clean progressive timeout sock=%d\n",tcpcli->svr.sock);
 +            tcpcli->svr.tcon=0;
              return 0;
