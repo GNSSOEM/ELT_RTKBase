@@ -1,5 +1,5 @@
 {
-  "version": "175",
-  "new_release": "v1.7.5",
-  "comment": "Internet access for Spetentrio Mosaic\r\nAny symbols in Wifi SSID and passwords\r\nSeveral important fixes"
+  "version": "176",
+  "new_release": "v1.7.6",
+  "comment": "Many fixes litle bugs in NTRIP"
 }
