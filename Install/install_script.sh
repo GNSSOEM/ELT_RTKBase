@@ -461,7 +461,7 @@ change_hostname(){
    fi
 
    HOSTS=/etc/hosts
-   NOW_HOSTS=`grep "127.0.1.1" $HOSTS | awk -F ' ' '{print $2}'`
+   NOW_HOSTS=`grep "127.0.1.1" $HOSTS | tail -n-1 | awk -F ' ' '{print $2}'`
    #echo NOW_HOSTS=$NOW_HOSTS
    if [[ $NOW_HOSTS != $STANDART_HOST ]]
    then
