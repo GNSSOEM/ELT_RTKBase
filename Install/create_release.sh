@@ -20,7 +20,8 @@ tar --exclude-vcs \
     system_upgrade.sh exec_update.sh rtkbase_network_event.sh \
     rtkbase_check_internet.sh rtkbase_check_internet.service \
     rtkbase_septentrio_NAT.sh rtkbase_septentrio_NAT.service \
-    rtkbase_DHCP.conf rtkbase_DHCP.service favicon.ico
+    rtkbase_DHCP.conf rtkbase_DHCP.service favicon.ico \
+    99-ELT0x33.rules startELT0x33.sh
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
