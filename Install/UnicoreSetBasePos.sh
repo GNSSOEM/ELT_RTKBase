@@ -52,6 +52,9 @@ then
    exit 3
 fi
 
+#echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
+${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
+
 SETSPEED=Y
 SETPOS=Y
 SETANT=Y
@@ -141,6 +144,8 @@ then
    if [[ "${recv_com}" == "" ]]
    then
       echo Unknown receiver port for change speed
+      #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+      ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
       exit 1
    fi
 fi
@@ -177,14 +182,21 @@ then
       else
          ExitCodeCheck ${lastcode}
          echo speed changed incorrectly, not saved
-         exit 1
+         exit_code=1
+         break
       fi
    done
 
    if [[ ${SPEEDCHANGED} != "Y" ]]
    then
       echo receiver not answer after changing speed
-      exit 2
+      exit_code=2
+   fi
+
+   if [[ "${exit_code}" != "" ]]; then
+      #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+      ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+      exit ${exit_code}
    fi
 fi
 
@@ -419,6 +431,9 @@ then
       ExitCodeCheck $?
    fi
 fi
+
+#echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
 
 #echo exit $0 with code ${exitcode} "("lastcode=${lastcode}")"
 exit ${exitcode}

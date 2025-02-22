@@ -157,6 +157,22 @@ detect_usb() {
                    detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
                    break
                 fi
+             elif [[ "$ID_SERIAL" =~ ELT0x33 ]]; then
+                #echo detect ELT0x33 ${devname}
+                #echo sysdevpath=${sysdevpath} syspath=${syspath} devname=${devname}
+                detected_ELT0x33=Y
+                #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+                ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+                #echo detect_speed_Unicore ${devname}
+                detect_speed_Unicore ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Bynav ${devname}
+                detect_speed_Bynav ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Septentrio ${devname}
+                detect_speed_Septentrio ${devname}
+                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
+                break
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
@@ -176,6 +192,10 @@ detect_usb() {
              fi
              [[ ${#detected_gnss[*]} -eq 3 ]] && break
          done
+         if [[ "${detected_ELT0x33}" == "Y" ]]; then
+            #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+            ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+         fi
          if [[ -f  "${BynavDevices}" ]]
          then
             #cat ${BynavDevices}
@@ -280,7 +300,7 @@ stoping_main() {
 detect_gnss() {
     stoping_main
     detect_usb
-    if [[ ${#detected_gnss[*]} < 2 ]]; then
+    if [[ ${#detected_gnss[*]} < 2 ]] && [[ "${detected_ELT0x33}" != "Y" ]]; then
        detect_uart
     fi
     detect_configure ${1}
@@ -577,12 +597,15 @@ configure_gnss(){
         RECVSPEED=${com_port_settings%%:*}
         RECVDEV=/dev/${com_port}
         RECVPORT=${RECVDEV}:${RECVSPEED}
+        Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
            configure_septentrio_SBF /dev/ttyGNSS_CTRL ${RECVSPEED}
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox_UBX ${RECVPORT} ${RECVSPEED}
         elif [[ ${receiver_format} == "rtcm3" ]]; then
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
            if [[ ${receiver} =~ "Unicore" ]]; then
               configure_unicore ${RECVPORT}
            elif [[ ${receiver} =~ "Bynav" ]]; then
@@ -591,16 +614,19 @@ configure_gnss(){
               configure_septentrio_RTCM3 ${RECVPORT}
            else
               echo 'Unknown RTCM3 Gnss receiver has'\''t  been set. We can'\''t configure '${RECVPORT}
-              return 1
+              Result=1
            fi
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
         else
            echo 'We can'\''t configure '${receiver_format}' receiver on'${RECVPORT}
-           return 1
+           Result=1
         fi
       else #if [ -d "${rtkbase_path}" ]
         echo 'RtkBase not installed!!'
-        return 1
+        Result=1
       fi
+      return ${Result}
 }
 
 

@@ -7,6 +7,7 @@ RTKBASE_GIT=${RTKBASE_PATH}/rtkbase
 RTKBASE_UPDATE=${RTKBASE_PATH}/update
 RTKBASE_TOOLS=${RTKBASE_GIT}/tools
 RTKBASE_WEB=${RTKBASE_GIT}/web_app
+RTKBASE_UNIT=${RTKBASE_GIT}/unit
 RTKBASE_RECV=${RTKBASE_GIT}/receiver_cfg
 BASEDIR=`realpath $(dirname $(readlink -f "$0"))`
 BASENAME=`basename $(readlink -f "$0")`
@@ -38,6 +39,7 @@ RUNCAST_PATCH=run_cast_sh.patch
 SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
 PPP_CONF_PATH=ppp_conf.patch
+STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -59,6 +61,7 @@ FAVICON=favicon.ico
 VERSION=version.txt
 ELT0x33_RULES=99-ELT0x33.rules
 START_ELT0x33=startELT0x33.sh
+ONOFF_ELT0x33=onoffELT0x33.sh
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -814,7 +817,15 @@ correct_units(){
    echo '################################'
    echo 'CORRECT UNITS'
    echo '################################'
-   for file in ${RTKBASE_GIT}/unit/str2str*
+   STR2STR_RTCM_SVR=${RTKBASE_UNIT}/str2str_rtcm_svr.service
+   #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
+   patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
+   ExitCodeCheck $?
+   chmod 755 ${STR2STR_RTCM_SVR}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
+   ExitCodeCheck $?
+   for file in ${RTKBASE_UNIT}/str2str*
    do
       #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
@@ -980,12 +991,22 @@ configure_for_unicore(){
    ExitCodeCheck $?
 
    UDEV_RULES=/etc/udev/rules.d
-   echo mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
+   #echo mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
    mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
    ExitCodeCheck $?
 
-   echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
+   #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
    mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
+   chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
    ExitCodeCheck $?
 
    SERVER_PY=${RTKBASE_WEB}/server.py
@@ -1229,7 +1250,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
               ${DHCP_CONF} ${DHCP_SERVICE} ${FAVICON} \
-              ${ELT0x33_RULES} ${START_ELT0x33}"
+              ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
+              ${STR2STR_RTCM_SVR_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

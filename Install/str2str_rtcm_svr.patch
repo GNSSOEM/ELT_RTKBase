@@ -1,0 +1,13 @@
+diff --git a/unit/str2str_rtcm_svr.service b/unit/str2str_rtcm_svr.service
+index 80555ee..d828e6d 100644
+--- a/unit/str2str_rtcm_svr.service
++++ b/unit/str2str_rtcm_svr.service
+@@ -8,6 +8,8 @@ Requires=str2str_tcp.service
+ Type=forking
+ User={user}
+ ExecStart={script_path}/run_cast.sh in_tcp out_rtcm_svr
++ExecStartPre={script_path}/tools/onoffELT0x33.sh SETTINGS ON
++ExecStopPost={script_path}/tools/onoffELT0x33.sh SETTINGS OFF
+ Restart=on-failure
+ RestartSec=30
+ #Limiting log to 1 msg per minute
