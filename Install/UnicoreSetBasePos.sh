@@ -206,17 +206,28 @@ if [[ ${SETPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
    then
+      NO_ANSWER_COUNT=0;
       for i in `seq 1 30`
       do
          #echo UNICORE_MODE=\`${BASEDIR}/NmeaConf ${DEVICE} MODE\`
          UNICORE_MODE=`${BASEDIR}/NmeaConf ${DEVICE} MODE`
          IS_FINE=`echo ${UNICORE_MODE} | grep -c "1005"`
+         NO_ANSWER=`echo ${UNICORE_MODE} | grep -c "maxRead=0 "`
          #echo UNICORE_MODE=${UNICORE_MODE}
-         #echo IS_FINE=${IS_FINE}
-         if [[ ${IS_FINE} != "0" ]]
-         then
+         #echo IS_FINE=${IS_FINE} NO_ANSWER=${NO_ANSWER} NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
+         if [[ ${IS_FINE} != "0" ]]; then
             echo 1005 found on $i iteration
             break
+         fi
+         if [[ ${NO_ANSWER} != "0" ]]; then
+            let NO_ANSWER_COUNT++
+            #echo NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
+            if [ ${NO_ANSWER_COUNT} -ge 5 ]; then
+               echo receiver not answer ${NO_ANSWER_COUNT} times
+               #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+               ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+               exit 1
+            fi
          fi
          sleep 1
       done
