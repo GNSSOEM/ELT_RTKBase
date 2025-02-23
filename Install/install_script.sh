@@ -40,6 +40,7 @@ SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
 PPP_CONF_PATH=ppp_conf.patch
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
+STR2STR_TCP_PATCH=str2str_tcp.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -817,14 +818,21 @@ correct_units(){
    echo '################################'
    echo 'CORRECT UNITS'
    echo '################################'
+
+   STR2STR_TCP=${RTKBASE_UNIT}/str2str_tcp.service
+   #echo STR2STR_TCP=${STR2STR_TCP}
+   patch -f ${STR2STR_TCP} ${BASEDIR}/${STR2STR_TCP_PATCH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${STR2STR_TCP_PATCH}
+   ExitCodeCheck $?
+
    STR2STR_RTCM_SVR=${RTKBASE_UNIT}/str2str_rtcm_svr.service
    #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
    patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
    ExitCodeCheck $?
-   chmod 755 ${STR2STR_RTCM_SVR}
-   ExitCodeCheck $?
    rm -f ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
    ExitCodeCheck $?
+
    for file in ${RTKBASE_UNIT}/str2str*
    do
       #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
@@ -1251,7 +1259,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
               ${DHCP_CONF} ${DHCP_SERVICE} ${FAVICON} \
               ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
-              ${STR2STR_RTCM_SVR_PATCH}"
+              ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

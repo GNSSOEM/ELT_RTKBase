@@ -22,7 +22,7 @@ tar --exclude-vcs \
     rtkbase_septentrio_NAT.sh rtkbase_septentrio_NAT.service \
     rtkbase_DHCP.conf rtkbase_DHCP.service favicon.ico \
     99-ELT0x33.rules startELT0x33.sh onoffELT0x33.sh \
-    str2str_rtcm_svr.patch
+    str2str_rtcm_svr.patch str2str_tcp.patch
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
