@@ -46,8 +46,8 @@ for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name ${com_port}); do
              if [[ "${2}" == "ON" ]]; then
                 value=1
              fi
-             echo sudo gpioset gpiochip${CHIP} 3=${value} \# for ${com_port}
-             sudo gpioset gpiochip${CHIP} 3=${value}
+             echo gpioset gpiochip${CHIP} 3=${value} \# for ${com_port}
+             gpioset gpiochip${CHIP} 3=${value}
              exit
           fi
        fi

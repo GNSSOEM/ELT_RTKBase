@@ -603,7 +603,7 @@ add_rtkbase_user(){
       exit
    fi
 
-   usermod -a -G plugdev,dialout ${RTKBASE_USER}
+   usermod -a -G plugdev,dialout,gpio ${RTKBASE_USER}
    ExitCodeCheck $?
 
    RTKBASE_SUDOER=/etc/sudoers.d/${RTKBASE_USER}
