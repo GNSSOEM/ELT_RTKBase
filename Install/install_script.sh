@@ -38,7 +38,7 @@ BASE_PATCH=base_html.patch
 RUNCAST_PATCH=run_cast_sh.patch
 SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
-PPP_CONF_PATH=ppp_conf.patch
+PPP_CONF_PATCH=ppp_conf.patch
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
@@ -1073,11 +1073,11 @@ configure_for_unicore(){
 
    PPP_CONF=${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf
    #echo PPP_CONF=${PPP_CONF}
-   patch -f ${PPP_CONF} ${BASEDIR}/${PPP_CONF_PATH}
+   patch -f ${PPP_CONF} ${BASEDIR}/${PPP_CONF_PATCH}
    ExitCodeCheck $?
    chmod 755 ${PPP_CONF}
    ExitCodeCheck $?
-   rm -f ${BASEDIR}/${PPP_CONF_PATH}
+   rm -f ${BASEDIR}/${PPP_CONF_PATCH}
    ExitCodeCheck $?
 
    restart_rtkbase_if_started
@@ -1253,7 +1253,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
               ${CONFSEPTENTRIO} ${TESTSEPTENTRIO} ${SETTING_HTML_PATCH} \
-              ${PPP_CONF_PATH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
+              ${PPP_CONF_PATCH} ${CONFIG_ORIG} ${TAILSCALE_GET_HREF} \
               ${SYSTEM_UPGRADE} ${EXEC_UPDATE} ${NETWORK_EVENT} \
               ${CHECK_INTERNET} ${CHECK_INTERNET_SERVICE} \
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
