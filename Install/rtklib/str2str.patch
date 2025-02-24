@@ -1,25 +1,27 @@
 diff --git a/app/consapp/str2str/str2str.c b/app/consapp/str2str/str2str.c
-index c82f357..3caeadf 100644
+index c82f357..5d40317 100644
 --- a/app/consapp/str2str/str2str.c
 +++ b/app/consapp/str2str/str2str.c
-@@ -37,6 +37,8 @@
+@@ -37,6 +37,9 @@
  #define MAXSTR      5                  /* max number of streams */
  #define TRFILE      "str2str.trace"    /* trace file */
  
 +extern void flagsetup(const char *path);
++extern void eventsetup(const char *path);
 +
  /* global variables ----------------------------------------------------------*/
  static strsvr_t strsvr;                /* stream server */
  static volatile int intrflg=0;         /* interrupt flag */
-@@ -109,6 +111,7 @@ static const char *help[]={
+@@ -109,6 +112,8 @@ static const char *help[]={
  " -b  str_no        relay back messages from output str to input str [no]",
  " -t  level         trace level [0]",
  " -fl file          log file [str2str.trace]",
 +" -fg file          flag file",
++" -fe file          event command for change state",
  " -h                print help",
  "",
  "  command file cheat sheet:",
-@@ -215,7 +218,7 @@ int main(int argc, char **argv)
+@@ -215,7 +220,7 @@ int main(int argc, char **argv)
  {
      static char cmd_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
      static char cmd_periodic_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
@@ -28,15 +30,16 @@ index c82f357..3caeadf 100644
      strconv_t *conv[MAXSTR]={NULL};
      double pos[3],stapos[3]={0},stadel[3]={0};
      static char s1[MAXSTR][MAXSTRPATH]={{0}},s2[MAXSTR][MAXSTRPATH]={{0}};
-@@ -277,6 +280,7 @@ int main(int argc, char **argv)
+@@ -277,6 +282,8 @@ int main(int argc, char **argv)
          else if (!strcmp(argv[i],"-x"  )&&i+1<argc) proxy=argv[++i];
          else if (!strcmp(argv[i],"-b"  )&&i+1<argc) opts[7]=atoi(argv[++i]);
          else if (!strcmp(argv[i],"-fl" )&&i+1<argc) logfile=argv[++i];
 +        else if (!strcmp(argv[i],"-fg" )&&i+1<argc) flagsetup(argv[++i]);
++        else if (!strcmp(argv[i],"-fe" )&&i+1<argc) eventsetup(argv[++i]);
          else if (!strcmp(argv[i],"-t"  )&&i+1<argc) trlevel=atoi(argv[++i]);
          else if (!strcmp(argv[i], "--version")) {
              fprintf(stderr, "str2str RTKLIB %s %s\n", VER_RTKLIB, PATCH_LEVEL);
-@@ -343,14 +347,12 @@ int main(int argc, char **argv)
+@@ -343,14 +350,12 @@ int main(int argc, char **argv)
          
          /* get stream server status */
          strsvrstat(&strsvr,stat,log_stat,byte,bps,strmsg);
