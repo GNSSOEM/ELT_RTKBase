@@ -80,7 +80,7 @@ index db7a656..3089bb1 100755
    out_caster_A)
      #echo ${cast} -in ${!1} -out $out_caster
 -    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log &
-+    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log -fg ${BASEDIR}/ntrip_A.flg &
++    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log -fg ${BASEDIR}/ntrip_A.flg -fe "${BASEDIR}/tools/ntrip_led.sh A" &
      ;;
  
    out_caster_B)

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#echo Start ${0} ${1} ${2}
+#echo Start ${0} ${1} ${2} ${3}
 if [[ "${1}" == "" ]]; then
-   echo Need device name as parameter. For example \"${0} ttyUSB0 ON\"
+   echo Need device name as parameter. For example \"${0} ttyUSB0 ON 0\"
    exit
 fi
 
@@ -41,13 +41,18 @@ for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name ${com_port}); do
           #echo gpiochip=${gpiochip}
           if [[ "${gpiochip}" != "" ]]; then
              CHIP=`echo ${gpiochip} | sed s/^.*gpiochip//`
-             #echo CHIP=${CHIP}
-             value=0
              if [[ "${2}" == "ON" ]]; then
                 value=1
+             else
+                value=0
              fi
-             echo gpioset gpiochip${CHIP} 3=${value} \# for ${com_port}
-             gpioset gpiochip${CHIP} 3=${value}
+             if [[ "${3}" == "" ]]; then
+                pin=3
+             else
+                pin=${3}
+             fi
+             #echo gpioset gpiochip${CHIP} ${pin}=${value} \# for ${com_port}
+             gpioset gpiochip${CHIP} ${pin}=${value}
              exit
           fi
        fi

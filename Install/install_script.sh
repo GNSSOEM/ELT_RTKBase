@@ -41,6 +41,7 @@ SETTING_HTML_PATCH=settings_html.patch
 PPP_CONF_PATCH=ppp_conf.patch
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
+STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -63,6 +64,7 @@ VERSION=version.txt
 ELT0x33_RULES=99-ELT0x33.rules
 START_ELT0x33=startELT0x33.sh
 ONOFF_ELT0x33=onoffELT0x33.sh
+NTRIP_LED=ntrip_led.sh
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -826,6 +828,13 @@ correct_units(){
    rm -f ${BASEDIR}/${STR2STR_TCP_PATCH}
    ExitCodeCheck $?
 
+   STR2STR_NTRIP_A=${RTKBASE_UNIT}/str2str_ntrip_A.service
+   #echo STR2STR_NTRIP_A=${STR2STR_NTRIP_A}
+   patch -f ${STR2STR_NTRIP_A} ${BASEDIR}/${STR2STR_NTRIP_A_PATCH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${STR2STR_NTRIP_A_PATCH}
+   ExitCodeCheck $?
+
    STR2STR_RTCM_SVR=${RTKBASE_UNIT}/str2str_rtcm_svr.service
    #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
    patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
@@ -1015,6 +1024,16 @@ configure_for_unicore(){
    ExitCodeCheck $?
    #echo chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
    chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${NTRIP_LED}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${NTRIP_LED}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
+   chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
    ExitCodeCheck $?
 
    SERVER_PY=${RTKBASE_WEB}/server.py
@@ -1259,7 +1278,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SEPTENTRIO_NAT} ${SEPTENTRIO_NAT_SERVICE} \
               ${DHCP_CONF} ${DHCP_SERVICE} ${FAVICON} \
               ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
-              ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH}"
+              ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH} ${NTRIP_LED} \
+              ${STR2STR_NTRIP_A_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
