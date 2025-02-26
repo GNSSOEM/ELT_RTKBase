@@ -385,6 +385,7 @@ install_additional_utilies(){
    install_packet_if_not_installed cpufrequtils
    install_packet_if_not_installed uhubctl
    install_packet_if_not_installed ntpdate
+   install_packet_if_not_installed gpiod
 
    #echo NEED_INSTALL=${NEED_INSTALL}
    if [[ "${NEED_INSTALL}" != "" ]]
