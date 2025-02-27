@@ -1013,9 +1013,12 @@ configure_for_unicore(){
    mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
    ExitCodeCheck $?
 
-   #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
-   mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
-   ExitCodeCheck $?
+   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
+   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+      #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
+      mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
+      ExitCodeCheck $?
+   fi
 
    #echo mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
    mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
