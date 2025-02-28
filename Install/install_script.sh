@@ -591,8 +591,14 @@ add_rtkbase_user(){
    #echo HAVEUSER=${HAVEUSER}
    if [[ ${HAVEUSER} == "" ]]
    then
-      #echo adduser --comment "RTKBase user" --disabled-password --home ${RTKBASE_PATH} ${RTKBASE_USER}
-      adduser --gecos "RTKBase user" --disabled-password --home ${RTKBASE_PATH} ${RTKBASE_USER}
+      HAVE_DEB12=`lsb_release -c | grep bookworm`
+      if [[ "${HAVE_DEB12}" != "" ]]; then
+         UID990="--firstuid 800 --lastuid 999"
+      else
+         UID990=
+      fi
+      #echo adduser --gecos "RTKBase user" ${UID990} --disabled-password --home ${RTKBASE_PATH} --shell /usr/sbin/nologin ${RTKBASE_USER}
+      adduser --gecos "RTKBase user" ${UID990} --disabled-password --home ${RTKBASE_PATH} --shell /usr/sbin/nologin ${RTKBASE_USER}
       ExitCodeCheck $?
       # --gecos instead --comment for raspbian 11
    fi
@@ -1337,7 +1343,7 @@ have_rpi && have_full && can_reboot && do_reboot
 have_rpi && have_receiver && check_port
 have_phase1 && install_tailscale
 have_phase1 && install_additional_utilies
-have_rpi && have_full || delete_pi_user
+have_rpi && have_receiver && delete_pi_user
 have_receiver && change_hostname ${HAVE_FULL}
 stop_rtkbase_services
 have_phase1 && add_rtkbase_user
