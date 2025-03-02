@@ -161,12 +161,14 @@ index bb39670..c6f47b8 100755
          else:
              print("wrong update file")
          return ('', 204)
-@@ -503,20 +601,28 @@ def diagnostic():
+@@ -503,20 +601,30 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
 +    rtkbase_check_internet_service = {'service_unit' : 'rtkbase_check_internet.service', 'name' : 'RTKBase show internet state on led'}
 +    rtkbase_check_internet_service["active"] = ServiceController(rtkbase_check_internet_service["service_unit"]).isActive()
++    rtkbase_check_satelites_service = {'service_unit' : 'rtkbase_check_satelites.service', 'name' : 'RTKBase show internet state on led'}
++    rtkbase_check_satelites_service["active"] = ServiceController(rtkbase_check_satelites_service["service_unit"]).isActive()
 +    RtkbaseSystemConfigure_service = {'service_unit' : 'RtkbaseSystemConfigure.service', 'name' : 'RTKBase system configure at start'}
 +    RtkbaseSystemConfigure_service["active"] = ServiceController(RtkbaseSystemConfigure_service["service_unit"]).isActive()
 +    rtkbase_septentrio_NAT_service = {'service_unit' : 'rtkbase_septentrio_NAT.service', 'name' : 'RTKBase configure Septentrio NAT at start'}
@@ -175,7 +177,7 @@ index bb39670..c6f47b8 100755
 +    rtkbase_DHCP_service["active"] = ServiceController(rtkbase_DHCP_service["service_unit"]).isActive()
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,

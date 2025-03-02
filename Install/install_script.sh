@@ -25,6 +25,7 @@ SETTINGS_NOW=${RTKBASE_GIT}/settings.conf
 SETTINGS_SAVE=${RTKBASE_GIT}/settings.save
 SETTINGS_DEFAULT=${RTKBASE_GIT}/settings.conf.default
 NMEACONF=NmeaConf
+RTCM3LED=Rtcm3Led
 CONF_TAIL=RTCM3_OUT.txt
 CONF980=UM980_${CONF_TAIL}
 CONF982=UM982_${CONF_TAIL}
@@ -47,6 +48,8 @@ SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
 CHECK_INTERNET=rtkbase_check_internet.sh
 CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
+CHECK_SATELITES=rtkbase_check_satelites.sh
+CHECK_SATELITES_SERVICE=rtkbase_check_satelites.service
 SEPTENTRIO_NAT=rtkbase_septentrio_NAT.sh
 SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
 DHCP_CONF=rtkbase_DHCP.conf
@@ -554,6 +557,7 @@ stop_rtkbase_services(){
                   rtkbase_gnss_web_proxy.service \
                   ${SYSSERVICE} \
                   ${CHECK_INTERNET_SERVICE} \
+                  ${CHECK_SATELITES_SERVICE} \
                   ${SEPTENTRIO_NAT_SERVICE} \
                   ${DHCP_SERVICE}"
      if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
@@ -780,6 +784,19 @@ install_rtkbase_system_configure(){
   ExitCodeCheck $?
 
   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+     #echo mv ${BASEDIR}/${CHECK_SATELITES} ${RTKBASE_PATH}/
+     mv ${BASEDIR}/${CHECK_SATELITES} ${RTKBASE_PATH}/
+     ExitCodeCheck $?
+  fi
+  #echo chmod +x ${RTKBASE_PATH}/${CHECK_SATELITES}
+  chmod +x ${RTKBASE_PATH}/${CHECK_SATELITES}
+  ExitCodeCheck $?
+
+  #echo mv ${BASEDIR}/${CHECK_SATELITES_SERVICE} ${SERVICE_PATH}/
+  mv ${BASEDIR}/${CHECK_SATELITES_SERVICE} ${SERVICE_PATH}/
+  ExitCodeCheck $?
+
+  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
      #echo mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
      mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
      ExitCodeCheck $?
@@ -803,6 +820,9 @@ install_rtkbase_system_configure(){
 
   #echo systemctl enable ${CHECK_INTERNET_SERVICE}
   systemctl enable ${CHECK_INTERNET_SERVICE}
+  ExitCodeCheck $?
+  #echo systemctl enable ${CHECK_SATELITES_SERVICE}
+  systemctl enable ${CHECK_SATELITES_SERVICE}
   ExitCodeCheck $?
 }
 
@@ -917,6 +937,19 @@ configure_for_unicore(){
    ExitCodeCheck $?
    #echo chmod +x ${RTKBASE_GIT}/${NMEACONF}
    chmod +x ${RTKBASE_GIT}/${NMEACONF}
+   ExitCodeCheck $?
+
+   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
+   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
+      #echo mv ${BASEDIR}/${RTCM3LED} ${RTKBASE_PATH}/
+      mv ${BASEDIR}/${RTCM3LED} ${RTKBASE_PATH}/
+      ExitCodeCheck $?
+   fi
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}/${RTCM3LED}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}/${RTCM3LED}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_PATH}/${RTCM3LED}
+   chmod +x ${RTKBASE_PATH}/${RTCM3LED}
    ExitCodeCheck $?
 
    #echo mv ${BASEDIR}/${UNICORE_CONFIGURE} ${RTKBASE_TOOLS}/
@@ -1221,6 +1254,9 @@ start_rtkbase_services(){
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
   ExitCodeCheck $?
+  #echo systemctl start "${CHECK_SATELITES_SERVICE}"
+  systemctl start "${CHECK_SATELITES_SERVICE}"
+  ExitCodeCheck $?
 }
 
 delete_garbage(){
@@ -1289,7 +1325,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${DHCP_CONF} ${DHCP_SERVICE} ${FAVICON} \
               ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
               ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH} ${NTRIP_LED} \
-              ${STR2STR_NTRIP_A_PATCH}"
+              ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
+              ${CHECK_SATELITES_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

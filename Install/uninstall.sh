@@ -25,6 +25,13 @@ CHECK_INTERNET_SERVICE_enabled=`systemctl is-enabled ${CHECK_INTERNET_SERVICE} 2
 [[ "${CHECK_INTERNET_SERVICE_enabled}" != "disabled" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "masked" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "" ]] && systemctl disable  ${CHECK_INTERNET_SERVICE}
 rm -f /etc/systemd/system/${CHECK_INTERNET_SERVICE}
 
+CHECK_SATELITES_SERVICE=rtkbase_check_satelites.service
+CHECK_SATELITES_SERVICE_enabled=`systemctl is-enabled ${CHECK_SATELITES_SERVICE} 2>/dev/null`
+#echo CHECK_SATELITES_SERVICE_enabled=${CHECK_SATELITES_SERVICE_enabled}
+[[ "${CHECK_SATELITES_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${CHECK_SATELITES_SERVICE} && systemctl stop ${CHECK_SATELITES_SERVICE}
+[[ "${CHECK_SATELITES_SERVICE_enabled}" != "disabled" ]] && [[ "${CHECK_SATELITES_SERVICE_enabled}" != "masked" ]] && [[ "${CHECK_SATELITES_SERVICE_enabled}" != "" ]] && systemctl disable  ${CHECK_SATELITES_SERVICE}
+rm -f /etc/systemd/system/${CHECK_SATELITES_SERVICE}
+
 SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
 SEPTENTRIO_NAT_SERVICE_enabled=`systemctl is-enabled ${SEPTENTRIO_NAT_SERVICE} 2>/dev/null`
 #echo SEPTENTRIO_NAT_SERVICE_enabled=${SEPTENTRIO_NAT_SERVICE_enabled}
