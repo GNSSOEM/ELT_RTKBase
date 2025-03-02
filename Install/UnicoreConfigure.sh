@@ -604,8 +604,8 @@ configure_gnss(){
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox_UBX ${RECVPORT} ${RECVSPEED}
         elif [[ ${receiver_format} == "rtcm3" ]]; then
-           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
-           ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
            if [[ ${receiver} =~ "Unicore" ]]; then
               configure_unicore ${RECVPORT}
            elif [[ ${receiver} =~ "Bynav" ]]; then
@@ -616,8 +616,8 @@ configure_gnss(){
               echo 'Unknown RTCM3 Gnss receiver has'\''t  been set. We can'\''t configure '${RECVPORT}
               Result=1
            fi
-           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
-           ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} OFF
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} OFF
         else
            echo 'We can'\''t configure '${receiver_format}' receiver on'${RECVPORT}
            Result=1
