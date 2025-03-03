@@ -1254,9 +1254,12 @@ start_rtkbase_services(){
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
   ExitCodeCheck $?
-  #echo systemctl start "${CHECK_SATELITES_SERVICE}"
-  systemctl start "${CHECK_SATELITES_SERVICE}"
-  ExitCodeCheck $?
+  HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*"`
+  if [[ "${HAVE_ELT0x33}" != "" ]]; then
+     #echo systemctl start "${CHECK_SATELITES_SERVICE}"
+     systemctl start "${CHECK_SATELITES_SERVICE}"
+     ExitCodeCheck $?
+  fi
 }
 
 delete_garbage(){
