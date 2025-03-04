@@ -23,7 +23,7 @@ else
              CHIP=`echo ${gpiochip} | sed s/^.*gpiochip//`
              #echo CHIP=${CHIP}
              USE_FTDI=Y
-             GPIO=2
+             GPIO=1
          fi
        fi
    done

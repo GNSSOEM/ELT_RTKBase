@@ -14,9 +14,10 @@ if [[ "${HAVE_ELT0x33}" != "" ]]; then
              BASEDIR="$(dirname "$0")"
              tcp_port=5015
              source <( grep -v '^#' "${BASEDIR}"/rtkbase/settings.conf | grep 'tcp_port=' ) #import settings
-             #echo CHIP=${CHIP} BASEDIR=${BASEDIR} tcp_port=${tcp_port}
-             echo "${BASEDIR}"/Rtcm3Led +localhost:${tcp_port} ${CHIP} 1 \&
-             "${BASEDIR}"/Rtcm3Led +localhost:${tcp_port} ${CHIP} 1 &
+             GPIO=2
+             #echo CHIP=${CHIP} BASEDIR=${BASEDIR} tcp_port=${tcp_port} GPIO=${GPIO}
+             echo "${BASEDIR}"/Rtcm3Led +localhost:${tcp_port} ${CHIP} ${GPIO} \&
+             "${BASEDIR}"/Rtcm3Led +localhost:${tcp_port} ${CHIP} ${GPIO} &
              USE_FTDI=Y
          fi
        fi
@@ -24,7 +25,7 @@ if [[ "${HAVE_ELT0x33}" != "" ]]; then
 fi
 
 if [[ "${USE_FTDI}" == "" ]]; then
-   echo No ELT0x33 and gpiochip found HAVE_ELT0x33=${HAVE_ELT0x33}
+   echo No ELT0x33 and no gpiochip found HAVE_ELT0x33=${HAVE_ELT0x33}
    systemctl stop rtkbase_check_satelites.service
    exit 0
 fi
