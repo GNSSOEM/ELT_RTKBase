@@ -42,6 +42,14 @@ else
    exit 0
 fi
 
+if [[ -n "${COMMAND}" ]]
+then
+   echo Executing \""${COMMAND}"\"
+   eval ${COMMAND}
+   ExitCodeCheck $?
+   WORK=Y
+fi
+
 if [[ -n "${COUNTRY}" ]]
 then
    #echo raspi-config nonint do_wifi_country "${COUNTRY}"
