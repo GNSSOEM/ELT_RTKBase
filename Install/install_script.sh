@@ -369,9 +369,9 @@ info_reboot(){
 }
 
 check_port(){
-   if [[ ! -c "${RECVPORT}" ]]
-   then
-      echo port ${RECVPORT} not found. Setup port and try again
+   HAVE_TTYUSB=`find /dev/ttyUSB*`
+   if [[ "${HAVE_TTYUSB}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
+      echo ttyUSB ports and ${RECVPORT} not found. Setup port and try again
       delete_all_extracted
       exit
    fi
