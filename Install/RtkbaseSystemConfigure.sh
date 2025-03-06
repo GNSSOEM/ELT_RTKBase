@@ -3,6 +3,7 @@
 
 #NEWCONF=system.txt
 NEWCONF=/boot/firmware/system.txt
+BASEDIR="$(dirname "$0")"
 exitcode=0
 
 ExitCodeCheck(){
@@ -38,6 +39,11 @@ then
    source <( grep '=' ${NEWCONF} )
    ExitCodeCheck $?
 else
+   HAVE_WIFI=`nmcli connection show | grep wifi`
+   if [[ -z "${HAVE_WIFI}" ]]; then
+      echo Start WPS PBC
+      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
+   fi
    ExitCodeCheck 0
    exit 0
 fi
@@ -305,6 +311,15 @@ if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
 fi
 if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
    ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
+fi
+
+if [[ -z "${SSID}" ]];then
+   HAVE_WIFI=`nmcli connection show | grep wifi`
+   if [[ -z "${HAVE_WIFI}" ]]; then
+      echo Start WPS PBC
+      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
+      WORK=Y
+   fi
 fi
 
 if [[ -z "${WORK}" ]]

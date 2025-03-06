@@ -68,6 +68,7 @@ ELT0x33_RULES=99-ELT0x33.rules
 START_ELT0x33=startELT0x33.sh
 ONOFF_ELT0x33=onoffELT0x33.sh
 NTRIP_LED=ntrip_led.sh
+PBC=PBC.sh
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -1057,6 +1058,9 @@ configure_for_unicore(){
       #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
       mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
       ExitCodeCheck $?
+      #echo mv ${BASEDIR}/${PBC} ${RTKBASE_PATH}/
+      mv ${BASEDIR}/${PBC} ${RTKBASE_PATH}/
+      ExitCodeCheck $?
    fi
 
    #echo mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
@@ -1329,7 +1333,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
               ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH} ${NTRIP_LED} \
               ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
-              ${CHECK_SATELITES_SERVICE}"
+              ${CHECK_SATELITES_SERVICE} ${PBC}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

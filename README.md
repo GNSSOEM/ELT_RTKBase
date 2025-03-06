@@ -49,3 +49,5 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 ELT_RTKBase is licensed under AGPL 3 (see [LICENSE](./LICENSE) file).
 
 ELT_RTKBase uses [RtkBase](https://github.com/Stefal/rtkbase) (AGPL v3) by Stefal
+ELT_RTKBase uses [PBC](https://github.com/kcdtv/PBC) (GPL v3) by kcdtv
+ELT_RTKBase uses [ntripserver](https://github.com/simeononsecurity/ntripserver) (GPL v2) by German Federal Agency for Cartography and Geodesy (BKG)

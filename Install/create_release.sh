@@ -24,7 +24,7 @@ tar --exclude-vcs \
     99-ELT0x33.rules startELT0x33.sh onoffELT0x33.sh \
     str2str_rtcm_svr.patch str2str_tcp.patch ntrip_led.sh \
     str2str_ntrip_A.patch  Rtcm3Led rtkbase_check_satelites.sh \
-    rtkbase_check_satelites.service
+    rtkbase_check_satelites.service PBC.sh
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
