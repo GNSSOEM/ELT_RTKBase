@@ -436,8 +436,7 @@ delete_pi_user(){
    if [[ -f "${BANNER}" ]]
    then
       rm -r "${BANNER}"
-      if ! ischroot
-      then
+      if ! ischroot && systemctl is-active --quiet sshd; then
          systemctl restart sshd
       fi
    fi
