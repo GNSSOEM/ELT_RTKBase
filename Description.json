@@ -1,5 +1,5 @@
 {
   "version": "177",
   "new_release": "v1.7.7",
-  "comment": "Many fixes litle bugs in NTRIP\r\nAdapted to ELT0233, ELT0633"
+  "comment": "Many fixes litle bugs in NTRIP\r\nAdapted to ELT0233, ELT0633\r\nAdded WPS"
 }
