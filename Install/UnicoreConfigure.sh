@@ -140,8 +140,12 @@ detect_usb() {
              if [[ "$devname" == "bus/"* ]]; then continue; fi
              #echo sysdevpath=${sysdevpath} syspath=${syspath} devname=${devname}
              eval "$(udevadm info -q property --export -p "${syspath}")"
+             #udevadm info -q property -p "${syspath}")"
              #echo devname=${devname} ID_SERIAL=${ID_SERIAL}
              if [[ -z "$ID_SERIAL" ]]; then continue; fi
+             IS_SERIAL=`echo ${DEVLINKS}|grep serial`
+             #echo devname=${devname} ID_SERIAL=${ID_SERIAL} IS_SERIAL=${IS_SERIAL}
+             if [[ -z "$IS_SERIAL" ]]; then continue; fi
              if [[ "$ID_SERIAL" =~ (u-blox|skytraq) ]]; then
                 detected_gnss[0]=$devname
                 detected_gnss[1]=$ID_SERIAL
