@@ -40,6 +40,7 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + System update & upgrade by button in the web-interface
 + Indication of disconnections with the NTRIP server in the web interface.
 + Support for static IP addresses
++ WPS PBC for WiFi
 
 ## The next version is expected to include:
 + NTRIP 2.0
