@@ -369,10 +369,10 @@ info_reboot(){
 }
 
 check_port(){
-   HAVE_TTYUSB=`find /dev/ttyUSB*`
-   HAVE_TTYACM=`find /dev/ttyACM*`
-   HAVE_TTYAMA=`find /dev/ttyAMA*`
-   if [[ "${HAVE_TTYUSB}" == "" ]] && "${HAVE_TTYACM}" == "" ]] && "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
+   HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
+   HAVE_TTYACM=`find /dev/ttyACM* 2>/dev/null`
+   HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
+   if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
       echo ttyUSB*, ttyACM*, ttyAMA* ports and ${RECVPORT} not found. Setup port and try again
       delete_all_extracted
       exit
