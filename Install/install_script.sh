@@ -1219,14 +1219,19 @@ configure_gnss(){
          fi
       done
 
-      for i in `seq 1 3`; do
-         #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-         ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-         ExitCodeCheck $?
-         if [[ $lastcode == 0 ]]; then
-            break;
-         fi
-      done
+      source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
+      if [[ "${com_port}" == "" ]]; then
+         echo 'GNSS receiver is not specified. We can'\''t configure.'
+      else
+         for i in `seq 1 3`; do
+            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+            ExitCodeCheck $?
+            if [[ $lastcode == 0 ]]; then
+               break;
+            fi
+         done
+      fi
 
       restart_rtkbase_if_started
    fi
