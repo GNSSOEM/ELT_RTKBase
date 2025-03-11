@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*"`
+HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 if [[ "${HAVE_ELT0x33}" != "" ]]; then
    for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
        product=`cat ${sysdevpath}`

@@ -20,7 +20,7 @@ case "$2" in
         ;;
 esac
 
-HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*"`
+HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33}
 if [[ "${HAVE_ELT0x33}" == "" ]]; then
    exit

@@ -4,8 +4,8 @@
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
 HAVE_TYPEC=`lsusb | grep "Bus 003" | grep -v "root hub"`
 HAVE_DEB12=`lsb_release -c | grep bookworm`
-HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*"`
-HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*"`
+HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
+HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
 if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
    if [[ "${HAVE_PI4}" != "" ]] && [[ "${HAVE_TYPEC}" != "" ]] && [[ "${HAVE_DEB12}" != "" ]]; then
