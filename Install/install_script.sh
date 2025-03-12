@@ -368,18 +368,6 @@ info_reboot(){
    fi
 }
 
-check_port(){
-   HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
-   HAVE_TTYACM=`find /dev/ttyACM* 2>/dev/null`
-   HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
-   #echo HAVE_TTYUSB=${HAVE_TTYUSB} HAVE_TTYACM=${HAVE_TTYACM} HAVE_TTYAMA=${HAVE_TTYAMA} RECVPORT=${RECVPORT}
-   if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && [[ "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
-      echo ttyUSB*, ttyACM*, ttyAMA* ports and ${RECVPORT} not found. Setup port and try again
-      delete_all_extracted
-      exit
-   fi
-}
-
 install_additional_utilies(){
    echo '################################'
    echo 'INSTALL ADDITIONAL UTILITIES'
@@ -1211,27 +1199,37 @@ configure_gnss(){
       source "${rtkbase_path}/tools/opizero_temp_offset.sh"
       ExitCodeCheck $?
 
-      for i in `seq 1 3`; do
-         #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-         ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
-         ExitCodeCheck $?
-         if [[ $lastcode == 0 ]]; then
-            break;
-         fi
-      done
-
-      source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
-      if [[ "${com_port}" == "" ]]; then
-         echo 'GNSS receiver is not specified. We can'\''t configure.'
+      HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
+      HAVE_TTYACM=`find /dev/ttyACM* 2>/dev/null`
+      HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
+      #echo HAVE_TTYUSB=${HAVE_TTYUSB} HAVE_TTYACM=${HAVE_TTYACM} HAVE_TTYAMA=${HAVE_TTYAMA} RECVPORT=${RECVPORT}
+      if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && [[ "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
+         echo 'No any ports for GNSS receiver. We can'\''t detect and configure.'
+         ExitCodeCheck 1
       else
          for i in `seq 1 3`; do
-            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
+            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
             ExitCodeCheck $?
             if [[ $lastcode == 0 ]]; then
                break;
             fi
          done
+
+         source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
+         if [[ "${com_port}" == "" ]]; then
+            echo 'GNSS receiver is not specified. We can'\''t configure.'
+            ExitCodeCheck 1
+         else
+            for i in `seq 1 3`; do
+               #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+               ExitCodeCheck $?
+               if [[ $lastcode == 0 ]]; then
+                  break;
+               fi
+            done
+         fi
       fi
 
       restart_rtkbase_if_started
@@ -1391,7 +1389,6 @@ unpack_files
 have_phase1 && check_version
 have_rpi && have_phase1 && check_boot_configiration
 have_rpi && have_full && can_reboot && do_reboot
-have_rpi && have_receiver && check_port
 have_phase1 && install_tailscale
 have_phase1 && install_additional_utilies
 have_rpi && have_receiver && delete_pi_user
