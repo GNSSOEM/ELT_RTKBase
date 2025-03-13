@@ -2,7 +2,7 @@
 
 #echo Start ${0} ${1} ${2} ${3}
 if [[ "${1}" == "" ]]; then
-   echo Need device name as parameter. For example \"${0} ttyUSB0 ON 0\"
+   echo Need device name or SETTINGS as parameter. For example \"${0} ttyUSB0 ON 0\", \"${0} SETTINGS OFF 1\"
    exit
 fi
 
