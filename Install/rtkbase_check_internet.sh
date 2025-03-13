@@ -36,7 +36,7 @@ fi
 
 if [[ "${USE_FTDI}" == "" ]]; then
    echo No PI4 or no Debian 12 or haven\'t USB device in type-C or no ELT0x33 or no ELT0733
-   echo HAVE_PI4=${HAVE_PI4} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12} HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
+   #echo HAVE_PI4=${HAVE_PI4} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12} HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
    systemctl stop rtkbase_check_internet.service
    exit 0
 fi
