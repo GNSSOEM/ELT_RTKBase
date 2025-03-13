@@ -69,6 +69,7 @@ START_ELT0x33=startELT0x33.sh
 ONOFF_ELT0x33=onoffELT0x33.sh
 NTRIP_LED=ntrip_led.sh
 PBC=PBC.sh
+SEPTENTRIO_LINK=70-usb-net-septentrio.link
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -1043,6 +1044,11 @@ configure_for_unicore(){
    mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
    ExitCodeCheck $?
 
+   LINK_RULES=/usr/lib/systemd/network/
+   #echo mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
+   mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
+   ExitCodeCheck $?
+
    #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
    if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
       #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
@@ -1338,7 +1344,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${ELT0x33_RULES} ${START_ELT0x33} ${ONOFF_ELT0x33} \
               ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH} ${NTRIP_LED} \
               ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
-              ${CHECK_SATELITES_SERVICE} ${PBC}"
+              ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

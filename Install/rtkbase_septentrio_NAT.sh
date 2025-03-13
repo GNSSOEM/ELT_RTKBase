@@ -14,7 +14,7 @@ SEPTENTRIO_NET="${SEPTENTRIO_IP}/32"
 SEPTENTRIO_HOST="192.168.3.2/24"
 
 nm-online -s >/dev/null
-UUID=`nmcli --fields UUID,DEVICE con show | grep usb0 | awk -F ' ' '{print $1}'`
+UUID=`nmcli --fields UUID,DEVICE con show | grep septentrio | awk -F ' ' '{print $1}'`
 if [[ "${UUID}" != "" ]]; then
    old_ip=`nmcli connection show uuid "${UUID}" | grep "ipv4.addresses:" | awk -F ' ' '{print $2}'`
    if [[ "${old_ip}" != "${SEPTENTRIO_HOST}" ]]; then
