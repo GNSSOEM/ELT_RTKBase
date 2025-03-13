@@ -39,6 +39,7 @@ then
    source <( grep '=' ${NEWCONF} )
    ExitCodeCheck $?
 else
+   nm-online -s >/dev/null
    HAVE_WIFI=`nmcli connection show | grep wifi`
    if [[ -z "${HAVE_WIFI}" ]]; then
       echo Start WPS PBC
@@ -58,6 +59,7 @@ fi
 
 if [[ -n "${COUNTRY}" ]]
 then
+   nm-online -s >/dev/null
    #echo raspi-config nonint do_wifi_country "${COUNTRY}"
    raspi-config nonint do_wifi_country "${COUNTRY}"
    ExitCodeCheck $?
@@ -76,6 +78,7 @@ then
       HIDkey=-h
    fi
    #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
+   nm-online -s >/dev/null
 
    if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
       if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
@@ -191,6 +194,7 @@ ChangeConnection(){
    gate="$3"
    dns="$4"
    conname="$5"
+   nm-online -s >/dev/null
    #echo device=${device} ip=${ip} gate=${gate} dns=${dns} conname=${conname}
    #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
    UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
@@ -314,6 +318,7 @@ if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; t
 fi
 
 if [[ -z "${SSID}" ]];then
+   nm-online -s >/dev/null
    HAVE_WIFI=`nmcli connection show | grep wifi`
    if [[ -z "${HAVE_WIFI}" ]]; then
       echo Start WPS PBC

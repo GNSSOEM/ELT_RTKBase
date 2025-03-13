@@ -44,6 +44,8 @@ fi
 if test -x ${HOME}/update/install.sh
 then
 
+  nm-online -s 2>&1 | tee -a ${HOME}/install.log >/dev/null
+  nm-online 2>&1 | tee -a ${HOME}/install.log >/dev/null
   for i in `seq 1 10`
   do
      if sudo ntpdate -b -t 5 pool.ntp.org 2>&1 | tee -a ${HOME}/install.log >/dev/null
