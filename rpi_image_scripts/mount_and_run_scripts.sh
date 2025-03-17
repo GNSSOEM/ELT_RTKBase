@@ -71,6 +71,7 @@ LANG=C unshare --uts chroot "${DIR}" rm -f /etc/machine-id
 LANG=C unshare --uts chroot "${DIR}" touch /etc/machine-id
 LANG=C unshare --uts chroot "${DIR}" chown root:root /etc/machine-id
 LANG=C unshare --uts chroot "${DIR}" chmod 444 /etc/machine-id
+LANG=C unshare --uts chroot "${DIR}" ln -sf /etc/machine-id /var/lib/dbus/machine-id
 
 # Fill the free space with zeroes, just to make compressed image smaller
 dd if=/dev/zero bs=1M of="${DIR}/zeroes.bin" >/dev/null 2>&1 || true
