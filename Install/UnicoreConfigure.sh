@@ -289,16 +289,19 @@ detect_configure() {
 }
 
 stoping_main() {
-   str2str_active=$(systemctl is-active str2str_tcp)
-   #echo str2str_active=${str2str_active}
+   for i in `seq 1 3`; do
+       str2str_active=$(systemctl is-active str2str_tcp)
+       #echo str2str_active=${str2str_active}
 
-   if [ "${str2str_active}" = "active" ] || [ "${str2str_active}" = "activating" ]
-   then
-      #echo systemctl stop str2str_tcp \&\& sleep 2
-      systemctl stop str2str_tcp && sleep 2
-   fi
-   #systemctl status str2str_tcp.service
-   #ps -Af | grep rtkrcv
+       if [[ "${str2str_active}" == "active" ]] || [[ "${str2str_active}" == "activating" ]] || [[ "${str2str_active}" == "reloading" ]] || [[ "${str2str_active}" == "refreshing" ]]; then
+          #echo systemctl stop str2str_tcp
+          systemctl stop str2str_tcp
+       elif [[ "${str2str_active}" == "deactivating" ]]; then
+          sleep 1
+       else
+          break
+       fi
+   done
 }
 
 detect_gnss() {
@@ -407,7 +410,7 @@ configure_bynav(){
           RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
           #echo RECVNAME=${RECVNAME}
           if [[ "${RECVNAME}" =~ ^M ]]; then
-             break;
+             break
           fi
        fi
     done
@@ -416,7 +419,7 @@ configure_bynav(){
         RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
         #echo RECVVER=${RECVVER}
         if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
-           break;
+           break
         fi
     done
 
