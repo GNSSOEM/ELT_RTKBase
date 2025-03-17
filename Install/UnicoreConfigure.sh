@@ -398,16 +398,28 @@ configure_bynav(){
     RECVDEV=${2}
     RECVSPEED=${3}
 
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
-
     RECVNAME=
-    if [[ "${RECVINFO}" != "" ]]
-    then
-       #echo RECVINFO=${RECVINFO}
-       RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
-    fi
-    RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
-    #echo RECVVER=${RECVVER}
+    for i in `seq 1 3`; do
+       RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
+
+       if [[ "${RECVINFO}" != "" ]]; then
+          #echo RECVINFO=${RECVINFO}
+          RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
+          #echo RECVNAME=${RECVNAME}
+          if [[ "${RECVNAME}" =~ ^M ]]; then
+             break;
+          fi
+       fi
+    done
+
+    for i in `seq 1 3`; do
+        RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
+        #echo RECVVER=${RECVVER}
+        if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
+           break;
+        fi
+    done
+
     FIRMWARE=`echo ${RECVVER} | awk -F ',' '{print $2}'`
     #echo FIRMWARE=${FIRMWARE}
     if [[ "${RECVNAME}" == "" ]] || [[ "${FIRMWARE}" == "" ]]; then
