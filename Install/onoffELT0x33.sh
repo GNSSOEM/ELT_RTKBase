@@ -3,14 +3,15 @@
 #echo Start ${0} ${1} ${2} ${3}
 if [[ "${1}" == "" ]]; then
    echo Need device name or SETTINGS as parameter. For example \"${0} ttyUSB0 ON 0\", \"${0} SETTINGS OFF 1\"
-   exit
+   exit 0
 fi
 
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
 if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
-   exit
+   #echo no ELT0x33 and no Mosaic
+   exit 0
 fi
 
 BASEDIR="$(dirname $(dirname "$0"))"
@@ -18,8 +19,8 @@ if [[ "${1}" == "SETTINGS" ]]; then
    source <( grep '^com_port=' "${BASEDIR}"/settings.conf ) #import settings
    #echo BASEDIR=${BASEDIR} com_port=${com_port}
    if [[ "${com_port}" == "" ]]; then
-      echo com_port NOT read from "${BASEDIR}"/settings.conf
-      exit
+      echo com_port NOT read from "${BASEDIR}"/settings.conf or not setup in the settings
+      exit 0
    fi
 else
    com_port="${1}"
@@ -27,7 +28,7 @@ fi
 
 if [ ! -c /dev/"${com_port}" ]; then
    echo /dev/"${com_port}" NOT exists
-   exit
+   exit 0
 fi
 
 if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
@@ -36,7 +37,8 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
    elif [[ "${3}" == "1" ]]; then
       pin=GP1 # YELLOW - Internet
    else
-      exit
+      #echo no pin <${3}> in Mosaic
+      exit 0
    fi
    if [[ "${2}" == "ON" ]]; then
       value=LevelHigh
@@ -52,7 +54,8 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
    #echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
    RESULT=`"${BASEDIR}"/NmeaConf "${device}" "setGPIOFunctionality,${pin},Output,none,${value}" QUIET`
    if [[ "$?" != "0" ]]; then
-      echo ${RESULT}
+      echo exitcode=$?
+      echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
    fi
 else
   for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name ${com_port}); do
@@ -79,7 +82,7 @@ else
                fi
                #echo gpioset gpiochip${CHIP} ${pin}=${value} \# for ${com_port}
                gpioset gpiochip${CHIP} ${pin}=${value}
-               exit
+               exit 0
             fi
          fi
       done

@@ -21,8 +21,9 @@ case "$2" in
 esac
 
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
-#echo HAVE_ELT0x33=${HAVE_ELT0x33}
-if [[ "${HAVE_ELT0x33}" == "" ]]; then
+HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
+#echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
+if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
    exit
 fi
 
