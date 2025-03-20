@@ -15,6 +15,27 @@ ExitCodeCheck(){
   fi
 }
 
+WPS_FLAG=/usr/local/rtkbase/WPS.flg
+
+Ciao(){
+  #echo Trap now
+  rm -f ${WPS_FLAG}
+}
+
+WPS() {
+  nm-online -s >/dev/null
+  HAVE_INTERNET=`nmcli networking connectivity check`
+  #echo HAVE_INTERNET=${HAVE_INTERNET}
+  if [[ "${HAVE_INTERNET}" != "full" ]]; then
+     echo Start WPS PBC
+     trap Ciao EXIT HUP INT QUIT ABRT KILL TERM
+     echo Start WPS PBC >${WPS_FLAG}
+     ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
+     rm -f ${WPS_FLAG}
+  fi
+  ExitCodeCheck 0
+}
+
 WHOAMI=`whoami`
 if [[ ${WHOAMI} != "root" ]]
 then
@@ -39,13 +60,7 @@ then
    source <( grep '=' ${NEWCONF} )
    ExitCodeCheck $?
 else
-   nm-online -s >/dev/null
-   HAVE_WIFI=`nmcli connection show | grep wifi`
-   if [[ -z "${HAVE_WIFI}" ]]; then
-      echo Start WPS PBC
-      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
-   fi
-   ExitCodeCheck 0
+   WPS
    exit 0
 fi
 
@@ -98,8 +113,8 @@ then
       ExitCodeCheck $?
       #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
       #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
-      #echo systemctl restart NetworkManager
-      systemctl restart NetworkManager
+      #echo nmcli connection reload
+      nmcli connection reload
       ExitCodeCheck $?
    else
       #https://www.raspberrypi.com/documentation/computers/configuration.html
@@ -317,15 +332,7 @@ if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; t
    ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
 fi
 
-if [[ -z "${SSID}" ]];then
-   nm-online -s >/dev/null
-   HAVE_WIFI=`nmcli connection show | grep wifi`
-   if [[ -z "${HAVE_WIFI}" ]]; then
-      echo Start WPS PBC
-      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
-      WORK=Y
-   fi
-fi
+WPS
 
 if [[ -z "${WORK}" ]]
 then

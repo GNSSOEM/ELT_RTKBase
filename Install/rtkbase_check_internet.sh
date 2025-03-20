@@ -63,37 +63,57 @@ fi
 }
 
 FLAG=/usr/local/rtkbase/NetworkChange.flg
+WPS_FLAG=/usr/local/rtkbase/WPS.flg
 state=DOWN
+wasWPS=
 set_gpio 0 op dl
 
 while : ; do
-   #echo ping -4 -c 1 -W 1 -q 8.8.8.8 \>/dev/null 2\>\&1
-   ping -4 -c 1 -W 1 -q 8.8.8.8 >/dev/null 2>&1
-   lastcode=$?
-   if [[ ${lastcode} == 0 ]]; then
-      newstate=UP
+
+   if [[ -f ${WPS_FLAG} ]]; then
+      if [[ "${wasWPS}" == "" ]]; then
+         echo WPS started
+         wasWPS=YES
+      fi
+      set_gpio 0 dl
+      sleep 0.5
+      set_gpio 1 dh
+      sleep 0.5
+   elif [[ "${wasWPS}" != "" ]]; then
+      echo WPS finished
+      wasWPS=
    else
-      newstate=DOWN
-   fi
-
-   if [[ "${newstate}" != "${state}" ]]; then
-      if [ "${newstate}" == "UP" ]; then
-         echo Internet UP
-         set_gpio 1 dh
+      #echo ping -4 -c 1 -W 1 -q 8.8.8.8 \>/dev/null 2\>\&1
+      ping -4 -c 1 -W 1 -q 8.8.8.8 >/dev/null 2>&1
+      lastcode=$?
+      if [[ ${lastcode} == 0 ]]; then
+         newstate=UP
       else
-         echo Internet DOWN
-         set_gpio 0 dl
+         newstate=DOWN
       fi
-      state=${newstate}
-   fi
 
-   for i in `seq 1 5`; do
-      if [[ -f ${FLAG} ]]; then
-         cat ${FLAG}
-         rm -f ${FLAG}
-         break
+      if [[ "${newstate}" != "${state}" ]]; then
+         if [ "${newstate}" == "UP" ]; then
+            echo Internet UP
+            set_gpio 1 dh
+         else
+            echo Internet DOWN
+            set_gpio 0 dl
+         fi
+         state=${newstate}
       fi
-      sleep 1
-   done
+
+      for i in `seq 1 5`; do
+         if [[ -f ${FLAG} ]]; then
+            cat ${FLAG}
+            rm -f ${FLAG}
+            break
+         fi
+         if [[ -f ${WPS_FLAG} ]]; then
+            break
+         fi
+         sleep 1
+      done
+   fi
 done
 exit 1
