@@ -52,25 +52,20 @@ index db7a656..3089bb1 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -56,6 +66,22 @@ mkdir -p ${logdir}
+@@ -56,6 +66,17 @@ mkdir -p ${logdir}
  
    case "$2" in
      out_tcp)
 +    #echo receiver="${receiver}" position="${position}"
-+    # For Unicore reciever setup base position to receiver (if it's not zero)
-+    if [[ "${receiver}" =~ Unicore* ]] || [[ "${receiver}" =~ Bynav ]] || [[ "${receiver}" =~ Septentrio ]]
-+    then
-+       #echo ${BASEDIR}/UnicoreSetBasePos.sh ${com_port}:${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}"
-+       ${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}"
-+       #${BASEDIR}/UnicoreSetBasePos.sh ${com_port} ${com_port_settings%%:*} "${position}" "${receiver}" "${antenna_info}">>${BASEDIR}/debug.log 2>&1
-+       exitcode=$?
-+       #echo UnicoreSetBasePos exitcode=${exitcode} >>${BASEDIR}/debug.log 2>&1
-+       #echo ============================================== >>${BASEDIR}/debug.log 2>&1
-+       if [[ ${exitcode} != 0 ]]
-+       then
-+          echo run_cast exit with exitcode ${exitcode}
-+          exit ${exitcode}
-+       fi
++    #echo ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
++    ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
++    #${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}">>${BASEDIR}/debug.log 2>&1
++    exitcode=$?
++    #echo UnicoreSetBasePos exitcode=${exitcode} >>${BASEDIR}/debug.log 2>&1
++    #echo ============================================== >>${BASEDIR}/debug.log 2>&1
++    if [[ ${exitcode} != 0 ]]; then
++       echo run_cast exit with exitcode ${exitcode}
++       exit ${exitcode}
 +    fi
      #echo ${cast} -in ${!1} -out $out_tcp
      # What is this ${!1} ? It's variable indirection

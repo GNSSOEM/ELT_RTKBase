@@ -6,16 +6,35 @@ OLDCONF=${BASEDIR}/receiver.conf
 BADPOSFILE=${BASEDIR}/GNSS_coordinate_error.flg
 #DEBUGLOG="${BASEDIR}/debug.log"
 ZEROPOS="0.00 0.00 0.00"
-com_port=${1}
-com_speed=${2}
-position=${3}
-receiver=${4}
+com_port="${1}"
+com_speed="${2}"
+position="${3}"
+receiver="${4}"
 antenna_info="${5}"
 #echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver} antenna_info="${antenna_info}"
+
+if [[ "${com_port}" == "" ]]; then
+   echo com port is EMPTY!
+   exit 1
+fi
+
+if [[ "${receiver}" == "" ]]; then
+   echo Receiver type is EMPTY!
+   exit 1
+fi
+
+if [[ "${receiver}" == "unknown" ]]; then
+   echo Receiver type is UNKNOWN!
+   exit 1
+fi
 
 if [[ ! -c /dev/${com_port} ]]; then
    echo /dev/${com_port} NOT EXISTS!
    exit 1
+fi
+
+if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
+   exit 0
 fi
 
 lastcode=N
