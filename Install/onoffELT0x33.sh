@@ -82,6 +82,10 @@ else
                fi
                #echo gpioset gpiochip${CHIP} ${pin}=${value} \# for ${com_port}
                gpioset gpiochip${CHIP} ${pin}=${value}
+               if [[ "${pin}=${value}" == "3=1" ]]; then
+                  #echo sleep 0.1
+                  sleep 0.1
+               fi
                exit 0
             fi
          fi
