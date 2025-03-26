@@ -309,14 +309,14 @@ fi
 #echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS}
 if [[ ${CHECKPOS} == Y ]]
 then
-   #echo ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
-   UNICORE_ANSWER=`${BASEDIR}/NmeaConf ${DEVICE} CONFIG QUIET`
+   #echo UNICORE_ANSWER=\`${BASEDIR}/NmeaConf ${DEVICE} CONFIG\`
+   UNICORE_ANSWER=`${BASEDIR}/NmeaConf ${DEVICE} CONFIG`
    ExitCodeCheck $?
    #echo UNICORE_ANSWER=${UNICORE_ANSWER}
    POSITION_INCORRECT=`echo ${UNICORE_ANSWER} | grep -c "not correct"`
-   #echo POSITION_INCORRECT=${POSITION_INCORRECT}
-   if [[ ${POSITION_INCORRECT} == "0" ]]
-   then
+   HAVE_RTCM3=`echo ${UNICORE_ANSWER} | grep -c "RTCM3:"`
+   #echo POSITION_INCORRECT=${POSITION_INCORRECT} HAVE_RTCM3=${HAVE_RTCM3}
+   if [[ ${POSITION_INCORRECT} == "0" ]] && [[ ${HAVE_RTCM3} != "0" ]]; then
       recv_position="${position}"
       #echo recv_position=${recv_position}
       BADPOS=N
