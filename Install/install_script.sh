@@ -1251,18 +1251,21 @@ start_rtkbase_services(){
   ExitCodeCheck $?
   #echo receiver=${receiver}
 
+  DHCP_enabled=$(systemctl is-enabled "${DHCP_SERVICE}")
+  [[ "${DHCP_enabled}" != "disabled" ]] && [[ "${DHCP_enabled}" != "masked" ]] && systemctl disable "${DHCP_SERVICE}"
+
   GNSS_WEB_PROXY=rtkbase_gnss_web_proxy.service
   if [[ "${receiver}" =~ Septentrio ]]; then
-     #echo systemctl enable --now "${GNSS_WEB_PROXY}"
-     systemctl enable --now "${GNSS_WEB_PROXY}"
-     ExitCodeCheck $?
-
-     #echo systemctl enable --now "${DHCP_SERVICE}"
-     systemctl enable --now "${DHCP_SERVICE}"
+     #echo systemctl start "${DHCP_SERVICE}"
+     systemctl start "${DHCP_SERVICE}"
      ExitCodeCheck $?
 
      #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
+     ExitCodeCheck $?
+
+     #echo systemctl enable --now "${GNSS_WEB_PROXY}"
+     systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
   fi
 
