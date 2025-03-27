@@ -161,7 +161,7 @@ index bb39670..c6f47b8 100755
          else:
              print("wrong update file")
          return ('', 204)
-@@ -503,20 +601,30 @@ def diagnostic():
+@@ -503,20 +601,32 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -175,9 +175,11 @@ index bb39670..c6f47b8 100755
 +    rtkbase_septentrio_NAT_service["active"] = ServiceController(rtkbase_septentrio_NAT_service["service_unit"]).isActive()
 +    rtkbase_DHCP_service = {'service_unit' : 'rtkbase_DHCP.service', 'name' : 'RTKBase DHCP server for Septentrio'}
 +    rtkbase_DHCP_service["active"] = ServiceController(rtkbase_DHCP_service["service_unit"]).isActive()
++    NetworkManager_service = {'service_unit' : 'NetworkManager.service', 'name' : ' Network Manager'}
++    NetworkManager_service["active"] = ServiceController(NetworkManager_service["service_unit"]).isActive()
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service, NetworkManager_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,
