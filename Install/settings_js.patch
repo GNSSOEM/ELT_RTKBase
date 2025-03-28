@@ -216,7 +216,30 @@ index 9f48006..c8d7f30 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +773,28 @@ $(document).ready(function () {
+@@ -714,16 +752,18 @@ $(document).ready(function () {
+         $(this).prop("disabled", true);
+         $("#reboot-cancel-button").prop("disabled", true);
+         socket.emit("reboot device");
+-        reboot_countdown(90, 0);
++        reboot_countdown(90, 0, 0);
+     })
+ 
+-    function reboot_countdown(remaining, count) {
++    function reboot_countdown(remaining, count, count2) {
+         if(remaining === 0)
+             location.reload();
+         if (count > 15 && socket.connected)
+-            location.reload();
++           count2=count2+1;
++        if (count2 > 20)
++           location.reload();
+         document.getElementById('countdown').innerHTML = remaining;
+-        setTimeout(function(){ reboot_countdown(remaining - 1, count + 1); }, 1000);
++        setTimeout(function(){ reboot_countdown(remaining - 1, count + 1, count2); }, 1000);
+     };
+     $("#shutdown-button").on("click", function() {
+         $("#shutdownModal").modal();
+@@ -735,5 +775,28 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
