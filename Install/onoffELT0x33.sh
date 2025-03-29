@@ -9,9 +9,18 @@ fi
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
-if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
-   #echo no ELT0x33 and no Mosaic
-   exit 0
+if [[ "${HAVE_ELT0x33}" == "" ]]; then
+   if [[ "${HAVE_MOSAIC}" == "" ]]; then
+      echo no ELT0x33 and no Mosaic
+      exit 0
+   fi
+   HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
+   HAVE_DEB12=`lsb_release -c | grep bookworm`
+   #echo HAVE_ZERO=${HAVE_ZERO} HAVE_DEB12=${HAVE_DEB12}
+   if [[ "${HAVE_ZERO}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
+      #echo Mosaic and no Pi Zero 2 W or no Debian 12
+      exit 0
+   fi
 fi
 
 BASEDIR="$(dirname $(dirname "$0"))"
@@ -45,18 +54,30 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
    else
       value=LevelLow
    fi
-   device=`readlink -f /dev/${com_port}`
-   if [[ "${device}" == "/dev/ttyACM0" ]]; then
-      device="/dev/ttyACM1"
-   elif [[ "${device}" == "/dev/ttyACM1" ]]; then
-      device="/dev/ttyACM0"
+   if [[ "${com_port}" == "ttyGNSS" ]] && [[ -c /dev/ttyGNSS_CTRL ]]; then
+      device=`readlink -f /dev/ttyGNSS_CTRL`
+   else
+      origdevice=`readlink -f /dev/${com_port}`
+      if [[ "${origdevice}" == "/dev/ttyACM0" ]]; then
+         device="/dev/ttyACM1"
+      elif [[ "${origdevice}" == "/dev/ttyACM1" ]]; then
+         device="/dev/ttyACM0"
+      else
+         device="${origdevice}"
+      fi
    fi
-   #echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
-   RESULT=`"${BASEDIR}"/NmeaConf "${device}" "setGPIOFunctionality,${pin},Output,none,${value}" QUIET`
-   if [[ "$?" != "0" ]]; then
-      echo exitcode=$?
-      echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
-   fi
+   #echo com_port=${com_port} origdevice=${origdevice} device=${device}
+   for i in `seq 1 5`; do
+       #echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
+       RESULT=`"${BASEDIR}"/NmeaConf "${device}" "setGPIOFunctionality,${pin},Output,none,${value}" QUIET`
+       exitcode=$?
+       if [[ "${exitcode}" == "0" ]] || [[ ${exitcode} > 4 ]]; then
+          break
+       else
+          echo ${exitcode}:${RESULT}
+          #sudo lsof ${device}
+       fi
+   done
 else
   for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name ${com_port}); do
       syspath="${sysdevpath%/${com_port}}"
