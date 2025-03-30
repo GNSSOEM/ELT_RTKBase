@@ -28,9 +28,20 @@ if [[ "${receiver}" == "unknown" ]]; then
    exit 1
 fi
 
+for i in `seq 1 5`; do
+   if [[ -c /dev/${com_port} ]]; then
+      break
+   else
+      #echo $i:/dev/${com_port} NOT EXISTS!
+      WasNotExists=YES
+      sleep 1
+   fi
+done
+
 if [[ ! -c /dev/${com_port} ]]; then
    echo /dev/${com_port} NOT EXISTS!
    exit 1
+#elif [[ -n ${WasNotExists} ]]; then
 fi
 
 if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
@@ -442,23 +453,27 @@ then
    echo recv_com=${recv_com}>>${OLDCONF}
 fi
 
-if [[ ${lastcode} == N ]]
-then
+if [[ ${lastcode} == N ]]; then
    if [[ "${receiver}" =~ Unicore ]]
    then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
       ExitCodeCheck $?
-   elif [[ "${receiver}" =~ Bynav ]]
-   then
+   elif [[ "${receiver}" =~ Bynav ]]; then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"LOG REFSTATION\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "LOG REFSTATION" QUIET
       ExitCodeCheck $?
-   elif [[ "${receiver}" =~ Septentrio ]]
-   then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
-      ExitCodeCheck $?
+   elif [[ "${receiver}" =~ Septentrio ]]; then
+      for i in `seq 1 5`; do
+         #echo ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
+         ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
+         lastcode=$?
+         if [[ "${lastcode}" != "4" ]] || [[ -z ${WasNotExists} ]]; then
+            break
+         fi
+         #sudo lsof /dev/${com_port}
+      done
+      ExitCodeCheck ${lastcode}
    fi
 fi
 
