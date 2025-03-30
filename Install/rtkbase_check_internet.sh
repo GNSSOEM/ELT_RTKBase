@@ -108,8 +108,10 @@ while : ; do
       lastcode=$?
       if [[ "${lastcode}" == "0" ]]; then
          newstate=UP
+         CNT=5
       else
          newstate=DOWN
+         CNT=1
       fi
 
       if [[ "${newstate}" != "${showstate}" ]]; then
@@ -132,7 +134,7 @@ while : ; do
          fi
       fi
 
-      for i in `seq 1 5`; do
+      for i in `seq 1 ${CNT}`; do
          if [[ -f ${FLAG} ]]; then
             cat ${FLAG}
             rm -f ${FLAG}
