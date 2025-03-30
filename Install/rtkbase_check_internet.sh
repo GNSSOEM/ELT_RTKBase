@@ -2,16 +2,15 @@
 
 #We work only on Pi4 with USB devices in Type C.
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
+HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
 HAVE_TYPEC=`lsusb | grep "Bus 003" | grep -v "root hub"`
 HAVE_DEB12=`lsb_release -c | grep bookworm`
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
-if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
-   if [[ "${HAVE_PI4}" != "" ]] && [[ "${HAVE_TYPEC}" != "" ]] && [[ "${HAVE_DEB12}" != "" ]]; then
-      USE_FTDI=N
-      GPIO=16
-   fi
+if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_PI4}" != "" ]] && [[ "${HAVE_TYPEC}" != "" ]] && [[ "${HAVE_DEB12}" != "" ]]; then
+   USE_FTDI=N
+   GPIO=16
 elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
    for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
        product=`cat ${sysdevpath}`
@@ -29,14 +28,16 @@ elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
          fi
        fi
    done
-elif [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
+elif [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${HAVE_ZERO}" != "" ]]; then
    USE_FTDI=M
    GPIO=1
+   MOSAIC=`readlink -f /dev/ttyGNSS_CTRL`
+   stty -F ${MOSAIC} 115200
 fi
 
 if [[ "${USE_FTDI}" == "" ]]; then
    echo No PI4 or no Debian 12 or haven\'t USB device in type-C or no ELT0x33 or no ELT0733
-   #echo HAVE_PI4=${HAVE_PI4} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12} HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
+   #echo HAVE_PI4=${HAVE_PI4} HAVE_ZERO=${HAVE_ZERO} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12} HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
    systemctl stop rtkbase_check_internet.service
    exit 0
 fi
@@ -52,55 +53,83 @@ elif [[ "${USE_FTDI}" = "M" ]]; then
    else
       value=LevelLow
    fi
-   #echo RESULT=\`/usr/local/rtkbase/rtkbase/NmeaConf /dev/ttyACM1 \"setGPIOFunctionality,GP${CHIP},Output,none,${value}\" QUIET\`
-   RESULT=`/usr/local/rtkbase/rtkbase/NmeaConf /dev/ttyACM1 "setGPIOFunctionality,GP${GPIO},Output,none,${value}" QUIET`
-   if [[ "$?" != "0" ]]; then
-      echo ${RESULT}
-   fi
+   for i in `seq 1 5`; do
+      #echo RESULT=\`/usr/local/rtkbase/rtkbase/NmeaConf ${MOSAIC} \"setGPIOFunctionality,GP${CHIP},Output,none,${value}\" QUIET\`
+      RESULT=`/usr/local/rtkbase/rtkbase/NmeaConf ${MOSAIC} "setGPIOFunctionality,GP${GPIO},Output,none,${value}" QUIET`
+      lastcode=$?
+      if [[ "${lastcode}" != "0" ]]; then
+         echo ${lastcode}:${RESULT}
+         #sudo lsof ${MOSAIC}
+         if [[ "${lastcode}" != "4" ]]; then
+            break
+         fi
+      else
+         #echo set $1 to GP${GPIO}
+         break
+      fi
+   done
+   return ${lastcode}
 else
-   pinctrl set ${GPIO} ${2} ${3}
+   if [[ "${1}" == "1" ]]; then
+      pinctrl set ${GPIO} op dh
+   else
+      pinctrl set ${GPIO} op dl
+   fi
 fi
 }
 
 FLAG=/usr/local/rtkbase/NetworkChange.flg
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
-state=DOWN
 wasWPS=
-set_gpio 0 op dl
 
 while : ; do
+
+   if [[ -f ${FLAG} ]]; then
+      cat ${FLAG}
+      rm -f ${FLAG}
+   fi
 
    if [[ -f ${WPS_FLAG} ]]; then
       if [[ "${wasWPS}" == "" ]]; then
          echo WPS started
          wasWPS=YES
       fi
-      set_gpio 0 dl
+      set_gpio 0
       sleep 0.5
-      set_gpio 1 dh
+      set_gpio 1
       sleep 0.5
    elif [[ "${wasWPS}" != "" ]]; then
       echo WPS finished
       wasWPS=
    else
+
       #echo ping -4 -c 1 -W 1 -q 8.8.8.8 \>/dev/null 2\>\&1
       ping -4 -c 1 -W 1 -q 8.8.8.8 >/dev/null 2>&1
       lastcode=$?
-      if [[ ${lastcode} == 0 ]]; then
+      if [[ "${lastcode}" == "0" ]]; then
          newstate=UP
       else
          newstate=DOWN
       fi
 
+      if [[ "${newstate}" != "${showstate}" ]]; then
+         echo Internet ${newstate}
+         showstate=${newstate}
+      fi
+
       if [[ "${newstate}" != "${state}" ]]; then
          if [ "${newstate}" == "UP" ]; then
-            echo Internet UP
-            set_gpio 1 dh
+            set_gpio 1
          else
-            echo Internet DOWN
-            set_gpio 0 dl
+            set_gpio 0
          fi
-         state=${newstate}
+         if [[ "$?" == "0" ]]; then
+            state=${newstate}
+         else
+            #echo \$\?=$?
+            sleep 1
+            continue
+         fi
       fi
 
       for i in `seq 1 5`; do
