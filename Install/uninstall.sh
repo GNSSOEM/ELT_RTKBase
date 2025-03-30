@@ -62,6 +62,8 @@ then
   deluser ${RTKBASE_USER}
 fi
 
+rm -f /usr/lib/systemd/network/70-usb-net-septentrio.link
+rm -f /lib/udev/rules.d/77-mm-septentio-port-types.rules
 rm -f /usr/lib/NetworkManager/dispatcher.d/rtkbase_network_event.sh
 rm -rf ${RTKBASE_PATH}
 rm -f /etc/sudoers.d/${RTKBASE_USER}

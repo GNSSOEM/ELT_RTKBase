@@ -71,6 +71,8 @@ NTRIP_LED=ntrip_led.sh
 PBC=PBC.sh
 SEPTENTRIO_LINK=70-usb-net-septentrio.link
 SEPTENTRIO_MODEM=77-mm-septentio-port-types.rules
+LINK_RULES=/usr/lib/systemd/network
+MODEM_RULES=/lib/udev/rules.d
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -907,6 +909,39 @@ restart_rtkbase_if_started(){
    fi
 }
 
+configure_for_septentrio(){
+   if [[ ! -f ${LINK_RULES}/${SEPTENTRIO_LINK} ]]; then
+      NEW_MOSAIC_ETH=septentrio
+      OLD_MOSAIC_ETH=$(ip route | grep 192.168.3.0 | awk -F ' ' '{print $3}')
+      #echo OLD_MOSAIC_ETH=${OLD_MOSAIC_ETH} NEW_MOSAIC_ETH=${NEW_MOSAIC_ETH}
+      if [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != ${NEW_MOSAIC_ETH} ]]; then
+         echo '################################'
+         echo 'CONFIGURE USB-ETH FOR SEPTENTRIO'
+         echo '################################'
+         UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_MOSAIC_ETH}" | awk -F ' ' '{print $1}'`
+         if [[ "${UUID}" != "" ]]; then
+            #echo nmcli connection delete uuid "${UUID}"
+            nmcli connection delete uuid "${UUID}"
+            ExitCodeCheck $?
+         fi
+         #echo ip link set ${OLD_MOSAIC_ETH} down
+         ip link set ${OLD_MOSAIC_ETH} down
+         ExitCodeCheck $?
+         #echo ip link set ${OLD_MOSAIC_ETH} name ${NEW_MOSAIC_ETH}
+         ip link set ${OLD_MOSAIC_ETH} name ${NEW_MOSAIC_ETH}
+         ExitCodeCheck $?
+         #echo ip link set ${NEW_MOSAIC_ETH} up
+         ip link set ${NEW_MOSAIC_ETH} up
+         ExitCodeCheck $?
+         #echo nmcli device up ${NEW_MOSAIC_ETH}
+         nmcli device up ${NEW_MOSAIC_ETH}
+         ExitCodeCheck $?
+         #nmcli connection up ifname ${NEW_MOSAIC_ETH}
+         echo exitcode=$exitcode
+      fi
+   fi
+}
+
 configure_for_unicore(){
    echo '################################'
    echo 'CONFIGURE FOR UNICORE'
@@ -1045,12 +1080,10 @@ configure_for_unicore(){
    mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
    ExitCodeCheck $?
 
-   LINK_RULES=/usr/lib/systemd/network/
    #echo mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
    mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
    ExitCodeCheck $?
 
-   MODEM_RULES=/lib/udev/rules.d/
    #echo mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
    mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
    ExitCodeCheck $?
@@ -1418,6 +1451,7 @@ cd ${RTKBASE_PATH}
 have_phase1 && install_rtklib
 have_phase1 && copy_rtkbase_install_file
 have_phase1 && rtkbase_install
+! ischroot && configure_for_septentrio
 have_phase1 && configure_for_unicore
 have_phase1 && configure_settings
 have_receiver && configure_gnss
