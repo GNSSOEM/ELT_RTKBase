@@ -11,7 +11,7 @@ HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}
 if [[ "${HAVE_ELT0x33}" == "" ]]; then
    if [[ "${HAVE_MOSAIC}" == "" ]]; then
-      echo no ELT0x33 and no Mosaic
+      #echo no ELT0x33 and no Mosaic
       exit 0
    fi
    HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
