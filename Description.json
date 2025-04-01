@@ -1,5 +1,5 @@
 {
   "version": "179",
   "new_release": "v1.7.9",
-  "comment": "Many fixes litle bugs in NTRIP\r\nAdapted to ELT0233, ELT0633, ELT0733\r\nAdded WPS"
+  "comment": "Fix bug, when Erhernet without any WiFi\r\nFix some bigs for Mosaic\r\nMany fixes litle bugs in NTRIP\r\nAdapted to ELT0233, ELT0633, ELT0733\r\nAdded WPS"
 }
