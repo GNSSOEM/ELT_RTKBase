@@ -411,6 +411,9 @@ configure_bynav(){
           #echo RECVNAME=${RECVNAME}
           if [[ "${RECVNAME}" =~ ^M ]]; then
              break
+          else
+             echo Invalid receiver name \<${RECVNAME}\>
+             RECVNAME=
           fi
        fi
     done
@@ -420,6 +423,8 @@ configure_bynav(){
         #echo RECVVER=${RECVVER}
         if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
            break
+        else
+           RECVVER=
         fi
     done
 
