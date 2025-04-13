@@ -1,7 +1,10 @@
 #!/bin/bash
-LOG=/usr/local/rtkbase/elt0x33.log
+#LOG=/usr/local/rtkbase/elt0x33.log
 #DATE=$(date "+%D %T.%N")
 #echo ${DATE} $1 $2 $3 $4 $5 $6 $7 $8 $9  >>${LOG}
+FLAG_INIT=/usr/local/rtkbase/ledInited.flg
+FLAG_TMP=${FLAG_INIT}.tmp
+rm -f ${FLAG_INIT}
 
 if [[ "$1" == "Septentrio04" ]]; then
    if [[ -c /dev/ttyGNSS_CTRL ]]; then
@@ -13,6 +16,7 @@ if [[ "$1" == "Septentrio04" ]]; then
    fi
    BASEDIR="$(dirname "$0")"
    NMEACONF=${BASEDIR}/rtkbase/NmeaConf
+   stty -F ${MOSAIC} 115200
    for i in `seq 1 5`; do
        #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setGPIOFunctionality,all,Output,none,LevelLow\" QLONG\`  >>${LOG}
        RESULT=`${NMEACONF} ${MOSAIC} "setGPIOFunctionality,all,Output,none,LevelLow" QLONG`
@@ -35,7 +39,6 @@ if [[ "$1" == "Septentrio04" ]]; then
           break
        fi
    done
-   #echo finished >>${LOG}
 elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
    #echo CHIP=$2 >>${LOG}
    for i in `seq 0 2`; do
@@ -47,5 +50,8 @@ elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
           echo BUG=${lastcode} in gpioset $2 $i=0
        fi
    done
-   #echo finished >>${LOG}
 fi
+#echo finished >>${LOG}
+echo >${FLAG_TMP}
+chmod 666 >${FLAG_TMP}
+mv ${FLAG_TMP} ${FLAG_INIT}

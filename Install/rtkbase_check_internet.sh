@@ -3,6 +3,7 @@
 FLAG=/usr/local/rtkbase/NetworkChange.flg
 rm -f ${FLAG}
 state=DOWN
+FLAG_INIT=/usr/local/rtkbase/ledInited.flg
 
 #We work only on Pi4 with USB devices in Type C.
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
@@ -37,7 +38,14 @@ elif [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${HAVE
    USE_FTDI=M
    GPIO=1
    MOSAIC=`readlink -f /dev/ttyGNSS_CTRL`
-   stty -F ${MOSAIC} 115200
+   for i in `seq 0 25`; do
+       if [[ -f ${FLAG_INIT} ]]; then
+          rm -f ${FLAG_INIT}
+          echo Inited after $i seconds
+          break
+       fi
+       sleep 1
+   done
 fi
 
 if [[ "${USE_FTDI}" == "" ]]; then
