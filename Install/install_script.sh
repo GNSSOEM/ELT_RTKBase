@@ -73,6 +73,7 @@ SEPTENTRIO_LINK=70-usb-net-septentrio.link
 SEPTENTRIO_MODEM=77-mm-septentio-port-types.rules
 LINK_RULES=/usr/lib/systemd/network
 MODEM_RULES=/lib/udev/rules.d
+REBOOT_SH=reboot.sh
 ONLINE_UPDATE=NO
 
 lastcode=N
@@ -1108,6 +1109,16 @@ configure_for_unicore(){
    chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
    ExitCodeCheck $?
 
+   #echo mv ${BASEDIR}/${REBOOT_SH} ${RTKBASE_TOOLS}/
+   mv ${BASEDIR}/${REBOOT_SH} ${RTKBASE_TOOLS}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${REBOOT_SH}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${REBOOT_SH}
+   ExitCodeCheck $?
+   #echo chmod +x ${RTKBASE_TOOLS}/${REBOOT_SH}
+   chmod +x ${RTKBASE_TOOLS}/${REBOOT_SH}
+   ExitCodeCheck $?
+
    #echo mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
    mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
    ExitCodeCheck $?
@@ -1387,7 +1398,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${STR2STR_RTCM_SVR_PATCH} ${STR2STR_TCP_PATCH} ${NTRIP_LED} \
               ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
-              ${SEPTENTRIO_MODEM}"
+              ${SEPTENTRIO_MODEM} ${REBOOT_SH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

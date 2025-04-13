@@ -21,16 +21,18 @@ index bb39670..c6f47b8 100755
                   {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
                   {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
                   {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
-@@ -109,7 +110,7 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -109,8 +110,9 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
                   ]
  
  #Delay before rtkrcv will stop if no user is on status.html page
 -rtkcv_standby_delay = 600
 +rtkcv_standby_delay = 129600
  connected_clients = 0
++rebooted_state = False
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
-@@ -206,12 +207,23 @@ def repaint_services_button(services_list):
+     def __init__(self, app, options=None):
+@@ -206,12 +208,23 @@ def repaint_services_button(services_list):
          result = exit-code => red button (danger)
      """ 
      for service in services_list:
@@ -59,7 +61,7 @@ index bb39670..c6f47b8 100755
          elif service.get("status") == "auto-restart":
              service["btn_color"] = "warning"
  
-@@ -382,6 +394,92 @@ def download_update(update_path):
+@@ -382,6 +395,92 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -152,7 +154,7 @@ index bb39670..c6f47b8 100755
  @app.before_request
  def inject_release():
      """
-@@ -416,7 +514,7 @@ def settings_page():
+@@ -416,7 +515,7 @@ def settings_page():
      if request.method == 'POST':
          uploaded_file = request.files['file']
          if uploaded_file.filename != '':
@@ -161,7 +163,7 @@ index bb39670..c6f47b8 100755
          else:
              print("wrong update file")
          return ('', 204)
-@@ -503,20 +601,32 @@ def diagnostic():
+@@ -503,20 +602,32 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -198,7 +200,7 @@ index bb39670..c6f47b8 100755
          active_state = "Active" if service.get('active') == True else "Inactive"
          logs.append({'name' : service['service_unit'], 'active' : active_state, 'sysctl_status' : sysctl_status, 'journalctl' : journalctl})
          
-@@ -529,11 +635,12 @@ def diagnostic():
+@@ -529,11 +640,12 @@ def diagnostic():
  def clientConnect():
      global connected_clients
      connected_clients += 1
@@ -214,7 +216,7 @@ index bb39670..c6f47b8 100755
      rtk.sendState()
  
  @socketio.on("disconnect", namespace="/test")
-@@ -608,7 +715,7 @@ def deleteLog(json_msg):
+@@ -608,7 +720,7 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -223,7 +225,7 @@ index bb39670..c6f47b8 100755
      if answer.returncode == 0 and "/dev/" in answer.stdout:
          #print("DEBUG ok stdout: ", answer.stdout)
          try:
-@@ -626,6 +733,20 @@ def detect_receiver(json_msg):
+@@ -626,6 +738,20 @@ def detect_receiver(json_msg):
      #print('DEBUG result: ', result)
      socketio.emit("gnss_detection_result", json.dumps(result), namespace="/test")
  
@@ -244,7 +246,7 @@ index bb39670..c6f47b8 100755
  @socketio.on("configure_receiver", namespace="/test")
  def configure_receiver(brand="", model=""):
      # only some receiver could be configured automaticaly
-@@ -640,7 +761,7 @@ def configure_receiver(brand="", model=""):
+@@ -640,7 +766,7 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -253,7 +255,19 @@ index bb39670..c6f47b8 100755
      #print("DEBUG - stdout: ", answer.stdout)
      #print("DEBUG - returncode: ", answer.returncode)
  
-@@ -768,6 +889,15 @@ def shutdownRtkbase():
+@@ -758,6 +884,11 @@ def rebootRtkbase():
+     rtk.shutdown()
+     #socketio.stop() hang. I disabled it
+     #socketio.stop()
++    answertext = subprocess.check_output([os.path.join(rtkbase_path, "tools", "reboot.sh")], stderr=subprocess.STDOUT, shell=True)
++    if answertext != "":
++       print(answertext.decode('utf-8'))
++    rebooted_state = True
++    sys.stdout.flush()
+     subprocess.check_output("reboot")
+ 
+ @socketio.on("shutdown device", namespace="/test")
+@@ -768,6 +899,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -269,7 +283,7 @@ index bb39670..c6f47b8 100755
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -846,7 +976,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -846,7 +986,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -283,7 +297,17 @@ index bb39670..c6f47b8 100755
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -944,6 +1079,15 @@ def update_settings(json_msg):
+@@ -855,7 +1000,8 @@ def getServicesStatus(emit_pingback=True):
+                 service["state_ok"] = None
+ 
+         except Exception as e:
+-            print("Error getting service info for: {} - {}".format(service['name'], e))
++            if rebooted_state != False:
++                print("Error getting service info for: {} - {}".format(service['name'], e))
+             #TODO manage better the error with rtkbase_archive.service. See https://github.com/Stefal/rtkbase/issues/162
+             #and try to remove this "pass" without any notification (bad practive)
+             pass
+@@ -944,6 +1090,15 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  

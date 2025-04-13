@@ -1,37 +1,51 @@
 #!/bin/bash
+LOG=/usr/local/rtkbase/elt0x33.log
+#DATE=$(date "+%D %T.%N")
+#echo ${DATE} $1 $2 $3 $4 $5 $6 $7 $8 $9  >>${LOG}
 
-#date >>/usr/local/rtkbase/elt0x33.log
-HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
-HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
-#echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}  >>/usr/local/rtkbase/elt0x33.log
-if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
-   exit
-fi
-#echo go >>/usr/local/rtkbase/elt0x33.log
-
-if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
-   #echo RESULT=\`/usr/local/rtkbase/rtkbase/NmeaConf /dev/ttyACM1 \"setGPIOFunctionality,all,Output,none,LevelLow\" QUIET\`
-   RESULT=`/usr/local/rtkbase/rtkbase/NmeaConf /dev/ttyACM1 "setGPIOFunctionality,all,Output,none,LevelLow" QUIET`
-   if [[ "$?" != "0" ]]; then
-      echo ${RESULT}
+if [[ "$1" == "Septentrio04" ]]; then
+   if [[ -c /dev/ttyGNSS_CTRL ]]; then
+      #echo have /dev/ttyGNSS >>${LOG}
+      MOSAIC=$(readlink -f /dev/ttyGNSS_CTRL)
+   else
+      #echo No /dev/ttyGNSS >>${LOG}
+      MOSAIC=/dev/ttyACM1
    fi
-else
-  for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
-      product=`cat ${sysdevpath}`
-      #echo product=${product} >>/usr/local/rtkbase/elt0x33.log
-      if [[ "${product}" == "ELT0x33" ]]; then
-         syspath="${sysdevpath%/product}"
-         #echo syspath=${syspath} >>/usr/local/rtkbase/elt0x33.log
-         #echo find ${syspath}/*/gpiochip* -name  "gpiochip*"
-         gpiochip=`find ${syspath}/*/gpiochip* -name  "gpiochip*"`
-         #echo gpiochip=${gpiochip} >>/usr/local/rtkbase/elt0x33.log
-         if [[ "${gpiochip}" != "" ]]; then
-            CHIP=`echo ${gpiochip} | sed s/^.*gpiochip//`
-            #echo CHIP=${CHIP} >>/usr/local/rtkbase/elt0x33.log
-            gpioset gpiochip${CHIP} 0=0
-            gpioset gpiochip${CHIP} 1=0
-            gpioset gpiochip${CHIP} 2=0
-        fi
-      fi
-  done
+   BASEDIR="$(dirname "$0")"
+   NMEACONF=${BASEDIR}/rtkbase/NmeaConf
+   for i in `seq 1 5`; do
+       #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setGPIOFunctionality,all,Output,none,LevelLow\" QLONG\`  >>${LOG}
+       RESULT=`${NMEACONF} ${MOSAIC} "setGPIOFunctionality,all,Output,none,LevelLow" QLONG`
+       if [[ "$?" != "0" ]]; then
+          #echo ERROR $i:${RESULT}  >>${LOG}
+          echo ERROR $i:${RESULT}
+       else
+          #echo OK $i:${RESULT} >>${LOG}
+          break
+       fi
+   done
+   for i in `seq 1 5`; do
+       #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setDataInOut,USB1,CMD,RTCMv3+NMEA\" QLONG\`  >>${LOG}
+       RESULT=`${NMEACONF} ${MOSAIC} "setDataInOut,USB1,CMD,RTCMv3+NMEA" QLONG`
+       if [[ "$?" != "0" ]]; then
+          #echo ERROR $i:${RESULT}  >>${LOG}
+          echo ERROR $i:${RESULT}
+       else
+          #echo OK $i:${RESULT} >>${LOG}
+          break
+       fi
+   done
+   #echo finished >>${LOG}
+elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
+   #echo CHIP=$2 >>${LOG}
+   for i in `seq 0 2`; do
+       #echo gpioset $2 $i=0 >>${LOG}
+       gpioset $2 $i=0
+       lastcode=$?
+       if [[ "${lastcode}" != "0" ]]; then
+          #echo BUG=${lastcode} in gpioset $2 $i=0 >>${LOG}
+          echo BUG=${lastcode} in gpioset $2 $i=0
+       fi
+   done
+   #echo finished >>${LOG}
 fi

@@ -1,2 +1,4 @@
 # For ELT0x33
-ACTION=="bind", ATTRS{idProduct}=="6015", ATTRS{idVendor}=="0403", ATTRS{product}=="ELT0x33", RUN+="/usr/local/rtkbase/startELT0x33.sh"
+KERNEL=="gpiochip?*", ACTION=="bind", ATTRS{idProduct}=="6015", ATTRS{idVendor}=="0403", ATTRS{product}=="ELT0x33", RUN+="/usr/local/rtkbase/startELT0x33.sh ELT0x33 $name"
+#Septentrio
+KERNEL=="*.4", ACTION=="bind", ATTRS{idVendor}=="152a", ATTRS{idProduct}=="85c0", RUN+="/usr/local/rtkbase/startELT0x33.sh Septentrio$attr{bInterfaceNumber}"
