@@ -1,5 +1,9 @@
 #!/bin/bash
 
+FLAG=/usr/local/rtkbase/NetworkChange.flg
+rm -f ${FLAG}
+state=DOWN
+
 #We work only on Pi4 with USB devices in Type C.
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
 HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
@@ -11,6 +15,7 @@ HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_PI4}" != "" ]] && [[ "${HAVE_TYPEC}" != "" ]] && [[ "${HAVE_DEB12}" != "" ]]; then
    USE_FTDI=N
    GPIO=16
+   state=
 elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
    for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
        product=`cat ${sysdevpath}`
@@ -78,7 +83,6 @@ else
 fi
 }
 
-FLAG=/usr/local/rtkbase/NetworkChange.flg
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
 wasWPS=
 
