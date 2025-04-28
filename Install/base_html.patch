@@ -17,7 +17,7 @@ index 4a7ecb4..50a2a89 100644
      <footer style="flex-grow: 0; display: block;"></footer>
 -      <div class="container text-center bg-light"><span class="text-muted small"><a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a></span></div>
 +      <div class="container text-center bg-light"><span class="text-muted small">
-+      <a href="https://github.com/GNSSOEM/ELT_RTKBase" target="_blank">ELT_RTKBase v1.8.0</a>
++      <a href="https://github.com/GNSSOEM/ELT_RTKBase" target="_blank">ELT_RTKBase v1.8.1</a>
 +      <a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a>
 +      <a href="https://gnss.store" target="_blank">gnss.store</a>
 +      <a href="https://gnss.design" target="_blank">gnss.design</a>
