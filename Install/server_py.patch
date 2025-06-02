@@ -61,7 +61,7 @@ index bb39670..c6f47b8 100755
          elif service.get("status") == "auto-restart":
              service["btn_color"] = "warning"
  
-@@ -382,6 +395,92 @@ def download_update(update_path):
+@@ -382,6 +395,96 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -139,7 +139,11 @@ index bb39670..c6f47b8 100755
 +            error = answer.stdout
 +        #print("update -s answer.returncode = ", answer.returncode)
 +        #print("update -s error:", error)
-+        socketio.emit("updating_rtkbase_stopped", json.dumps({"error" : error.splitlines()}), namespace="/test")
++        if answer.returncode != 254:
++           result = "Error !"
++        else:
++           result = "Status"
++        socketio.emit("updating_rtkbase_stopped", json.dumps({"result": result, "error" : error.splitlines()}), namespace="/test")
 +        print("Checking OS release failed. Update aborted!")
 +    else : #if ok, launch update script
 +        exec_update=os.path.join(rtkbase_path, "tools", "exec_update.sh")

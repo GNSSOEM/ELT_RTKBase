@@ -10,5 +10,5 @@ for path in /dev/serial/by-id/*; do
 done
 
 if [[ ${1} == "-s" ]]; then
-   exit 1
+   exit 254
 fi

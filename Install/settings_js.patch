@@ -143,8 +143,9 @@ index 9f48006..c8d7f30 100644
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
 -        console.log("mgs: " + response.error)
+-        $("#updateModal .modal-title").text("Error !");
 +        console.log("updating_rtkbase_stopped: " + JSON.stringify(response))
-         $("#updateModal .modal-title").text("Error !");
++        $("#updateModal .modal-title").text(response.result);
          $("#updateModal .modal-body").text("");
          for (line of response.error) {
              $("#updateModal .modal-body").append("<p>" + line + "</p>");

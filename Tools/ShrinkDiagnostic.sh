@@ -17,4 +17,4 @@ journalctl --vacuum-files=1 1>&2
 journalctl --rotate 1>&2
 journalctl --disk-usage 1>&2
 
-exit 1
+exit 254

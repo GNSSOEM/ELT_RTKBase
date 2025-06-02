@@ -41,4 +41,4 @@ cat <<"EOF" >/boot/firmware/system.txt
 EOF
 
 /usr/local/rtkbase/RtkbaseSystemConfigure.sh
-exit 1
+exit 254
