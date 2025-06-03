@@ -500,7 +500,10 @@ configure_septentrio_SBF(){
       sleep_time=30 ; echo 'Waiting '$sleep_time's for mosaic-X5 reboot' ; sleep $sleep_time
       echo 'Sending settings....'
       python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command send_config_file "${rtkbase_path}"/receiver_cfg/Septentrio_Mosaic-X5.cfg --store --retry 5
-      if [[ $? -eq  0 ]]
+      exitcode=$?
+      RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
+      echo . >${RESET_INTERNET_LED_FLAG}
+      if [[ ${exitcode} -eq  0 ]]
       then
         echo 'Septentrio Mosaic-X5 successfuly configured'
         systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null                                                          && \
@@ -556,6 +559,8 @@ configure_septentrio_RTCM3() {
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        exitcode=$?
+       RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
+       echo . >${RESET_INTERNET_LED_FLAG}
        #echo exitcode=${exitcode}
        if [[ ${exitcode} == 0 ]]
        then

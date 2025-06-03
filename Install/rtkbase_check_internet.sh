@@ -92,6 +92,7 @@ fi
 }
 
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
+RESET_INTERNET_LED_FLAG=/usr/local/rtkbase/reset_intenet_led.flg
 wasWPS=
 
 while : ; do
@@ -101,7 +102,10 @@ while : ; do
       rm -f ${FLAG}
    fi
 
-   if [[ -f ${WPS_FLAG} ]]; then
+   if [[ -f ${RESET_INTERNET_LED_FLAG} ]]; then
+      state=
+      rm -f ${RESET_INTERNET_LED_FLAG}
+   elif [[ -f ${WPS_FLAG} ]]; then
       if [[ "${wasWPS}" == "" ]]; then
          echo WPS started
          wasWPS=YES
