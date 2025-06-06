@@ -22,3 +22,7 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
       done
    fi
 fi
+
+BASEDIR=`realpath $(dirname "$0")`
+"${BASEDIR}"/reset_receiver.sh
+exit 0
