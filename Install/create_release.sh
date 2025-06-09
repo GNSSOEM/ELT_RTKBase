@@ -26,7 +26,7 @@ tar --exclude-vcs \
     str2str_ntrip_A.patch  Rtcm3Led rtkbase_check_satelites.sh \
     rtkbase_check_satelites.service PBC.sh reboot.sh \
     70-usb-net-septentrio.link 77-mm-septentio-port-types.rules \
-    reset_receiver.sh
+    reset_receiver.sh autoconnect-retries-forever.conf
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
