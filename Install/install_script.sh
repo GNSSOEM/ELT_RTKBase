@@ -1259,30 +1259,29 @@ configure_settings(){
 }
 
 configure_gnss(){
-   if [[ "${UPDATE}" != "Y" ]] || ! have_full
-   then
-      UP_TIME=`cat /proc/uptime | sed "s/\..*$//"`
-      LIMIT_TIME=40
-      LEFT_TIME=`expr ${LIMIT_TIME} - ${UP_TIME}`
-      #echo UP_TIME=${UP_TIME} LIMIT_TIME=${LIMIT_TIME} LEFT_TIME=${LEFT_TIME}
-      if [[ ${LEFT_TIME} -gt 0 ]]; then
-         #echo sleep ${LEFT_TIME}
-         sleep ${LEFT_TIME}
-      fi
+   UP_TIME=`cat /proc/uptime | sed "s/\..*$//"`
+   LIMIT_TIME=40
+   LEFT_TIME=`expr ${LIMIT_TIME} - ${UP_TIME}`
+   #echo UP_TIME=${UP_TIME} LIMIT_TIME=${LIMIT_TIME} LEFT_TIME=${LEFT_TIME}
+   if [[ ${LEFT_TIME} -gt 0 ]]; then
+      #echo sleep ${LEFT_TIME}
+      sleep ${LEFT_TIME}
+   fi
 
-      rtkbase_path=${RTKBASE_GIT}
-      #echo source "${rtkbase_path}/tools/opizero_temp_offset.sh"
-      source "${rtkbase_path}/tools/opizero_temp_offset.sh"
-      ExitCodeCheck $?
+   rtkbase_path=${RTKBASE_GIT}
+   #echo source "${rtkbase_path}/tools/opizero_temp_offset.sh"
+   source "${rtkbase_path}/tools/opizero_temp_offset.sh"
+   ExitCodeCheck $?
 
-      HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
-      HAVE_TTYACM=`find /dev/ttyACM* 2>/dev/null`
-      HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
-      #echo HAVE_TTYUSB=${HAVE_TTYUSB} HAVE_TTYACM=${HAVE_TTYACM} HAVE_TTYAMA=${HAVE_TTYAMA} RECVPORT=${RECVPORT}
-      if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && [[ "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
-         echo 'No any ports for GNSS receiver. We can'\''t detect and configure.'
-         ExitCodeCheck 1
-      else
+   HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
+   HAVE_TTYACM=`find /dev/ttyACM* 2>/dev/null`
+   HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
+   #echo HAVE_TTYUSB=${HAVE_TTYUSB} HAVE_TTYACM=${HAVE_TTYACM} HAVE_TTYAMA=${HAVE_TTYAMA} RECVPORT=${RECVPORT}
+   if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && [[ "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
+      echo 'No any ports for GNSS receiver. We can'\''t detect and configure.'
+      ExitCodeCheck 1
+   else
+      if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
          for i in `seq 1 3`; do
             #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
             ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
@@ -1291,25 +1290,25 @@ configure_gnss(){
                break;
             fi
          done
-
-         source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
-         if [[ "${com_port}" == "" ]]; then
-            echo 'GNSS receiver is not specified. We can'\''t configure.'
-            ExitCodeCheck 1
-         else
-            for i in `seq 1 3`; do
-               #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-               ExitCodeCheck $?
-               if [[ $lastcode == 0 ]]; then
-                  break;
-               fi
-            done
-         fi
       fi
 
-      restart_rtkbase_if_started
+      source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
+      if [[ "${com_port}" == "" ]]; then
+         echo 'GNSS receiver is not specified. We can'\''t configure.'
+         ExitCodeCheck 1
+      else
+         for i in `seq 1 3`; do
+            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+            ExitCodeCheck $?
+            if [[ $lastcode == 0 ]]; then
+               break;
+            fi
+         done
+      fi
    fi
+
+   restart_rtkbase_if_started
 }
 
 start_rtkbase_services(){
