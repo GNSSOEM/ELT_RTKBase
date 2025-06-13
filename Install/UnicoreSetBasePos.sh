@@ -28,6 +28,39 @@ if [[ "${receiver}" == "unknown" ]]; then
    exit 1
 fi
 
+if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
+   exit 0
+fi
+
+if [[ ${com_speed} -lt 115200 ]]; then
+   echo com_speed \(${com_speed}\) is low 115200
+   exit 3
+fi
+
+lastcode=N
+exitcode=0
+
+function ciao {
+   if [[ ${exitcode} != 0 ]]; then
+      #echo "${BASEDIR}"/tools/reset_receiver.sh
+      "${BASEDIR}"/tools/reset_receiver.sh
+   fi
+   #echo "${BASEDIR}"/tools/onoffELT0x33.sh ${com_port} OFF
+   "${BASEDIR}"/tools/onoffELT0x33.sh ${com_port} OFF
+}
+
+trap ciao EXIT
+
+
+ExitCodeCheck(){
+  lastcode=$1
+  #echo lastcode=${lastcode}
+  if [[ $lastcode > $exitcode ]]; then
+     exitcode=${lastcode}
+     #echo exitcode=${exitcode}
+  fi
+}
+
 for i in `seq 1 5`; do
    if [[ -c /dev/${com_port} ]]; then
       break
@@ -40,26 +73,10 @@ done
 
 if [[ ! -c /dev/${com_port} ]]; then
    echo /dev/${com_port} NOT EXISTS!
+   ExitCodeCheck 1
    exit 1
 #elif [[ -n ${WasNotExists} ]]; then
 fi
-
-if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
-   exit 0
-fi
-
-lastcode=N
-exitcode=0
-
-ExitCodeCheck(){
-  lastcode=$1
-  #echo lastcode=${lastcode}
-  if [[ $lastcode > $exitcode ]]
-  then
-     exitcode=${lastcode}
-     #echo exitcode=${exitcode}
-  fi
-}
 
 SAVECONF=N
 if [[ -f ${OLDCONF} ]]
@@ -75,12 +92,6 @@ else
    SAVECONF=Y
 fi
 #echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
-
-if [[ ${com_speed} -lt 115200 ]]
-then
-   echo com_speed \(${com_speed}\) is low 115200
-   exit 3
-fi
 
 #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
 ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
@@ -174,8 +185,7 @@ then
    if [[ "${recv_com}" == "" ]]
    then
       echo Unknown receiver port for change speed
-      #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
-      ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+      ExitCodeCheck 1
       exit 1
    fi
 fi
@@ -224,8 +234,7 @@ then
    fi
 
    if [[ "${exit_code}" != "" ]]; then
-      #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
-      ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+      ExitCodeCheck ${exit_code}
       exit ${exit_code}
    fi
 fi
@@ -254,8 +263,7 @@ then
             #echo NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
             if [ ${NO_ANSWER_COUNT} -ge 5 ]; then
                echo receiver not answer ${NO_ANSWER_COUNT} times
-               #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
-               ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
+               ExitCodeCheck 1
                exit 1
             fi
          fi
@@ -476,9 +484,6 @@ if [[ ${lastcode} == N ]]; then
       ExitCodeCheck ${lastcode}
    fi
 fi
-
-#echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
-${BASEDIR}/tools/onoffELT0x33.sh ${com_port} OFF
 
 #echo exit $0 with code ${exitcode} "("lastcode=${lastcode}")"
 exit ${exitcode}

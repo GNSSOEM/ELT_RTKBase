@@ -17,13 +17,12 @@ if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Septentrio ]]; the
    exit 1
 fi
 
-#We work only on Pi4 with USB devices in Type C.
+#We work only on Pi4
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
-HAVE_TYPEC=`lsusb | grep "Bus 003" | grep -v "root hub"`
 HAVE_DEB12=`lsb_release -c | grep bookworm`
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
-if [[ "${HAVE_ELT0x33}" != "" ]] || [[ "${HAVE_PI4}" == "" ]] || [[ "${HAVE_TYPEC}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
-   echo Receiver ${receiver} NOT reboted! HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_PI4=${HAVE_PI4} HAVE_TYPEC=${HAVE_TYPEC} HAVE_DEB12=${HAVE_DEB12}
+if [[ "${HAVE_ELT0x33}" != "" ]] || [[ "${HAVE_PI4}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
+   echo Receiver ${receiver} NOT reboted! HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_PI4=${HAVE_PI4} HAVE_DEB12=${HAVE_DEB12}
    exit 2
 fi
 
