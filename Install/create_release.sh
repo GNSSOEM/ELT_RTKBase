@@ -27,7 +27,8 @@ tar --exclude-vcs \
     rtkbase_check_satelites.service PBC.sh reboot.sh \
     70-usb-net-septentrio.link 77-mm-septentio-port-types.rules \
     reset_receiver.sh autoconnect-retries-forever.conf \
-    70-usb-net-mobile.link
+    70-usb-net-mobile.link gnss_rproxy_server_py.patch \
+    rtkbase_modem_web_proxy.service
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

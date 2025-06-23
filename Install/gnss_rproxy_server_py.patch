@@ -1,0 +1,116 @@
+diff --git a/web_app/gnss_rproxy_server.py b/web_app/gnss_rproxy_server.py
+index 7c08a6e..ab58d45 100644
+--- a/web_app/gnss_rproxy_server.py
++++ b/web_app/gnss_rproxy_server.py
+@@ -28,23 +28,17 @@ import gunicorn.app.base
+ from werkzeug.security import generate_password_hash
+ from werkzeug.security import check_password_hash
+ from werkzeug.utils import safe_join
+-
++from werkzeug.datastructures import Headers
+ 
+ app = Flask(__name__)
+ app.debug = False
+ app.config["SECRET_KEY"] = "secret!"
+ app.config["LOGIN_DISABLED"] = False
+ 
+-rtkbase_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+-
+ login=LoginManager(app)
+ login.login_view = 'login_page'
+ bootstrap = Bootstrap4(app)
+ 
+-#Get settings from settings.conf.default and settings.conf
+-rtkbaseconfig = RTKBaseConfigManager(os.path.join(rtkbase_path, "settings.conf.default"), os.path.join(rtkbase_path, "settings.conf"))
+-GNSS_RCV_WEB_URL = str("{}{}".format("http://", rtkbaseconfig.get("main", "gnss_rcv_web_ip")))
+-
+ class StandaloneApplication(gunicorn.app.base.BaseApplication):
+     def __init__(self, app, options=None):
+         self.options = options or {}
+@@ -89,13 +83,24 @@ def load_user(id):
+ 
+ #proxy code from https://stackoverflow.com/a/36601467
+ @app.route('/', defaults={'path': ''}, methods=["GET", "POST"])  # ref. https://medium.com/@zwork101/making-a-flask-proxy-server-online-in-10-lines-of-code-44b8721bca6
+-@app.route('/<path>', methods=["GET", "POST"])  # NOTE: better to specify which methods to be accepted. Otherwise, only GET will be accepted. Ref: 
++@app.route('/<path:path>', methods=["GET", "POST"])  # NOTE: better to specify which methods to be accepted. Otherwise, only GET will be accepted. Ref: 
+ @login_required
+ def redirect_to_API_HOST(path):  #NOTE var :path will be unused as all path we need will be read from :request ie from flask import request
++    #print(request.method, request.url)
++    request_headers = Headers({(k,v) for k, v in request.headers if k.lower() != 'host'})
++    requestverificationtoken = request_headers.get('--Requestverificationtoken')
++    responsesource = request_headers.get('-Responsesource')
++    if requestverificationtoken:
++       request_headers.add('__requestverificationToken', requestverificationtoken)
++       request_headers.remove('--Requestverificationtoken')
++    if responsesource:
++       request_headers.add('_responsesource', responsesource)
++       request_headers.remove('-Responsesource')
++
+     res = requests.request(  # ref. https://stackoverflow.com/a/36601467/248616
+         method          = request.method,
+         url             = request.url.replace(request.host_url, f'{GNSS_RCV_WEB_URL}/'),
+-        headers         = {k:v for k,v in request.headers if k.lower() != 'host'}, # exclude 'host' header
++        headers         = request_headers,
+         data            = request.get_data(),
+         cookies         = request.cookies,
+         allow_redirects = False,
+@@ -170,12 +175,39 @@ def arg_parse():
+         help="port used for the web server",
+         default=None
+     )
++    parser.add_argument(
++        "-m",
++        "--mobile",
++        help="Use as proxy for mobile USB dongle",
++        action="store_true",
++        default=False,
++    )
+     args = parser.parse_args()
+     return args
+ 
+ if __name__ == "__main__":
+     args=arg_parse()
+     try:
++        rtkbase_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
++
++        if args.debug:
++           print("rtkbase_path=",rtkbase_path)
++           print("mobile=",args.mobile)
++
++        #Get settings from settings.conf.default and settings.conf
++        rtkbaseconfig = RTKBaseConfigManager(os.path.join(rtkbase_path, "settings.conf.default"), os.path.join(rtkbase_path, "settings.conf"))
++
++        if args.mobile:
++           web_ip_name = "mobile_modem_web_ip"
++           bind_port = rtkbaseconfig.get("main", "mobile_modem_web_proxy_port", fallback=7070)
++           forwarded = '*'
++        else:
++           web_ip_name = "gnss_rcv_web_ip"
++           bind_port = rtkbaseconfig.get("main", "gnss_rcv_web_proxy_port", fallback=9090)
++           forwarded = ''
++
++        GNSS_RCV_WEB_URL = str("{}{}".format("http://", rtkbaseconfig.get("main", web_ip_name)))
++
+         #check if authentification is required
+         if not rtkbaseconfig.get_web_authentification():
+             app.config["LOGIN_DISABLED"] = True
+@@ -185,12 +217,17 @@ if __name__ == "__main__":
+         #wsgi.server(eventlet.listen(("0.0.0.0", int(rtkbaseconfig.get("main", "gnss_rcv_web_proxy_port", fallback=9090)))), app, log_output=False)
+ 
+         gunicorn_options = {
+-        'bind': ['%s:%s' % ('0.0.0.0', args.port or rtkbaseconfig.get("main", "gnss_rcv_web_proxy_port", fallback=9090)),
+-                    '%s:%s' % ('[::1]', args.port or rtkbaseconfig.get("main", "gnss_rcv_web_proxy_port", fallback=9090)) ],
++        'bind': ['%s:%s' % ('0.0.0.0', args.port or bind_port),
++                    '%s:%s' % ('[::1]', args.port or bind_port)],
+         'workers': 1,
+         'worker_class': 'gevent',
+         'loglevel': 'debug' if args.debug else 'warning',
++        'forwarded_allow_ips' : forwarded,
++        'forwarder_headers' : forwarded,
+         }
++        if args.debug:
++           print("GNSS_RCV_WEB_URL=",GNSS_RCV_WEB_URL)
++           print (gunicorn_options)
+         #start gunicorn
+         StandaloneApplication(app, gunicorn_options).run()
+ 

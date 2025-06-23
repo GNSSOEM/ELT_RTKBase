@@ -33,6 +33,7 @@ CONFBYNAV=Bynav_${CONF_TAIL}
 CONFSEPTENTRIO=Septentrio_${CONF_TAIL}
 TESTSEPTENTRIO=Septentrio_TEST.txt
 SERVER_PATCH=server_py.patch
+GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 STATUS_PATCH=status_js.patch
 SETTING_PATCH=settings_js.patch
 BASE_PATCH=base_html.patch
@@ -53,6 +54,7 @@ CHECK_SATELITES=rtkbase_check_satelites.sh
 CHECK_SATELITES_SERVICE=rtkbase_check_satelites.service
 SEPTENTRIO_NAT=rtkbase_septentrio_NAT.sh
 SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
+MODEM_WEB_PROXY_SERVICE=rtkbase_modem_web_proxy.service
 DHCP_CONF=rtkbase_DHCP.conf
 DHCP_SERVICE=rtkbase_DHCP.service
 TUNE_POWER=tune_power.sh
@@ -556,6 +558,7 @@ stop_rtkbase_services(){
                   modem_check.service \
                   modem_check.timer \
                   rtkbase_gnss_web_proxy.service \
+                  ${MODEM_WEB_PROXY_SERVICE} \
                   ${SYSSERVICE} \
                   ${CHECK_INTERNET_SERVICE} \
                   ${CHECK_SATELITES_SERVICE} \
@@ -1102,6 +1105,10 @@ configure_for_unicore(){
    mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
    ExitCodeCheck $?
 
+   #echo mv ${BASEDIR}/${MODEM_WEB_PROXY_SERVICE} ${SERVICE_PATH}/
+   mv ${BASEDIR}/${MODEM_WEB_PROXY_SERVICE} ${SERVICE_PATH}/
+   ExitCodeCheck $?
+
    WEB_IMAGES=${RTKBASE_WEB}/static/images
    #echo mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
    mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
@@ -1191,6 +1198,15 @@ configure_for_unicore(){
    chmod 644 ${SERVER_PY}
    ExitCodeCheck $?
    rm -f ${BASEDIR}/${SERVER_PATCH}
+   ExitCodeCheck $?
+
+   GNSS_RPROXY_PY=${RTKBASE_WEB}/gnss_rproxy_server.py
+   #echo GNSS_RPROXY_PY=${GNSS_RPROXY_PY}
+   patch -f ${GNSS_RPROXY_PY} ${BASEDIR}/${GNSS_RPROXY_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${GNSS_RPROXY_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${GNSS_RPROXY_PATCH}
    ExitCodeCheck $?
 
    STATUS_JS=${RTKBASE_WEB}/static/status.js
@@ -1390,6 +1406,13 @@ start_rtkbase_services(){
      ExitCodeCheck $?
   fi
 
+  MOBILE=/sys/class/net/mobile
+  if [[ -L ${MOBILE} ]]; then
+     #echo systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
+     systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
+     ExitCodeCheck $?
+  fi
+
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
   ExitCodeCheck $?
@@ -1470,7 +1493,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
-              ${AUTOCONNECT_CONF} ${MOBILE_LINK}"
+              ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
+              ${MODEM_WEB_PROXY_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 

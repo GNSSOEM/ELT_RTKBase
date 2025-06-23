@@ -11,40 +11,20 @@ then
    exit
 fi
 
-SYSSERVICE=RtkbaseSystemConfigure.service
-SYSSERVICE_enabled=`systemctl is-enabled ${SYSSERVICE} 2>/dev/null`
-#echo SYSSERVICE_enabled=${SYSSERVICE_enabled}
-[[ "${SYSSERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${SYSSERVICE} && systemctl stop ${SYSSERVICE}
-[[ "${SYSSERVICE_enabled}" != "disabled" ]] && [[ "${SYSSERVICE_enabled}" != "masked" ]] && [[ "${SYSSERVICE_enabled}" != "" ]] && systemctl disable  ${SYSSERVICE}
-rm -f /etc/systemd/system/${SYSSERVICE}
+serviceList="RtkbaseSystemConfigure.service \
+             rtkbase_check_internet.service \
+             rtkbase_check_satelites.service \
+             rtkbase_septentrio_NAT.service \
+             rtkbase_DHCP.service \
+             rtkbase_modem_web_proxy.service"
 
-CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
-CHECK_INTERNET_SERVICE_enabled=`systemctl is-enabled ${CHECK_INTERNET_SERVICE} 2>/dev/null`
-#echo CHECK_INTERNET_SERVICE_enabled=${CHECK_INTERNET_SERVICE_enabled}
-[[ "${CHECK_INTERNET_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${CHECK_INTERNET_SERVICE} && systemctl stop ${CHECK_INTERNET_SERVICE}
-[[ "${CHECK_INTERNET_SERVICE_enabled}" != "disabled" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "masked" ]] && [[ "${CHECK_INTERNET_SERVICE_enabled}" != "" ]] && systemctl disable  ${CHECK_INTERNET_SERVICE}
-rm -f /etc/systemd/system/${CHECK_INTERNET_SERVICE}
-
-CHECK_SATELITES_SERVICE=rtkbase_check_satelites.service
-CHECK_SATELITES_SERVICE_enabled=`systemctl is-enabled ${CHECK_SATELITES_SERVICE} 2>/dev/null`
-#echo CHECK_SATELITES_SERVICE_enabled=${CHECK_SATELITES_SERVICE_enabled}
-[[ "${CHECK_SATELITES_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${CHECK_SATELITES_SERVICE} && systemctl stop ${CHECK_SATELITES_SERVICE}
-[[ "${CHECK_SATELITES_SERVICE_enabled}" != "disabled" ]] && [[ "${CHECK_SATELITES_SERVICE_enabled}" != "masked" ]] && [[ "${CHECK_SATELITES_SERVICE_enabled}" != "" ]] && systemctl disable  ${CHECK_SATELITES_SERVICE}
-rm -f /etc/systemd/system/${CHECK_SATELITES_SERVICE}
-
-SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
-SEPTENTRIO_NAT_SERVICE_enabled=`systemctl is-enabled ${SEPTENTRIO_NAT_SERVICE} 2>/dev/null`
-#echo SEPTENTRIO_NAT_SERVICE_enabled=${SEPTENTRIO_NAT_SERVICE_enabled}
-[[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${SEPTENTRIO_NAT_SERVICE} && systemctl stop ${SEPTENTRIO_NAT_SERVICE}
-[[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "disabled" ]] && [[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "masked" ]] && [[ "${SEPTENTRIO_NAT_SERVICE_enabled}" != "" ]] && systemctl disable  ${SEPTENTRIO_NAT_SERVICE}
-rm -f /etc/systemd/system/${SEPTENTRIO_NAT_SERVICE}
-
-DHCP_SERVICE=rtkbase_DHCP.service
-DHCP_SERVICE_enabled=`systemctl is-enabled ${DHCP_SERVICE} 2>/dev/null`
-#echo DHCP_SERVICE_enabled=${DHCP_SERVICE_enabled}
-[[ "${DHCP_SERVICE_enabled}" != "" ]] && systemctl is-active --quiet ${DHCP_SERVICE} && systemctl stop ${DHCP_SERVICE}
-[[ "${DHCP_SERVICE_enabled}" != "disabled" ]] && [[ "${DHCP_SERVICE_enabled}" != "masked" ]] && [[ "${DHCP_SERVICE_enabled}" != "" ]] && systemctl disable  ${DHCP_SERVICE}
-rm -f /etc/systemd/system/${DHCP_SERVICE}
+for service_name in ${serviceList}; do
+    enabled=`systemctl is-enabled ${service_name} 2>/dev/null`
+    #[[ "${enabled}" != "" ]] && echo ${service_name} ${enabled}
+    [[ "${enabled}" != "" ]] && systemctl is-active --quiet ${service_name} && systemctl stop ${service_name}
+    [[ "${enabled}" != "disabled" ]] && [[ "${enabled}" != "masked" ]] && [[ "${enabled}" != "" ]] && systemctl disable ${service_name}
+    rm -f /etc/systemd/system/${service_name}
+done
 
 systemctl daemon-reload
 

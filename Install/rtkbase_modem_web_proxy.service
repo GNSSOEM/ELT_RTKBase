@@ -1,0 +1,16 @@
+[Unit]
+Description=RTKBase Reverse Proxy for Mobile Modem Web Server
+#After=network-online.target
+#Wants=network-online.target
+
+[Service]
+User=rtkbase
+ExecStart=/usr/local/rtkbase/rtkbase/venv/bin/python /usr/local/rtkbase/rtkbase/web_app/gnss_rproxy_server.py -m
+Restart=on-failure
+RestartSec=30
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/usr/local/rtkbase/rtkbase /usr/local/bin /var/tmp
+
+[Install]
+WantedBy=multi-user.target
