@@ -1137,7 +1137,7 @@ configure_for_unicore(){
    echo mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
    mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
    ExitCodeCheck $?
-   echo nmcli general reload
+   #echo nmcli general reload
    nmcli general reload
    ExitCodeCheck $?
 
@@ -1306,12 +1306,14 @@ configure_settings(){
       source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
       #echo version=${version} VERSION=${VERSION}
       ${sed} s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
+      ExitCodeCheck $?
 
       #echo if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then
       if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then
          echo insert mobile_modem_web_ip and mobile_modem_web_proxy_port into ${SETTINGS_NOW}
          #echo ${sed} "/^gnss_rcv_web_proxy_port=/a #ip address of the integrated modem web service (ie on E3372-325)\nmobile_modem_web_ip=192.168.8.1\n#port number for the Flask proxy app used to display the modem web service\nmobile_modem_web_proxy_port=7070" "${SETTINGS_NOW}"
          ${sed} "/^gnss_rcv_web_proxy_port=/a #ip address of the integrated modem web service (ie on E3372-325)\nmobile_modem_web_ip=192.168.8.1\n#port number for the Flask proxy app used to display the modem web service\nmobile_modem_web_proxy_port=7070" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
       fi
 
       #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
