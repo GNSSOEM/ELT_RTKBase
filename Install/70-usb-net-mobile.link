@@ -1,0 +1,7 @@
+[Match]
+Path=*-usb-*
+Property=ID_MODEL=Mobile
+
+[Link]
+NamePolicy=
+Name=mobile

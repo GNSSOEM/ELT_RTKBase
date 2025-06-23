@@ -70,6 +70,7 @@ ONOFF_ELT0x33=onoffELT0x33.sh
 NTRIP_LED=ntrip_led.sh
 PBC=PBC.sh
 SEPTENTRIO_LINK=70-usb-net-septentrio.link
+MOBILE_LINK=70-usb-net-mobile.link
 SEPTENTRIO_MODEM=77-mm-septentio-port-types.rules
 AUTOCONNECT_CONF=autoconnect-retries-forever.conf
 LINK_RULES=/usr/lib/systemd/network
@@ -913,35 +914,64 @@ restart_rtkbase_if_started(){
    fi
 }
 
+rename_net_device(){
+   OLD_DEVICE_ETH="${1}"
+   NEW_DEVICE_ETH="${2}"
+   UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_DEVICE_ETH}" | awk -F ' ' '{print $1}'`
+   if [[ "${UUID}" != "" ]]; then
+      #echo nmcli connection delete uuid "${UUID}"
+      nmcli connection delete uuid "${UUID}"
+      ExitCodeCheck $?
+   fi
+   #echo ip link set ${OLD_DEVICE_ETH} down
+   ip link set ${OLD_DEVICE_ETH} down
+   ExitCodeCheck $?
+   #echo ip link set ${OLD_DEVICE_ETH} name ${NEW_DEVICE_ETH}
+   ip link set ${OLD_DEVICE_ETH} name ${NEW_DEVICE_ETH}
+   ExitCodeCheck $?
+   #echo ip link set ${NEW_DEVICE_ETH} up
+   ip link set ${NEW_DEVICE_ETH} up
+   ExitCodeCheck $?
+   #echo nmcli device up ${NEW_DEVICE_ETH}
+   nmcli device up ${NEW_DEVICE_ETH}
+   ExitCodeCheck $?
+   #echo exitcode=$exitcode
+}
+
 configure_for_septentrio(){
    if [[ ! -f ${LINK_RULES}/${SEPTENTRIO_LINK} ]]; then
       NEW_MOSAIC_ETH=septentrio
       OLD_MOSAIC_ETH=$(ip route | grep 192.168.3.0 | awk -F ' ' '{print $3}')
       #echo OLD_MOSAIC_ETH=${OLD_MOSAIC_ETH} NEW_MOSAIC_ETH=${NEW_MOSAIC_ETH}
-      if [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != ${NEW_MOSAIC_ETH} ]]; then
+      if [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "${NEW_MOSAIC_ETH}" ]]; then
          echo '################################'
          echo 'CONFIGURE USB-ETH FOR SEPTENTRIO'
          echo '################################'
-         UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_MOSAIC_ETH}" | awk -F ' ' '{print $1}'`
-         if [[ "${UUID}" != "" ]]; then
-            #echo nmcli connection delete uuid "${UUID}"
-            nmcli connection delete uuid "${UUID}"
-            ExitCodeCheck $?
-         fi
-         #echo ip link set ${OLD_MOSAIC_ETH} down
-         ip link set ${OLD_MOSAIC_ETH} down
-         ExitCodeCheck $?
-         #echo ip link set ${OLD_MOSAIC_ETH} name ${NEW_MOSAIC_ETH}
-         ip link set ${OLD_MOSAIC_ETH} name ${NEW_MOSAIC_ETH}
-         ExitCodeCheck $?
-         #echo ip link set ${NEW_MOSAIC_ETH} up
-         ip link set ${NEW_MOSAIC_ETH} up
-         ExitCodeCheck $?
-         #echo nmcli device up ${NEW_MOSAIC_ETH}
-         nmcli device up ${NEW_MOSAIC_ETH}
-         ExitCodeCheck $?
-         #nmcli connection up ifname ${NEW_MOSAIC_ETH}
-         echo exitcode=$exitcode
+         rename_net_device "${OLD_MOSAIC_ETH}" "${NEW_MOSAIC_ETH}"
+      fi
+   fi
+}
+
+configure_for_mobile(){
+   if [[ ! -f ${LINK_RULES}/${MOBILE_LINK} ]]; then
+      NEW_MOBILE_ETH=mobile
+      for productpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
+          product=`cat "${productpath}"`
+          if [[ "${product}" == "Mobile" ]]; then
+             syspath=$(dirname "${productpath}")
+             netpath=`find "${syspath}" -name net -type d | head -n 1`
+             ethpath=`find "${netpath}" -name eth* -type d | head -n 1`
+             OLD_MOBILE_ETH=$(basename "${ethpath}")
+             #echo ethpath="${ethpath}" OLD_MOBILE_ETH=${OLD_MOBILE_ETH}
+             break
+          fi
+      done
+      echo OLD_MOBILE_ETH=${OLD_MOBILE_ETH} NEW_MOBILE_ETH=${NEW_MOBILE_ETH}
+      if [[ "${OLD_MOBILE_ETH}" != "" ]] && [[ "${OLD_MOBILE_ETH}" != "${NEW_MOBILE_ETH}" ]]; then
+         echo '################################'
+         echo 'CONFIGURE USB-ETH FOR MOBILE'
+         echo '################################'
+         rename_net_device "${OLD_MOBILE_ETH}" "${NEW_MOBILE_ETH}"
       fi
    fi
 }
@@ -1086,6 +1116,10 @@ configure_for_unicore(){
 
    #echo mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
    mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${MOBILE_LINK} ${LINK_RULES}/
+   mv ${BASEDIR}/${MOBILE_LINK} ${LINK_RULES}/
    ExitCodeCheck $?
 
    #echo mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
@@ -1418,7 +1452,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${STR2STR_NTRIP_A_PATCH} ${RTCM3LED} ${CHECK_SATELITES} \
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
-              ${AUTOCONNECT_CONF}"
+              ${AUTOCONNECT_CONF} ${MOBILE_LINK}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
@@ -1483,6 +1517,7 @@ have_phase1 && install_rtklib
 have_phase1 && copy_rtkbase_install_file
 have_phase1 && rtkbase_install
 ! ischroot && configure_for_septentrio
+! ischroot && configure_for_mobile
 have_phase1 && configure_for_unicore
 have_phase1 && configure_settings
 have_receiver && configure_gnss
