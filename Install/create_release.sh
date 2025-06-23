@@ -11,7 +11,7 @@ tar --exclude-vcs \
     run_cast_sh.patch UnicoreSetBasePos.sh UnicoreSettings.sh \
     uninstall.sh rtkbase_install.sh UnicoreConfigure.sh \
     RtkbaseSystemConfigure.sh RtkbaseSystemConfigure.service \
-    server_py.patch \
+    server_py.patch settings_conf_default.patch \
     status_js.patch tune_power.sh config.txt rtklib/*.patch \
     version.txt settings_js.patch base_html.patch \
     Bynav_RTCM3_OUT.txt Septentrio_TEST.txt rtklib/aarch64/* \

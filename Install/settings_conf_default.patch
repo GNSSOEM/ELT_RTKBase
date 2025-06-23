@@ -1,0 +1,15 @@
+diff --git a/settings.conf.default b/settings.conf.default
+index e806217..c2065b1 100644
+--- a/settings.conf.default
++++ b/settings.conf.default
+@@ -54,6 +54,10 @@ ext_tcp_port=''
+ gnss_rcv_web_ip=192.168.3.1
+ #port number for the Flask proxy app used to display the Gnss receiver web service
+ gnss_rcv_web_proxy_port=9090
++#ip address of the integrated modem web service (ie on E3372-325)
++mobile_modem_web_ip=192.168.8.1
++#port number for the Flask proxy app used to display the modem web service
++mobile_modem_web_proxy_port=7070
+ #port number for the raw2nmea service
+ nmea_port='5014'
+ 

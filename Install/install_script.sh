@@ -39,6 +39,7 @@ BASE_PATCH=base_html.patch
 RUNCAST_PATCH=run_cast_sh.patch
 SETTING_JS_PATCH=settings_js.patch
 SETTING_HTML_PATCH=settings_html.patch
+SETTINGS_CONF_PATCH=settings_conf_default.patch
 PPP_CONF_PATCH=ppp_conf.patch
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
@@ -1219,6 +1220,13 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${SETTING_HTML_PATCH}
    ExitCodeCheck $?
 
+   patch -f ${SETTINGS_DEFAULT} ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SETTINGS_DEFAULT}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $
+
    BASE_HTML=${RTKBASE_WEB}/templates/base.html
    #echo BASE_HTML=${BASE_HTML}
    patch -f ${BASE_HTML} ${BASEDIR}/${BASE_PATCH}
@@ -1260,6 +1268,9 @@ configure_settings(){
       echo '################################'
    fi
 
+   sed="sudo -u ${RTKBASE_USER} sed -i"
+   #echo sed=${sed}
+
    #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
    if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
    then
@@ -1278,7 +1289,14 @@ configure_settings(){
 
       source <( grep -v '^#' "${SETTINGS_DEFAULT}" | grep 'version=' )
       #echo version=${version} VERSION=${VERSION}
-      sudo -u "${RTKBASE_USER}" sed -i s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
+      ${sed} s/^version=.*/version=${version}/ "${SETTINGS_NOW}"
+
+      #echo if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then
+         echo insert mobile_modem_web_ip and mobile_modem_web_proxy_port into ${SETTINGS_NOW}
+         #echo ${sed} "/^gnss_rcv_web_proxy_port=/a #ip address of the integrated modem web service (ie on E3372-325)\nmobile_modem_web_ip=192.168.8.1\n#port number for the Flask proxy app used to display the modem web service\nmobile_modem_web_proxy_port=7070" "${SETTINGS_NOW}"
+         ${sed} "/^gnss_rcv_web_proxy_port=/a #ip address of the integrated modem web service (ie on E3372-325)\nmobile_modem_web_ip=192.168.8.1\n#port number for the Flask proxy app used to display the modem web service\nmobile_modem_web_proxy_port=7070" "${SETTINGS_NOW}"
+      fi
 
       #echo ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
       ${RTKBASE_PATH}/${UNICORE_SETTIGNS} ${OLD_VERSION}
@@ -1437,7 +1455,7 @@ can_reboot(){
 }
 
 BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE} \
-              ${RUNCAST_PATCH} ${SET_BASE_POS} ${UNICORE_SETTIGNS} \
+              ${RUNCAST_PATCH} ${SET_BASE_POS} ${UNICORE_SETTIGNS} ${SETTINGS_CONF_PATCH} \
               ${RTKBASE_INSTALL} ${SYSCONGIG} ${SYSSERVICE} \
               ${SERVER_PATCH} ${STATUS_PATCH} ${TUNE_POWER} ${CONFIG} \
               ${RTKLIB}/* ${VERSION} ${SETTING_JS_PATCH} ${BASE_PATCH} \
