@@ -34,6 +34,7 @@ CONFSEPTENTRIO=Septentrio_${CONF_TAIL}
 TESTSEPTENTRIO=Septentrio_TEST.txt
 SERVER_PATCH=server_py.patch
 GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
+RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
 STATUS_PATCH=status_js.patch
 SETTING_PATCH=settings_js.patch
 BASE_PATCH=base_html.patch
@@ -1209,6 +1210,15 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${GNSS_RPROXY_PATCH}
    ExitCodeCheck $?
 
+   RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_WEB}/RTKBaseConfigManager.py
+   #echo RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_CONFIG_MANAGER_PY}
+   patch -f ${RTKBASE_CONFIG_MANAGER_PY} ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${RTKBASE_CONFIG_MANAGER_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+
    STATUS_JS=${RTKBASE_WEB}/static/status.js
    #echo STATUS_JS=${STATUS_JS}
    patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
@@ -1496,7 +1506,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
-              ${MODEM_WEB_PROXY_SERVICE}"
+              ${MODEM_WEB_PROXY_SERVICE} ${RTKBASE_CONFIG_MANAGER_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
