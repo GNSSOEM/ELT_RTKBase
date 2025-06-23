@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..5612de1 100644
+index c8f257b..52f425a 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -35,7 +35,7 @@
@@ -59,7 +59,7 @@ index c8f257b..5612de1 100644
      </div>
      <div class="col-sm-8">
 -        <a href="{{ url_for('diagnostic') }}" target="_blank" class="btn btn-secondary" role="button">View</a>
-+        <a href="{{ url_for('diagnostic') }}" target="_self" class="btn btn-secondary" role="button">View</a>
++        <a href="{{ url_for('diagnostic') }}" target="_self" class="btn btn-secondary" role="button">View Diagnostic</a>
          <!--<button id="download-diag-button" class="btn btn-secondary" type="button" disabled>Download</button>-->
      </div>
    </div>
