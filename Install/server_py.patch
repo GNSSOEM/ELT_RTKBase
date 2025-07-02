@@ -21,7 +21,13 @@ index bb39670..d095192 100755
                   {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
                   {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
                   {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
-@@ -109,8 +110,9 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -105,12 +105,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+                  {'service_unit' : 'rtkbase_archive.timer', "name" : "archive_timer"},
+                  {'service_unit' : 'rtkbase_archive.service', "name" : "archive_service"},
+                  {'service_unit' : 'rtkbase_raw2nmea.service', "name" : "raw2nmea"},
+-                 {'service_unit' : 'rtkbase_gnss_web_proxy.service', "name": "RTKBase Reverse Proxy for Gnss receiver Web Server"}
++                 {'service_unit' : 'rtkbase_gnss_web_proxy.service', "name": "RTKBase Reverse Proxy for Gnss receiver Web Server"},
++                 {'service_unit' : 'rtkbase_modem_web_proxy.service', "name" : "RTKBase Reverse Proxy for Mobile Modem Web Server"},
                   ]
  
  #Delay before rtkrcv will stop if no user is on status.html page
@@ -183,17 +189,35 @@ index bb39670..d095192 100755
      ntrip_A_settings = rtkbaseconfig.get_ntrip_A_settings()
      ntrip_B_settings = rtkbaseconfig.get_ntrip_B_settings()
      local_ntripc_settings = rtkbaseconfig.get_local_ntripc_settings()
-@@ -450,7 +548,8 @@ def settings_page():
+@@ -439,6 +538,17 @@ def settings_page():
+     rtcm_udp_client_settings = rtkbaseconfig.get_rtcm_udp_client_settings()
+     rtcm_serial_settings = rtkbaseconfig.get_rtcm_serial_settings()
+     file_settings = rtkbaseconfig.get_file_settings()
++    have_mobile = os.path.exists("/sys/class/net/mobile")
++
++    #start or stop  rtkbase_modem_web_proxy.service
++    for service in services_list:
++        if service["service_unit"] == 'rtkbase_modem_web_proxy.service':
++           service["active"] = service["unit"].isActive()
++           if service["active"] != have_mobile:
++              if have_mobile:
++                 service["unit"].start()
++              else:
++                 service["unit"].stop()
+ 
+     return render_template("settings.html", main_settings = main_settings,
+                                             ntrip_A_settings = ntrip_A_settings,
+@@ -450,7 +559,8 @@ def settings_page():
                                              rtcm_udp_client_settings = rtcm_udp_client_settings,
                                              rtcm_serial_settings = rtcm_serial_settings,
                                              file_settings = file_settings,
 -                                            os_infos = distro.info(),)
 +                                            os_infos = distro.info(),
-+                                            have_mobile = os.path.exists("/sys/class/net/mobile"),)
++                                            have_mobile = have_mobile,)
  
  @app.route('/logs')
  @login_required
-@@ -503,20 +603,34 @@ def diagnostic():
+@@ -503,20 +603,32 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -209,11 +233,9 @@ index bb39670..d095192 100755
 +    rtkbase_DHCP_service["active"] = ServiceController(rtkbase_DHCP_service["service_unit"]).isActive()
 +    NetworkManager_service = {'service_unit' : 'NetworkManager.service', 'name' : 'Network Manager'}
 +    NetworkManager_service["active"] = ServiceController(NetworkManager_service["service_unit"]).isActive()
-+    rtkbase_modem_web_proxy_service = {'service_unit' : 'rtkbase_modem_web_proxy.service', 'name' : 'RTKBase Reverse Proxy for Mobile Modem Web Server'}
-+    rtkbase_modem_web_proxy_service["active"] = ServiceController(rtkbase_modem_web_proxy_service["service_unit"]).isActive()
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service, NetworkManager_service, rtkbase_modem_web_proxy_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service, NetworkManager_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,
