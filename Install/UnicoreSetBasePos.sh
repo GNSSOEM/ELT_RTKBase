@@ -394,15 +394,21 @@ then
    SAVECONF=Y
 fi
 
-if [[ ${SETANT} == Y ]]
-then
+if [[ ${SETANT} == Y ]]; then
+   if [[ "${antenna_info}" == "ELT0123" ]] || [[ "${antenna_info}" == "ELT0323" ]]; then
+      if [[ "${receiver}" =~ Unicore ]]; then
+         antenna_info="HXCSX627A"
+      else
+         antenna_info="HXCSX627A       NONE"
+      fi
+   fi
    ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
    ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
    ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
    if [[ "${ANTSETUP}" == "" ]]; then
       ANTSETUP=0
    fi
-   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
+   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP} antenna_info=${antenna_info}
    if [[ "${receiver}" =~ Unicore ]]; then
       if [[ "${ANTSERIAL}" == "" ]]; then
          ANTSERIAL=0
