@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..57fa920 100644
+index 9f48006..ac8832e 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -377,8 +377,9 @@ index 9f48006..57fa920 100644
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
 -        console.log("mgs: " + response.error)
+-        $("#updateModal .modal-title").text("Error !");
 +        console.log("updating_rtkbase_stopped: " + JSON.stringify(response))
-         $("#updateModal .modal-title").text("Error !");
++        $("#updateModal .modal-title").text(response.result);
          $("#updateModal .modal-body").text("");
          for (line of response.error) {
              $("#updateModal .modal-body").append("<p>" + line + "</p>");
@@ -450,7 +451,32 @@ index 9f48006..57fa920 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -735,5 +880,73 @@ $(document).ready(function () {
+@@ -714,16 +859,19 @@ $(document).ready(function () {
+         $(this).prop("disabled", true);
+         $("#reboot-cancel-button").prop("disabled", true);
+         socket.emit("reboot device");
+-        reboot_countdown(90, 0);
++        reboot_countdown(90, 0, 0);
+     })
+ 
+-    function reboot_countdown(remaining, count) {
++    function reboot_countdown(remaining, count, count2) {
+         if(remaining === 0)
+             location.reload();
+         if (count > 15 && socket.connected)
+-            location.reload();
+-        document.getElementById('countdown').innerHTML = remaining;
+-        setTimeout(function(){ reboot_countdown(remaining - 1, count + 1); }, 1000);
++           count2=count2+1;
++        if (count2 > 20)
++           location.reload();
++        if (remaining >= 0)
++           document.getElementById('countdown').innerHTML = remaining;
++        setTimeout(function(){ reboot_countdown(remaining - 1, count + 1, count2); }, 1000);
+     };
+     $("#shutdown-button").on("click", function() {
+         $("#shutdownModal").modal();
+@@ -735,5 +883,73 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

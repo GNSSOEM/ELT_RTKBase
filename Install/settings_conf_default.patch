@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index e806217..73748bb 100644
+index e806217..c2065b1 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -19,7 +19,18 @@ index e806217..73748bb 100644
  #Web frontend port
  web_port=80
  #set true if you want to enter a password to open the web gui.
-@@ -81,9 +84,13 @@ min_free_space='500'
+@@ -54,6 +57,10 @@ ext_tcp_port=''
+ gnss_rcv_web_ip=192.168.3.1
+ #port number for the Flask proxy app used to display the Gnss receiver web service
+ gnss_rcv_web_proxy_port=9090
++#ip address of the integrated modem web service (ie on E3372-325)
++mobile_modem_web_ip=192.168.8.1
++#port number for the Flask proxy app used to display the modem web service
++mobile_modem_web_proxy_port=7070
+ #port number for the raw2nmea service
+ nmea_port='5014'
+ 
+@@ -81,9 +88,13 @@ min_free_space='500'
  # NTRIP A caster options
  
  #ntrip A caster url
@@ -34,7 +45,7 @@ index e806217..73748bb 100644
  #ntrip A caster password
  svr_pwd_a=''
  #Mount name
-@@ -97,9 +104,13 @@ ntrip_a_receiver_options=''
+@@ -97,9 +108,13 @@ ntrip_a_receiver_options=''
  # NTRIP B caster options
  
  #ntrip B caster url
@@ -49,7 +60,7 @@ index e806217..73748bb 100644
  #ntrip B caster password
  svr_pwd_b=''
  #Mount name
-@@ -108,6 +119,66 @@ rtcm_msg_b='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1
+@@ -108,6 +123,66 @@ rtcm_msg_b='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1
  #Receiver dependent options
  ntrip_b_receiver_options=''
  

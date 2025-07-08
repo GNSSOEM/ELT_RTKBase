@@ -1,0 +1,12 @@
+diff --git a/unit/str2str_ntrip_A.service b/unit/str2str_ntrip_A.service
+index 9cbd764..b867040 100644
+--- a/unit/str2str_ntrip_A.service
++++ b/unit/str2str_ntrip_A.service
+@@ -8,6 +8,7 @@ Requires=str2str_tcp.service
+ Type=forking
+ User={user}
+ ExecStart={script_path}/run_cast.sh in_tcp out_caster_A
++ExecStopPost={script_path}/tools/onoffELT0x33.sh SETTINGS OFF 0
+ Restart=on-failure
+ RestartSec=30
+ #Limiting log to 1 msg per minute
