@@ -35,12 +35,14 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + When speed changed in main settings, speed of receiver will be changing too
 + Configuring WiFi via an Windows application  (not only on first boot)
 + Adding users via an Windows application  (not only on first boot)
-+ Complete [documentation](./Doc/ELT_RTKBase_v1.8.0_EN.pdf) with lots of pictures
++ Complete [documentation](./Doc/ELT_RTKBase_v1.8.1_EN.pdf) with lots of pictures
 + Zeroconfig VPN by [Tailscale](https://tailscale.com)
 + System update & upgrade by button in the web-interface
 + Indication of disconnections with the NTRIP server in the web interface.
 + Support for static IP addresses
 + WPS PBC for WiFi
++ Internet access via 4G/5G USB modems such as Huawei HiLink.
++ Data Transmission via Radio Modem.
 
 ## The next version is expected to include:
 + NTRIP 2.0
