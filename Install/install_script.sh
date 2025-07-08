@@ -1135,12 +1135,18 @@ configure_for_unicore(){
    mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
    ExitCodeCheck $?
 
-   echo mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
+   #echo mkdir -p ${NETWORK_CONF}
+   mkdir -p ${NETWORK_CONF}
+   ExitCodeCheck $?
+   #echo mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
    mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
    ExitCodeCheck $?
-   #echo nmcli general reload
-   nmcli general reload
-   ExitCodeCheck $?
+
+   if ! ischroot; then
+      #echo nmcli general reload
+      nmcli general reload
+      ExitCodeCheck $?
+   fi
 
    #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
    if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
