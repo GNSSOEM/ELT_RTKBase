@@ -3,6 +3,7 @@
 
 #NEWCONF=system.txt
 NEWCONF=/boot/firmware/system.txt
+BASEDIR="$(dirname "$0")"
 exitcode=0
 
 ExitCodeCheck(){
@@ -12,6 +13,27 @@ ExitCodeCheck(){
      exitcode=${lastcode}
      #echo exitcode=${exitcode}
   fi
+}
+
+WPS_FLAG=/usr/local/rtkbase/WPS.flg
+
+Ciao(){
+  #echo Trap now
+  rm -f ${WPS_FLAG}
+}
+
+WPS() {
+  nm-online -s >/dev/null
+  HAVE_INTERNET=`nmcli networking connectivity check`
+  #echo HAVE_INTERNET=${HAVE_INTERNET}
+  if [[ "${HAVE_INTERNET}" != "full" ]]; then
+     echo Start WPS PBC
+     trap Ciao EXIT HUP INT QUIT ABRT KILL TERM
+     echo Start WPS PBC >${WPS_FLAG}
+     ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
+     rm -f ${WPS_FLAG}
+  fi
+  ExitCodeCheck 0
 }
 
 WHOAMI=`whoami`
@@ -38,12 +60,21 @@ then
    source <( grep '=' ${NEWCONF} )
    ExitCodeCheck $?
 else
-   ExitCodeCheck 0
+   WPS
    exit 0
+fi
+
+if [[ -n "${COMMAND}" ]]
+then
+   echo Executing \""${COMMAND}"\"
+   eval ${COMMAND}
+   ExitCodeCheck $?
+   WORK=Y
 fi
 
 if [[ -n "${COUNTRY}" ]]
 then
+   nm-online -s >/dev/null
    #echo raspi-config nonint do_wifi_country "${COUNTRY}"
    raspi-config nonint do_wifi_country "${COUNTRY}"
    ExitCodeCheck $?
@@ -62,6 +93,7 @@ then
       HIDkey=-h
    fi
    #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
+   nm-online -s >/dev/null
 
    if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
       if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
@@ -81,8 +113,8 @@ then
       ExitCodeCheck $?
       #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
       #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
-      #echo systemctl restart NetworkManager
-      systemctl restart NetworkManager
+      #echo nmcli connection reload
+      nmcli connection reload
       ExitCodeCheck $?
    else
       #https://www.raspberrypi.com/documentation/computers/configuration.html
@@ -113,7 +145,7 @@ then
          #echo useradd --comment "Added by system" --create-home --password "${CRYPTO}" "${LOGIN}"
          useradd --comment "Added by RtkBaseSystemConfigure" --create-home --password "${CRYPTO}" "${LOGIN}"
          ExitCodeCheck $?
-         usermod -a -G plugdev,dialout "${LOGIN}"
+         usermod -a -G plugdev,dialout,gpio "${LOGIN}"
          ExitCodeCheck $?
          echo Added user ${LOGIN} with password -- code ${exitcode}
       else
@@ -177,6 +209,7 @@ ChangeConnection(){
    gate="$3"
    dns="$4"
    conname="$5"
+   nm-online -s >/dev/null
    #echo device=${device} ip=${ip} gate=${gate} dns=${dns} conname=${conname}
    #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
    UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
@@ -298,6 +331,8 @@ fi
 if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
    ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
 fi
+
+WPS
 
 if [[ -z "${WORK}" ]]
 then

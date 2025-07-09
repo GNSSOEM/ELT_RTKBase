@@ -22,6 +22,8 @@
 *.service text eol=lf
 iso3166.tab text eol=lf
 config.* text eol=lf
+*.link text eol=lf
+*.rules text eol=lf
 *.patch text eol=lf
 *.conf text eol=lf
 

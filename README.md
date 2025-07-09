@@ -35,17 +35,27 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + When speed changed in main settings, speed of receiver will be changing too
 + Configuring WiFi via an Windows application  (not only on first boot)
 + Adding users via an Windows application  (not only on first boot)
-+ Complete [documentation](./Doc/ELT_RTKBase_v1.7.5_EN.pdf) with lots of pictures
++ Complete [documentation](./Doc/ELT_RTKBase_v1.8.1_EN.pdf) with lots of pictures
 + Zeroconfig VPN by [Tailscale](https://tailscale.com)
 + System update & upgrade by button in the web-interface
 + Indication of disconnections with the NTRIP server in the web interface.
 + Support for static IP addresses
++ WPS PBC for WiFi
++ Internet access via 4G/5G USB modems such as Huawei HiLink.
++ Data Transmission via Radio Modem.
 
 ## The next version is expected to include:
 + NTRIP 2.0
 + 5 NTRIP servers
 
+## ready-made base stations:
+You can buy ready-made base stations at [gnss.store](https://gnss.store/78-cors-fanless-stations). To choose stations, read [our blog](https://gnss.store/blog/category/-choosing-a-base-station-for-onocoy.html).
+
 ## License:
 ELT_RTKBase is licensed under AGPL 3 (see [LICENSE](./LICENSE) file).
 
 ELT_RTKBase uses [RtkBase](https://github.com/Stefal/rtkbase) (AGPL v3) by Stefal
+
+ELT_RTKBase uses [PBC](https://github.com/kcdtv/PBC) (GPL v3) by kcdtv
+
+ELT_RTKBase uses [ntripserver](https://github.com/simeononsecurity/ntripserver) (GPL v2) by German Federal Agency for Cartography and Geodesy (BKG)

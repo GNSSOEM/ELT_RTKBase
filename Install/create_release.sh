@@ -22,6 +22,14 @@ tar --exclude-vcs \
     rtkbase_septentrio_NAT.sh rtkbase_septentrio_NAT.service \
     rtkbase_DHCP.conf rtkbase_DHCP.service str2str_ntrip_C.service \
     str2str_ntrip_D.service str2str_ntrip_E.service favicon.ico \
+    99-ELT0x33.rules startELT0x33.sh onoffELT0x33.sh \
+    str2str_rtcm_svr.patch str2str_tcp.patch ntrip_led.sh \
+    str2str_ntrip_A.patch  Rtcm3Led rtkbase_check_satelites.sh \
+    rtkbase_check_satelites.service PBC.sh reboot.sh \
+    70-usb-net-septentrio.link 77-mm-septentio-port-types.rules \
+    reset_receiver.sh autoconnect-retries-forever.conf \
+    70-usb-net-mobile.link gnss_rproxy_server_py.patch \
+    rtkbase_modem_web_proxy.service RTKBaseConfigManager_py.patch \
     opizero_temp_offset.patch
 
 rm -f $BUNDLE_NAME

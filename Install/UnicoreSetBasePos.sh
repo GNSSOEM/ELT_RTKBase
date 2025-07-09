@@ -6,30 +6,77 @@ OLDCONF=${BASEDIR}/receiver.conf
 BADPOSFILE=${BASEDIR}/main.flg
 #DEBUGLOG="${BASEDIR}/debug.log"
 ZEROPOS="0.00 0.00 0.00"
-com_port=${1}
-com_speed=${2}
-position=${3}
-receiver=${4}
+com_port="${1}"
+com_speed="${2}"
+position="${3}"
+receiver="${4}"
 antenna_info="${5}"
 #echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver} antenna_info="${antenna_info}"
 
-if [[ ! -c /dev/${com_port} ]]; then
-   echo /dev/${com_port} NOT EXISTS!
+if [[ "${com_port}" == "" ]]; then
+   echo com port is EMPTY!
    exit 1
+fi
+
+if [[ "${receiver}" == "" ]]; then
+   echo Receiver type is EMPTY!
+   exit 1
+fi
+
+if [[ "${receiver}" == "unknown" ]]; then
+   echo Receiver type is UNKNOWN!
+   exit 1
+fi
+
+if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
+   exit 0
+fi
+
+if [[ ${com_speed} -lt 115200 ]]; then
+   echo com_speed \(${com_speed}\) is low 115200
+   exit 3
 fi
 
 lastcode=N
 exitcode=0
 
+function ciao {
+   if [[ ${exitcode} != 0 ]]; then
+      #echo "${BASEDIR}"/tools/reset_receiver.sh
+      "${BASEDIR}"/tools/reset_receiver.sh
+   fi
+   #echo "${BASEDIR}"/tools/onoffELT0x33.sh ${com_port} OFF
+   "${BASEDIR}"/tools/onoffELT0x33.sh ${com_port} OFF
+}
+
+trap ciao EXIT
+
+
 ExitCodeCheck(){
   lastcode=$1
   #echo lastcode=${lastcode}
-  if [[ $lastcode > $exitcode ]]
-  then
+  if [[ $lastcode > $exitcode ]]; then
      exitcode=${lastcode}
      #echo exitcode=${exitcode}
   fi
 }
+
+for i in `seq 1 5`; do
+   if [[ -c /dev/${com_port} ]]; then
+      break
+   else
+      #echo $i:/dev/${com_port} NOT EXISTS!
+      WasNotExists=YES
+      sleep 1
+   fi
+done
+
+if [[ ! -c /dev/${com_port} ]]; then
+   echo /dev/${com_port} NOT EXISTS!
+   ExitCodeCheck 1
+   exit 1
+#elif [[ -n ${WasNotExists} ]]; then
+fi
 
 SAVECONF=N
 if [[ -f ${OLDCONF} ]]
@@ -46,11 +93,8 @@ else
 fi
 #echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
 
-if [[ ${com_speed} -lt 115200 ]]
-then
-   echo com_speed \(${com_speed}\) is low 115200
-   exit 3
-fi
+#echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
+${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
 
 SETSPEED=Y
 SETPOS=Y
@@ -141,6 +185,7 @@ then
    if [[ "${recv_com}" == "" ]]
    then
       echo Unknown receiver port for change speed
+      ExitCodeCheck 1
       exit 1
    fi
 fi
@@ -177,14 +222,20 @@ then
       else
          ExitCodeCheck ${lastcode}
          echo speed changed incorrectly, not saved
-         exit 1
+         exit_code=1
+         break
       fi
    done
 
    if [[ ${SPEEDCHANGED} != "Y" ]]
    then
       echo receiver not answer after changing speed
-      exit 2
+      exit_code=2
+   fi
+
+   if [[ "${exit_code}" != "" ]]; then
+      ExitCodeCheck ${exit_code}
+      exit ${exit_code}
    fi
 fi
 
@@ -194,17 +245,27 @@ if [[ ${SETPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
    then
+      NO_ANSWER_COUNT=0;
       for i in `seq 1 30`
       do
          #echo UNICORE_MODE=\`${BASEDIR}/NmeaConf ${DEVICE} MODE\`
          UNICORE_MODE=`${BASEDIR}/NmeaConf ${DEVICE} MODE`
          IS_FINE=`echo ${UNICORE_MODE} | grep -c "1005"`
+         NO_ANSWER=`echo ${UNICORE_MODE} | grep -c "maxRead=0 "`
          #echo UNICORE_MODE=${UNICORE_MODE}
-         #echo IS_FINE=${IS_FINE}
-         if [[ ${IS_FINE} != "0" ]]
-         then
+         #echo IS_FINE=${IS_FINE} NO_ANSWER=${NO_ANSWER} NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
+         if [[ ${IS_FINE} != "0" ]]; then
             echo 1005 found on $i iteration
             break
+         fi
+         if [[ ${NO_ANSWER} != "0" ]]; then
+            let NO_ANSWER_COUNT++
+            #echo NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
+            if [ ${NO_ANSWER_COUNT} -ge 5 ]; then
+               echo receiver not answer ${NO_ANSWER_COUNT} times
+               ExitCodeCheck 1
+               exit 1
+            fi
          fi
          sleep 1
       done
@@ -267,14 +328,14 @@ fi
 #echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS}
 if [[ ${CHECKPOS} == Y ]]
 then
-   #echo ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
-   UNICORE_ANSWER=`${BASEDIR}/NmeaConf ${DEVICE} CONFIG QUIET`
+   #echo UNICORE_ANSWER=\`${BASEDIR}/NmeaConf ${DEVICE} CONFIG\`
+   UNICORE_ANSWER=`${BASEDIR}/NmeaConf ${DEVICE} CONFIG`
    ExitCodeCheck $?
    #echo UNICORE_ANSWER=${UNICORE_ANSWER}
    POSITION_INCORRECT=`echo ${UNICORE_ANSWER} | grep -c "not correct"`
-   #echo POSITION_INCORRECT=${POSITION_INCORRECT}
-   if [[ ${POSITION_INCORRECT} == "0" ]]
-   then
+   HAVE_RTCM3=`echo ${UNICORE_ANSWER} | grep -c "RTCM3:"`
+   #echo POSITION_INCORRECT=${POSITION_INCORRECT} HAVE_RTCM3=${HAVE_RTCM3}
+   if [[ ${POSITION_INCORRECT} == "0" ]] && [[ ${HAVE_RTCM3} != "0" ]]; then
       recv_position="${position}"
       #echo recv_position=${recv_position}
       BADPOS=N
@@ -338,15 +399,21 @@ then
    SAVECONF=Y
 fi
 
-if [[ ${SETANT} == Y ]]
-then
+if [[ ${SETANT} == Y ]]; then
+   if [[ "${antenna_info}" == "ELT0123" ]] || [[ "${antenna_info}" == "ELT0323" ]]; then
+      if [[ "${receiver}" =~ Unicore ]]; then
+         antenna_info="HXCSX627A"
+      else
+         antenna_info="HXCSX627A       NONE"
+      fi
+   fi
    ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
    ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
    ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
    if [[ "${ANTSETUP}" == "" ]]; then
       ANTSETUP=0
    fi
-   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
+   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP} antenna_info=${antenna_info}
    if [[ "${receiver}" =~ Unicore ]]; then
       if [[ "${ANTSERIAL}" == "" ]]; then
          ANTSERIAL=0
@@ -405,23 +472,27 @@ then
    echo recv_com=${recv_com}>>${OLDCONF}
 fi
 
-if [[ ${lastcode} == N ]]
-then
+if [[ ${lastcode} == N ]]; then
    if [[ "${receiver}" =~ Unicore ]]
    then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
       ExitCodeCheck $?
-   elif [[ "${receiver}" =~ Bynav ]]
-   then
+   elif [[ "${receiver}" =~ Bynav ]]; then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"LOG REFSTATION\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "LOG REFSTATION" QUIET
       ExitCodeCheck $?
-   elif [[ "${receiver}" =~ Septentrio ]]
-   then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
-      ExitCodeCheck $?
+   elif [[ "${receiver}" =~ Septentrio ]]; then
+      for i in `seq 1 5`; do
+         #echo ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
+         ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
+         lastcode=$?
+         if [[ "${lastcode}" != "4" ]] || [[ -z ${WasNotExists} ]]; then
+            break
+         fi
+         #sudo lsof /dev/${com_port}
+      done
+      ExitCodeCheck ${lastcode}
    fi
 fi
 

@@ -140,8 +140,12 @@ detect_usb() {
              if [[ "$devname" == "bus/"* ]]; then continue; fi
              #echo sysdevpath=${sysdevpath} syspath=${syspath} devname=${devname}
              eval "$(udevadm info -q property --export -p "${syspath}")"
+             #udevadm info -q property -p "${syspath}")"
              #echo devname=${devname} ID_SERIAL=${ID_SERIAL}
              if [[ -z "$ID_SERIAL" ]]; then continue; fi
+             IS_SERIAL=`echo ${DEVLINKS}|grep serial`
+             #echo devname=${devname} ID_SERIAL=${ID_SERIAL} IS_SERIAL=${IS_SERIAL}
+             if [[ -z "$IS_SERIAL" ]]; then continue; fi
              if [[ "$ID_SERIAL" =~ (u-blox|skytraq) ]]; then
                 detected_gnss[0]=$devname
                 detected_gnss[1]=$ID_SERIAL
@@ -157,6 +161,22 @@ detect_usb() {
                    detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
                    break
                 fi
+             elif [[ "$ID_SERIAL" =~ ELT0x33 ]]; then
+                #echo detect ELT0x33 ${devname}
+                #echo sysdevpath=${sysdevpath} syspath=${syspath} devname=${devname}
+                detected_ELT0x33=Y
+                #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+                ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
+                #echo detect_speed_Unicore ${devname}
+                detect_speed_Unicore ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Bynav ${devname}
+                detect_speed_Bynav ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Septentrio ${devname}
+                detect_speed_Septentrio ${devname}
+                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
+                break
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
@@ -176,6 +196,10 @@ detect_usb() {
              fi
              [[ ${#detected_gnss[*]} -eq 3 ]] && break
          done
+         if [[ "${detected_ELT0x33}" == "Y" ]]; then
+            #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+            ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
+         fi
          if [[ -f  "${BynavDevices}" ]]
          then
             #cat ${BynavDevices}
@@ -265,22 +289,25 @@ detect_configure() {
 }
 
 stoping_main() {
-   str2str_active=$(systemctl is-active str2str_tcp)
-   #echo str2str_active=${str2str_active}
+   for i in `seq 1 3`; do
+       str2str_active=$(systemctl is-active str2str_tcp)
+       #echo str2str_active=${str2str_active}
 
-   if [ "${str2str_active}" = "active" ] || [ "${str2str_active}" = "activating" ]
-   then
-      #echo systemctl stop str2str_tcp \&\& sleep 2
-      systemctl stop str2str_tcp && sleep 2
-   fi
-   #systemctl status str2str_tcp.service
-   #ps -Af | grep rtkrcv
+       if [[ "${str2str_active}" == "active" ]] || [[ "${str2str_active}" == "activating" ]] || [[ "${str2str_active}" == "reloading" ]] || [[ "${str2str_active}" == "refreshing" ]]; then
+          #echo systemctl stop str2str_tcp
+          systemctl stop str2str_tcp
+       elif [[ "${str2str_active}" == "deactivating" ]]; then
+          sleep 1
+       else
+          break
+       fi
+   done
 }
 
 detect_gnss() {
     stoping_main
     detect_usb
-    if [[ ${#detected_gnss[*]} < 2 ]]; then
+    if [[ ${#detected_gnss[*]} < 2 ]] && [[ "${detected_ELT0x33}" != "Y" ]]; then
        detect_uart
     fi
     detect_configure ${1}
@@ -374,16 +401,33 @@ configure_bynav(){
     RECVDEV=${2}
     RECVSPEED=${3}
 
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
-
     RECVNAME=
-    if [[ "${RECVINFO}" != "" ]]
-    then
-       #echo RECVINFO=${RECVINFO}
-       RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
-    fi
-    RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
-    #echo RECVVER=${RECVVER}
+    for i in `seq 1 3`; do
+       RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
+
+       if [[ "${RECVINFO}" != "" ]]; then
+          #echo RECVINFO=${RECVINFO}
+          RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
+          #echo RECVNAME=${RECVNAME}
+          if [[ "${RECVNAME}" =~ ^M ]]; then
+             break
+          else
+             echo Invalid receiver name \<${RECVNAME}\>
+             RECVNAME=
+          fi
+       fi
+    done
+
+    for i in `seq 1 3`; do
+        RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
+        #echo RECVVER=${RECVVER}
+        if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
+           break
+        else
+           RECVVER=
+        fi
+    done
+
     FIRMWARE=`echo ${RECVVER} | awk -F ',' '{print $2}'`
     #echo FIRMWARE=${FIRMWARE}
     if [[ "${RECVNAME}" == "" ]] || [[ "${FIRMWARE}" == "" ]]; then
@@ -456,7 +500,10 @@ configure_septentrio_SBF(){
       sleep_time=30 ; echo 'Waiting '$sleep_time's for mosaic-X5 reboot' ; sleep $sleep_time
       echo 'Sending settings....'
       python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command send_config_file "${rtkbase_path}"/receiver_cfg/Septentrio_Mosaic-X5.cfg --store --retry 5
-      if [[ $? -eq  0 ]]
+      exitcode=$?
+      RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
+      echo . >${RESET_INTERNET_LED_FLAG}
+      if [[ ${exitcode} -eq  0 ]]
       then
         echo 'Septentrio Mosaic-X5 successfuly configured'
         systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null                                                          && \
@@ -512,6 +559,8 @@ configure_septentrio_RTCM3() {
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        exitcode=$?
+       RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
+       echo . >${RESET_INTERNET_LED_FLAG}
        #echo exitcode=${exitcode}
        if [[ ${exitcode} == 0 ]]
        then
@@ -577,12 +626,15 @@ configure_gnss(){
         RECVSPEED=${com_port_settings%%:*}
         RECVDEV=/dev/${com_port}
         RECVPORT=${RECVDEV}:${RECVSPEED}
+        Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
            configure_septentrio_SBF /dev/ttyGNSS_CTRL ${RECVSPEED}
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox_UBX ${RECVPORT} ${RECVSPEED}
         elif [[ ${receiver_format} == "rtcm3" ]]; then
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
            if [[ ${receiver} =~ "Unicore" ]]; then
               configure_unicore ${RECVPORT}
            elif [[ ${receiver} =~ "Bynav" ]]; then
@@ -591,16 +643,19 @@ configure_gnss(){
               configure_septentrio_RTCM3 ${RECVPORT}
            else
               echo 'Unknown RTCM3 Gnss receiver has'\''t  been set. We can'\''t configure '${RECVPORT}
-              return 1
+              Result=1
            fi
+           #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} OFF
+           ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} OFF
         else
            echo 'We can'\''t configure '${receiver_format}' receiver on'${RECVPORT}
-           return 1
+           Result=1
         fi
       else #if [ -d "${rtkbase_path}" ]
         echo 'RtkBase not installed!!'
-        return 1
+        Result=1
       fi
+      return ${Result}
 }
 
 

@@ -6,6 +6,7 @@ Wants=local-fs.target network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/rtkbase/rtkbase_check_internet.sh
+ExecStopPost=/usr/local/rtkbase/rtkbase/tools/onoffELT0x33.sh SETTINGS OFF 1
 Restart=on-failure
 RestartSec=30
 

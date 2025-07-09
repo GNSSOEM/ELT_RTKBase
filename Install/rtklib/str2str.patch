@@ -1,25 +1,50 @@
 diff --git a/app/consapp/str2str/str2str.c b/app/consapp/str2str/str2str.c
-index c82f357..3caeadf 100644
+index c82f357..53a3bcc 100644
 --- a/app/consapp/str2str/str2str.c
 +++ b/app/consapp/str2str/str2str.c
-@@ -37,6 +37,8 @@
+@@ -37,9 +37,13 @@
  #define MAXSTR      5                  /* max number of streams */
  #define TRFILE      "str2str.trace"    /* trace file */
  
 +extern void flagsetup(const char *path);
++extern void eventsetup(const char *path);
 +
  /* global variables ----------------------------------------------------------*/
  static strsvr_t strsvr;                /* stream server */
- static volatile int intrflg=0;         /* interrupt flag */
-@@ -109,6 +111,7 @@ static const char *help[]={
+-static volatile int intrflg=0;         /* interrupt flag */
++static sig_atomic_t intrflg=0;         /* interrupt flag */
++static sig_atomic_t exitcode=0;        /* exit code */
+ 
+ /* help text -----------------------------------------------------------------*/
+ static const char *help[]={
+@@ -109,6 +113,8 @@ static const char *help[]={
  " -b  str_no        relay back messages from output str to input str [no]",
  " -t  level         trace level [0]",
  " -fl file          log file [str2str.trace]",
 +" -fg file          flag file",
++" -fe file          event command for change state",
  " -h                print help",
  "",
  "  command file cheat sheet:",
-@@ -215,7 +218,7 @@ int main(int argc, char **argv)
+@@ -131,10 +137,17 @@ static void printhelp(void)
+     exit(0);
+ }
+ /* signal handler ------------------------------------------------------------*/
++static char exitmsg[MAXSTRMSG]="";
+ static void sigfunc(int sig)
+ {
+     intrflg=1;
+ }
++void abortfunc(const char *msg)
++{
++    intrflg=1;
++    exitcode=1;
++    strcpy(exitmsg,msg);
++}
+ /* decode format -------------------------------------------------------------*/
+ static void decodefmt(char *path, int *fmt)
+ {
+@@ -215,7 +228,7 @@ int main(int argc, char **argv)
  {
      static char cmd_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
      static char cmd_periodic_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
@@ -28,15 +53,16 @@ index c82f357..3caeadf 100644
      strconv_t *conv[MAXSTR]={NULL};
      double pos[3],stapos[3]={0},stadel[3]={0};
      static char s1[MAXSTR][MAXSTRPATH]={{0}},s2[MAXSTR][MAXSTRPATH]={{0}};
-@@ -277,6 +280,7 @@ int main(int argc, char **argv)
+@@ -277,6 +290,8 @@ int main(int argc, char **argv)
          else if (!strcmp(argv[i],"-x"  )&&i+1<argc) proxy=argv[++i];
          else if (!strcmp(argv[i],"-b"  )&&i+1<argc) opts[7]=atoi(argv[++i]);
          else if (!strcmp(argv[i],"-fl" )&&i+1<argc) logfile=argv[++i];
 +        else if (!strcmp(argv[i],"-fg" )&&i+1<argc) flagsetup(argv[++i]);
++        else if (!strcmp(argv[i],"-fe" )&&i+1<argc) eventsetup(argv[++i]);
          else if (!strcmp(argv[i],"-t"  )&&i+1<argc) trlevel=atoi(argv[++i]);
          else if (!strcmp(argv[i], "--version")) {
              fprintf(stderr, "str2str RTKLIB %s %s\n", VER_RTKLIB, PATCH_LEVEL);
-@@ -343,14 +347,12 @@ int main(int argc, char **argv)
+@@ -343,21 +358,22 @@ int main(int argc, char **argv)
          
          /* get stream server status */
          strsvrstat(&strsvr,stat,log_stat,byte,bps,strmsg);
@@ -57,3 +83,21 @@ index c82f357..3caeadf 100644
      }
      for (i=0;i<MAXSTR;i++) {
          if (*cmdfile[i]) readcmd(cmdfile[i],cmds[i],1);
+     }
+     /* stop stream server */
+     strsvrstop(&strsvr,cmds);
+-    
++
++    if (*exitmsg)
++       fprintf(stderr,"%s %s\n", time_str(utc2gpst(timeget()),0),exitmsg);
++
+     for (i=0;i<n;i++) {
+         strconvfree(conv[i]);
+     }
+@@ -365,5 +381,5 @@ int main(int argc, char **argv)
+         traceclose();
+     }
+     fprintf(stderr,"stream server stop\n");
+-    return 0;
++    return exitcode;
+ }
