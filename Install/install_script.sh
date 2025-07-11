@@ -537,13 +537,15 @@ unpack_files(){
 }
 
 stop_rtkbase_services(){
-  if ! ischroot
-  then
+  if ! ischroot; then
      echo '################################'
      echo 'STOP RTKBASE SERVICES'
      echo '################################'
      serviceList="str2str_ntrip_A.service \
                   str2str_ntrip_B.service \
+                  str2str_ntrip_C.service \
+                  str2str_ntrip_D.service \
+                  str2str_ntrip_E.service \
                   str2str_local_ntrip_caster \
                   str2str_rtcm_svr.service \
                   str2str_rtcm_client.service \
@@ -568,22 +570,21 @@ stop_rtkbase_services(){
         serviceList="${serviceList} rtkbase_web.service"
      fi
      #echo serviceList=${serviceList}
-     for service_name in ${serviceList}
-     do
+     serviceStartList=
+     for service_name in ${serviceList}; do
          service_active=$(systemctl is-active "${service_name}")
-         if [ "${service_active}" != "inactive" ]
-         then
+         if [ "${service_active}" != "inactive" ]; then
             #echo ${service_name} is ${service_active}
+            serviceStartList="${serviceStartList} ${service_name}"
             #echo systemctl stop "${service_name}"
             systemctl stop "${service_name}"
-            if [ "${service_name}" = "str2str_tcp.service" ]
-            then
+            if [ "${service_name}" = "str2str_tcp.service" ]; then
                need_sleep=Y
             fi
          fi
      done
-     if [ "${need_sleep}" = "Y" ]
-     then
+     #echo serviceStartList=${serviceStartList}
+     if [ "${need_sleep}" = "Y" ]; then
         #echo sleep 2
         sleep 2
      fi
@@ -1543,6 +1544,16 @@ start_rtkbase_services(){
      systemctl start "${CHECK_SATELITES_SERVICE}"
      ExitCodeCheck $?
   fi
+
+  #echo serviceStartList=${serviceStartList}
+  for service_name in ${serviceStartList}; do
+      service_active=$(systemctl is-active "${service_name}")
+      if [ "${service_active}" != "active" ]; then
+         #echo ${service_name} is ${service_active}
+         #echo systemctl start "${service_name}"
+         systemctl start "${service_name}"
+      fi
+  done
 }
 
 delete_garbage(){
