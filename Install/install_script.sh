@@ -1442,17 +1442,16 @@ configure_settings(){
 }
 
 configure_gnss(){
-   if [[ "${UPDATE}" != "Y" ]] || ! have_full
-   then
-      UP_TIME=`cat /proc/uptime | sed "s/\..*$//"`
-      LIMIT_TIME=40
-      LEFT_TIME=`expr ${LIMIT_TIME} - ${UP_TIME}`
-      #echo UP_TIME=${UP_TIME} LIMIT_TIME=${LIMIT_TIME} LEFT_TIME=${LEFT_TIME}
-      if [[ ${LEFT_TIME} -gt 0 ]]; then
-         #echo sleep ${LEFT_TIME}
-         sleep ${LEFT_TIME}
-      fi
+   UP_TIME=`cat /proc/uptime | sed "s/\..*$//"`
+   LIMIT_TIME=40
+   LEFT_TIME=`expr ${LIMIT_TIME} - ${UP_TIME}`
+   #echo UP_TIME=${UP_TIME} LIMIT_TIME=${LIMIT_TIME} LEFT_TIME=${LEFT_TIME}
+   if [[ ${LEFT_TIME} -gt 0 ]]; then
+      #echo sleep ${LEFT_TIME}
+      sleep ${LEFT_TIME}
+   fi
 
+   if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
       #echo source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
       source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
       ExitCodeCheck $?
@@ -1617,7 +1616,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
-              ${MODEM_WEB_PROXY_SERVICE} ${RTKBASE_CONFIG_MANAGER_PATCH}"
+              ${MODEM_WEB_PROXY_SERVICE}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG}"
 
@@ -1670,7 +1669,7 @@ have_rpi && have_phase1 && check_boot_configiration
 have_rpi && have_full && can_reboot && do_reboot
 have_phase1 && install_tailscale
 have_phase1 && install_additional_utilies
-have_rpi && have_full || delete_pi_user
+have_rpi && have_receiver && delete_pi_user
 have_receiver && change_hostname ${HAVE_FULL}
 stop_rtkbase_services
 have_phase1 && add_rtkbase_user
