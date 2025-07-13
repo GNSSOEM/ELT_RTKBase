@@ -1379,6 +1379,14 @@ configure_settings(){
          echo insert svr_mode_a and svr_login_a into ${SETTINGS_NOW}
          #echo ${sed} "\"/^svr_port_a=/a #ntrip A caster mode]\\nsvr_mode_a=\'0\'\\n#ntrip A caster login\\nsvr_login_a=\'\'\"" \"${SETTINGS_NOW}\"
          ${sed} "/^svr_port_a=/a #ntrip A caster mode\nsvr_mode_a=\'0\'\n#ntrip A caster login\nsvr_login_a=\'\'" "${SETTINGS_NOW}"
+         source <( grep -v '^#' "${SETTINGS_NOW}" | grep 'svr_addr_a=' )
+         #echo svr_addr_a=${svr_addr_a}
+         if [[ "${svr_addr_a}" == "servers.onocoy.com" ]]; then
+            source <( grep -v '^#' "${SETTINGS_NOW}" | grep 'mnt_name_a=' )
+            echo replace svr_login_a as mnt_name_a for ${mnt_name_a}
+            ${sed} s/^svr_login_a=.*/svr_login_a=${mnt_name_a}/ "${SETTINGS_NOW}"
+            ${sed} s/^mnt_name_a=.*/mnt_name_a=/ "${SETTINGS_NOW}"
+         fi
       fi
 
       #echo if ! grep -q \"^svr_mode_b=\" \"${SETTINGS_NOW}\"\; then
@@ -1386,6 +1394,14 @@ configure_settings(){
          echo insert svr_mode_b and svr_login_b into ${SETTINGS_NOW}
          #echo ${sed} "\"/^svr_port_b=/a #ntrip B caster mode]\\nsvr_mode_b=\'0\'\\n#ntrip B caster login\\nsvr_login_b=\'\'\"" \"${SETTINGS_NOW}\"
          ${sed} "/^svr_port_b=/a #ntrip B caster mode\nsvr_mode_b=\'0\'\n#ntrip B caster login\nsvr_login_b=\'\'" "${SETTINGS_NOW}"
+         source <( grep -v '^#' "${SETTINGS_NOW}" | grep 'svr_addr_b=' )
+         #echo svr_addr_b=${svr_addr_b}
+         if [[ "${svr_addr_b}" == "servers.onocoy.com" ]]; then
+            source <( grep -v '^#' "${SETTINGS_NOW}" | grep 'mnt_name_b=' )
+            echo replace svr_login_b as mnt_name_b for ${mnt_name_b}
+            ${sed} s/^svr_login_b=.*/svr_login_b=${mnt_name_b}/ "${SETTINGS_NOW}"
+            ${sed} s/^mnt_name_b=.*/mnt_name_b=/ "${SETTINGS_NOW}"
+         fi
       fi
 
       #echo if ! grep -q \"^\[ntrip_E\]=\" \"${SETTINGS_NOW}\"\; then

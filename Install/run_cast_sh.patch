@@ -1,8 +1,8 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..86c1c2d 100755
+index db7a656..b73908c 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,79 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,85 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
@@ -35,6 +35,12 @@ index db7a656..86c1c2d 100755
 +  rtcm_msg=${!name}
 +  name=ntrip_${1}_receiver_options
 +  ntrip_receiver_options=${!name}
++  if [[ "${svr_addr}" == "servers.onocoy.com" ]] && [[ "${svr_mode}" == "0" ]]; then
++     #echo Onocoy NTRIP v1 used!
++     mnt_name=${svr_login}
++     svr_login=
++  fi
++  #echo ${svr_addr}:${svr_port} ${mnt_name}@${svr_login}/${svr_pwd}
 +
 +  case "${svr_mode}" in
 +    1)
@@ -90,7 +96,7 @@ index db7a656..86c1c2d 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +89,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +95,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -109,7 +115,7 @@ index db7a656..86c1c2d 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +113,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +119,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -158,7 +164,7 @@ index db7a656..86c1c2d 100755
      ;;
  
    out_local_caster)
-@@ -105,5 +188,9 @@ mkdir -p ${logdir}
+@@ -105,5 +194,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;

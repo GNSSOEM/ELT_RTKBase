@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..ac8832e 100644
+index 9f48006..addce73 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -476,7 +476,7 @@ index 9f48006..ac8832e 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +883,73 @@ $(document).ready(function () {
+@@ -735,5 +883,91 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -531,9 +531,17 @@ index 9f48006..ac8832e 100644
 +                   receiver_options.prop("hidden", false);
 +                   break;
 +           default: // NTRIP v1
-+                   svr_login.prop("hidden", true);
++                   svr_addr = document.getElementById("svr_addr_" + letter);
++                   //console.log(svr_addr.value);
++                   if (svr_addr.value === "servers.onocoy.com") {
++                      //console.log("Onocoy mode");
++                      svr_login.prop("hidden", false);
++                      mnt_name.prop("hidden", true);
++                   } else {
++                      svr_login.prop("hidden", true);
++                      mnt_name.prop("hidden", false);
++                   }
 +                   svr_pwd.prop("hidden", false);
-+                   mnt_name.prop("hidden", false);
 +                   rtcm_msg.prop("hidden", false);
 +                   receiver_options.prop("hidden", false);
 +        }
@@ -546,6 +554,16 @@ index 9f48006..ac8832e 100644
 +            set_ntrip_mode(letter);
 +        });
 +        e.click()
++    });
++
++    document.querySelectorAll("input.form-control").forEach(function(e) {
++        if (/svr_addr_/.test(e.id)) {
++           var letter = e.id.replace("svr_addr_", "");
++           //console.log(e.id + "(" + letter + ")");
++           e.addEventListener('change', function(ev) {
++               set_ntrip_mode(letter);
++           });
++        }
 +    });
 +
      // end of document.ready
