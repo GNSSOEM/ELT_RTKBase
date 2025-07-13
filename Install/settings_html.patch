@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..7aeee99 100644
+index c8f257b..d32b8e8 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -19,7 +19,7 @@ index c8f257b..7aeee99 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -119,9 +120,24 @@
+@@ -119,13 +120,28 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -44,6 +44,11 @@ index c8f257b..7aeee99 100644
        <div class="form-group row">
          <label for="svr_addr_A" class="col-sm-3 col-form-label">Caster address: </label>
          <div class="col-sm-9">
+-            <input id="svr_addr_A" type="text" name="svr_addr_A" class="form-control" aria-describedby="svr_addr_AHelp" placeholder="caster.centipede.fr" value="{{ ntrip_A_settings[0].svr_addr_A }}" pattern="\w+[^\|><\s]*" required>
++            <input id="svr_addr_A" type="text" name="svr_addr_A" class="form-control" aria-describedby="svr_addr_AHelp" placeholder="servers.onocoy.com" value="{{ ntrip_A_settings[0].svr_addr_A }}" pattern="\w+[^\|><\s]*" required>
+             <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
+         </div>
+       </div>
 @@ -136,11 +152,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
@@ -96,7 +101,7 @@ index c8f257b..7aeee99 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -193,9 +216,24 @@
+@@ -193,13 +216,28 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -121,6 +126,11 @@ index c8f257b..7aeee99 100644
        <div class="form-group row">
          <label for="svr_addr_B" class="col-sm-3 col-form-label">Caster address: </label>
          <div class="col-sm-9">
+-            <input id="svr_addr_B" type="text" name="svr_addr_B" class="form-control" aria-describedby="svr_addr_BHelp" placeholder="caster.centipede.fr" value="{{ ntrip_B_settings[0].svr_addr_B }}" pattern="\w+[^\|><\s]*" required>
++            <input id="svr_addr_B" type="text" name="svr_addr_B" class="form-control" aria-describedby="svr_addr_BHelp" placeholder="ntrip.rtkdirect.com" value="{{ ntrip_B_settings[0].svr_addr_B }}" pattern="\w+[^\|><\s]*" required>
+             <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
+         </div>
+       </div>
 @@ -210,11 +248,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
@@ -210,7 +220,7 @@ index c8f257b..7aeee99 100644
 +      <div class="form-group row">
 +        <label for="svr_addr_C" class="col-sm-3 col-form-label">Caster address: </label>
 +        <div class="col-sm-9">
-+            <input id="svr_addr_C" type="text" name="svr_addr_C" class="form-control" aria-describedby="svr_addr_CHelp" placeholder="caster.centipede.fr" value="{{ ntrip_C_settings[0].svr_addr_C }}" pattern="\w+[^\|><\s]*" required>
++            <input id="svr_addr_C" type="text" name="svr_addr_C" class="form-control" aria-describedby="svr_addr_CHelp" placeholder="rtk2go.com" value="{{ ntrip_C_settings[0].svr_addr_C }}" pattern="\w+[^\|><\s]*" required>
 +            <small class="form-text text-muted" id="svr_addr_CHelp">Caster url address</small>
 +        </div>
 +      </div>
@@ -306,7 +316,7 @@ index c8f257b..7aeee99 100644
 +      <div class="form-group row">
 +        <label for="svr_addr_D" class="col-sm-3 col-form-label">Caster address: </label>
 +        <div class="col-sm-9">
-+            <input id="svr_addr_D" type="text" name="svr_addr_D" class="form-control" aria-describedby="svr_addr_DHelp" placeholder="caster.centipede.fr" value="{{ ntrip_D_settings[0].svr_addr_D }}" pattern="\w+[^\|><\s]*" required>
++            <input id="svr_addr_D" type="text" name="svr_addr_D" class="form-control" aria-describedby="svr_addr_DHelp" placeholder="caster.emlid.com" value="{{ ntrip_D_settings[0].svr_addr_D }}" pattern="\w+[^\|><\s]*" required>
 +            <small class="form-text text-muted" id="svr_addr_DHelp">Caster url address</small>
 +        </div>
 +      </div>
