@@ -16,6 +16,6 @@ setHealthMask, Tracking, on
 setHealthMask, PVT, on
 setElevationMask, Tracking, 5
 setElevationMask, PVT, 15
-setSmoothingInterval,all,60,60
+setSmoothingInterval,all,300,30
 setCN0Mask,all,32
 
