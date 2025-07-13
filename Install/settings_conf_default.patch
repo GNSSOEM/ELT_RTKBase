@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index e806217..c2065b1 100644
+index e806217..ca7efcc 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -109,7 +109,7 @@ index e806217..c2065b1 100644
 +# NTRIP E caster options
 +
 +#ntrip E caster url
-+svr_addr_e='caster.centipede.fr'
++svr_addr_e='crtk.net'
 +#ntrip E caster port
 +svr_port_e='2101'
 +#ntrip E caster mode

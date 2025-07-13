@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..d32b8e8 100644
+index c8f257b..8340126 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -412,7 +412,7 @@ index c8f257b..d32b8e8 100644
 +      <div class="form-group row">
 +        <label for="svr_addr_E" class="col-sm-3 col-form-label">Caster address: </label>
 +        <div class="col-sm-9">
-+            <input id="svr_addr_E" type="text" name="svr_addr_E" class="form-control" aria-describedby="svr_addr_EHelp" placeholder="caster.centipede.fr" value="{{ ntrip_E_settings[0].svr_addr_E }}" pattern="\w+[^\|><\s]*" required>
++            <input id="svr_addr_E" type="text" name="svr_addr_E" class="form-control" aria-describedby="svr_addr_EHelp" placeholder="crtk.net" value="{{ ntrip_E_settings[0].svr_addr_E }}" pattern="\w+[^\|><\s]*" required>
 +            <small class="form-text text-muted" id="svr_addr_EHelp">Caster url address</small>
 +        </div>
 +      </div>
