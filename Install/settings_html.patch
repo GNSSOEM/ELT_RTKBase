@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..52f425a 100644
+index c8f257b..7aeee99 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -61,7 +61,7 @@ index c8f257b..52f425a 100644
          <div class="col-sm-9">
            <div class="input-group">
 -            <input id="svr_pwd_A" type="password" name="svr_pwd_A" class="form-control" aria-describedby="svr_pwd_AHelp" placeholder="Enter Password" value="{{ ntrip_A_settings[2].svr_pwd_A }}" required>
-+            <input id="svr_pwd_A" type="password" name="svr_pwd_A" class="form-control" aria-describedby="svr_pwd_AHelp" placeholder="Enter Password" value="{{ ntrip_A_settings[4].svr_pwd_A }}" required>
++            <input id="svr_pwd_A" type="password" name="svr_pwd_A" autocomplete=ntrip-server-A-password class="form-control" aria-describedby="svr_pwd_AHelp" placeholder="Enter Password" value="{{ ntrip_A_settings[4].svr_pwd_A }}" required>
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
@@ -138,7 +138,7 @@ index c8f257b..52f425a 100644
          <div class="col-sm-9">
            <div class="input-group">
 -            <input id="svr_pwd_B" type="password" name="svr_pwd_B" class="form-control" aria-describedby="svr_pwd_BHelp" placeholder="Enter password" value="{{ ntrip_B_settings[2].svr_pwd_B }}" required>
-+            <input id="svr_pwd_B" type="password" name="svr_pwd_B" class="form-control" aria-describedby="svr_pwd_BHelp" placeholder="Enter password" value="{{ ntrip_B_settings[4].svr_pwd_B }}" required>
++            <input id="svr_pwd_B" type="password" name="svr_pwd_B" autocomplete=ntrip-server-B-password class="form-control" aria-describedby="svr_pwd_BHelp" placeholder="Enter password" value="{{ ntrip_B_settings[4].svr_pwd_B }}" required>
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
@@ -232,7 +232,7 @@ index c8f257b..52f425a 100644
 +        <label for="svr_pwd_C" class="col-sm-3 col-form-label">Caster password: </label>
 +        <div class="col-sm-9">
 +          <div class="input-group">
-+            <input id="svr_pwd_C" type="password" name="svr_pwd_C" class="form-control" aria-describedby="svr_pwd_CHelp" placeholder="Enter password" value="{{ ntrip_C_settings[4].svr_pwd_C }}" required>
++            <input id="svr_pwd_C" type="password" name="svr_pwd_C" autocomplete=ntrip-server-C-password class="form-control" aria-describedby="svr_pwd_CHelp" placeholder="Enter password" value="{{ ntrip_C_settings[4].svr_pwd_C }}" required>
 +              <span class="input-group-append">
 +                <button class="btn btn-outline-secondary" id="svr_pwd_C_button" type="button">
 +                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
@@ -328,7 +328,7 @@ index c8f257b..52f425a 100644
 +        <label for="svr_pwd_D" class="col-sm-3 col-form-label">Caster password: </label>
 +        <div class="col-sm-9">
 +          <div class="input-group">
-+            <input id="svr_pwd_D" type="password" name="svr_pwd_D" class="form-control" aria-describedby="svr_pwd_DHelp" placeholder="Enter password" value="{{ ntrip_D_settings[4].svr_pwd_D }}" required>
++            <input id="svr_pwd_D" type="password" name="svr_pwd_D" autocomplete=ntrip-server-D-password class="form-control" aria-describedby="svr_pwd_DHelp" placeholder="Enter password" value="{{ ntrip_D_settings[4].svr_pwd_D }}" required>
 +              <span class="input-group-append">
 +                <button class="btn btn-outline-secondary" id="svr_pwd_D_button" type="button">
 +                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
@@ -424,7 +424,7 @@ index c8f257b..52f425a 100644
 +        <label for="svr_pwd_E" class="col-sm-3 col-form-label">Caster password: </label>
 +        <div class="col-sm-9">
 +          <div class="input-group">
-+            <input id="svr_pwd_E" type="password" name="svr_pwd_E" class="form-control" aria-describedby="svr_pwd_EHelp" placeholder="Enter password" value="{{ ntrip_E_settings[4].svr_pwd_E }}" required>
++            <input id="svr_pwd_E" type="password" name="svr_pwd_E" autocomplete=ntrip-server-E-password class="form-control" aria-describedby="svr_pwd_EHelp" placeholder="Enter password" value="{{ ntrip_E_settings[4].svr_pwd_E }}" required>
 +              <span class="input-group-append">
 +                <button class="btn btn-outline-secondary" id="svr_pwd_E_button" type="button">
 +                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
@@ -468,6 +468,15 @@ index c8f257b..52f425a 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
+@@ -281,7 +614,7 @@
+         <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
+         <div class="col-sm-9">
+           <div class="input-group">
+-            <input id="local_ntripc_pwd" type="password" name="local_ntripc_pwd" class="form-control" aria-describedby="local_ntripc_pwdHelp" placeholder="Choose a password" value="{{ local_ntripc_settings[1].local_ntripc_pwd }}" pattern="\w+[^\|><\s]*">
++            <input id="local_ntripc_pwd" type="password" name="local_ntripc_pwd" autocomplete=ntrip-caster-password class="form-control" aria-describedby="local_ntripc_pwdHelp" placeholder="Choose a password" value="{{ local_ntripc_settings[1].local_ntripc_pwd }}" pattern="\w+[^\|><\s]*">
+               <span class="input-group-append">
+                 <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
 @@ -351,7 +684,7 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
@@ -486,7 +495,34 @@ index c8f257b..52f425a 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -529,7 +862,7 @@
+@@ -501,17 +834,24 @@
+             </div>
+           </div>
+           -->      
++          <div class="form-group row" hidden>
++            <label for="username" class="col-sm-3 col-form-label">New: </label>
++            <div class="col-sm-9">
++                <input id="username" type="text" name="username" autocomplete=username class="form-control" title="username" value="admin">
++                <div class="invalid-feedback">New password</div>
++            </div>
++          </div>
+           <div class="form-group row">
+             <label for="new_password" class="col-sm-3 col-form-label">New: </label>
+             <div class="col-sm-9">
+-                <input id="new_password" type="password" name="new_password" class="form-control" title="new password" required>
++                <input id="new_password" type="password" name="new_password" autocomplete=new-password class="form-control" title="new password" required>
+                 <div class="invalid-feedback">New password</div>
+             </div>
+           </div>
+           <div class="form-group row">
+             <label for="confirm_password" class="col-sm-3 col-form-label">Confirm: </label>
+             <div class="col-sm-9">
+-                <input id="confirm_password" type="password" name="confirm_password" class="form-control" title="confirm password" required>
++                <input id="confirm_password" type="password" name="confirm_password" autocomplete=confirm-password class="form-control" title="confirm password" required>
+                 <div class="invalid-feedback">Confirm password</div>
+             </div>
+           </div>
+@@ -529,7 +869,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -495,7 +531,7 @@ index c8f257b..52f425a 100644
          {% endif %}
        </span>
      </div>
-@@ -602,11 +935,31 @@
+@@ -602,11 +942,31 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -528,7 +564,7 @@ index c8f257b..52f425a 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -614,6 +967,7 @@
+@@ -614,6 +974,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -536,7 +572,7 @@ index c8f257b..52f425a 100644
        </div>
    </div>
      
-@@ -775,6 +1129,27 @@
+@@ -775,6 +1136,27 @@
    </div>
  </div>
  
