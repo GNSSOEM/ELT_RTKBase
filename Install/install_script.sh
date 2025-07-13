@@ -1468,15 +1468,9 @@ configure_gnss(){
       sleep ${LEFT_TIME}
    fi
 
-   if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
-      #echo source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
-      source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
-      ExitCodeCheck $?
-   fi
-
    rtkbase_path=${RTKBASE_GIT}
-   #echo source "${rtkbase_path}/tools/opizero_temp_offset.sh"
-   source "${rtkbase_path}/tools/opizero_temp_offset.sh"
+   #echo source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
+   source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
    ExitCodeCheck $?
 
    HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
