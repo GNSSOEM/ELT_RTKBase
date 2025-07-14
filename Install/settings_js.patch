@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..addce73 100644
+index 9f48006..96c34ab 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -476,7 +476,7 @@ index 9f48006..addce73 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +883,91 @@ $(document).ready(function () {
+@@ -735,5 +883,96 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -511,6 +511,7 @@ index 9f48006..addce73 100644
 +        svr_login = $("#svr_login_" + letter + "_group");
 +        svr_pwd = $("#svr_pwd_" + letter + "_group");
 +        mnt_name = $("#mnt_name_" + letter + "_group");
++        mnt_input = $("#mnt_name_" + letter);
 +        rtcm_msg = $("#rtcm_msg_" + letter + "_group");
 +        receiver_options = $("#ntrip_" + letter + "_receiver_options_group");
 +        switch(index) {
@@ -520,12 +521,14 @@ index 9f48006..addce73 100644
 +                   svr_login.prop("hidden", false);
 +                   svr_pwd.prop("hidden", false);
 +                   mnt_name.prop("hidden", false);
++                   mnt_input.prop("required", true);
 +                   rtcm_msg.prop("hidden", true);
 +                   receiver_options.prop("hidden", true);
 +                   break;
 +           case 1: // TCP
 +                   svr_login.prop("hidden", true);
 +                   svr_pwd.prop("hidden", true);
++                   mnt_input.prop("required", false);
 +                   mnt_name.prop("hidden", true);
 +                   rtcm_msg.prop("hidden", false);
 +                   receiver_options.prop("hidden", false);
@@ -536,10 +539,12 @@ index 9f48006..addce73 100644
 +                   if (svr_addr.value === "servers.onocoy.com") {
 +                      //console.log("Onocoy mode");
 +                      svr_login.prop("hidden", false);
++                      mnt_input.prop("required", false);
 +                      mnt_name.prop("hidden", true);
 +                   } else {
 +                      svr_login.prop("hidden", true);
 +                      mnt_name.prop("hidden", false);
++                      mnt_input.prop("required", true);
 +                   }
 +                   svr_pwd.prop("hidden", false);
 +                   rtcm_msg.prop("hidden", false);
