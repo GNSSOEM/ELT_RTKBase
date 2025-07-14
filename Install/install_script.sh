@@ -758,16 +758,6 @@ copy_rtkbase_install_file(){
   #echo chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   chmod +x ${RTKBASE_PATH}/${RTKBASE_INSTALL}
   ExitCodeCheck $?
-
-  #echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
-  mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
-  ExitCodeCheck $?
-  #echo mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
-  mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
-  ExitCodeCheck $?
-  #echo mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
-  mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
-  ExitCodeCheck $?
 }
 
 install_rtkbase_system_configure(){
@@ -874,6 +864,16 @@ correct_units(){
    echo '################################'
    echo 'CORRECT UNITS'
    echo '################################'
+
+   #echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
+   mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
+   ExitCodeCheck $?
+   #echo mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
+   mv ${BASEDIR}/${NTRIP_D} ${RTKBASE_UNIT}
+   ExitCodeCheck $?
+   #echo mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
+   mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
+   ExitCodeCheck $?
 
    STR2STR_TCP=${RTKBASE_UNIT}/str2str_tcp.service
    #echo STR2STR_TCP=${STR2STR_TCP}
