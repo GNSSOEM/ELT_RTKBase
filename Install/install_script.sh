@@ -1492,19 +1492,21 @@ configure_gnss(){
          done
       fi
 
-      source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
-      if [[ "${com_port}" == "" ]]; then
-         echo 'GNSS receiver is not specified. We can'\''t configure.'
-         ExitCodeCheck 1
-      else
-         for i in `seq 1 3`; do
-            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-            ExitCodeCheck $?
-            if [[ $lastcode == 0 ]]; then
-               break;
-            fi
-         done
+      if [[ ${OLD_VERSION} < 193 ]] || ! have_full; then
+         source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
+         if [[ "${com_port}" == "" ]]; then
+            echo 'GNSS receiver is not specified. We can'\''t configure.'
+            ExitCodeCheck 1
+         else
+            for i in `seq 1 3`; do
+               #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+               ExitCodeCheck $?
+               if [[ $lastcode == 0 ]]; then
+                  break;
+               fi
+            done
+         fi
       fi
    fi
 
