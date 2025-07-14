@@ -43,10 +43,11 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + WPS PBC for WiFi
 + Internet access via 4G/5G USB modems such as Huawei HiLink.
 + Data Transmission via Radio Modem.
-
-## The next version is expected to include:
 + NTRIP 2.0
 + 5 NTRIP servers
+
+## The next version is expected to include:
++ Ublox ZED-X20P
 
 ## ready-made base stations:
 You can buy ready-made base stations at [gnss.store](https://gnss.store/78-cors-fanless-stations). To choose stations, read [our blog](https://gnss.store/blog/category/-choosing-a-base-station-for-onocoy.html).
