@@ -452,13 +452,13 @@ configure_bynav(){
        if [[ "${RECVSPEED}" != "115200" ]]
        then
           #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} \"SERIALCONFIG ${recv_com} 115200\" QUIET
-          ${rtkbase_path}/${NMEACONF} ${RECVPORT} "SERIALCONFIG ${recv_com} 115200" QUIET
+          ${rtkbase_path}/${NMEACONF} ${RECVPORT} "SERIALCONFIG ${recv_com} 115200" QUIET 2>&1
           RECVPORT=${RECVDEV}:115200
           #echo NEW RECVPORT=${RECVPORT}
        fi
 
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
-       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
+       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET 2>&1
        exitcode=$?
        #echo exitcode=${exitcode}
        if [[ ${exitcode} != 0 ]]
@@ -527,7 +527,7 @@ configure_septentrio_RTCM3() {
 
     TEMPFILE=/run/Septentrio.tmp
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
-    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE}
+    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
     RECVERROR=`cat ${TEMPFILE} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
 
@@ -557,7 +557,7 @@ configure_septentrio_RTCM3() {
     if [[ -f "${RECVCONF}" ]]
     then
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
-       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
+       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
        exitcode=$?
        RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
        echo . >${RESET_INTERNET_LED_FLAG}

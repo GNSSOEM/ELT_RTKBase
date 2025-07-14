@@ -906,7 +906,7 @@ correct_units(){
 
 rtkbase_install(){
    #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
-   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -j -d 2>&1
    ExitCodeCheck $?
    if [ $lastcode != 0 ]
    then
@@ -917,7 +917,7 @@ rtkbase_install(){
    correct_units
 
    #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
-   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g 2>&1
    ExitCodeCheck $?
    if [ $lastcode != 0 ]
    then
@@ -1484,7 +1484,7 @@ configure_gnss(){
       if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
          for i in `seq 1 3`; do
             #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
-            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
+            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e 2>&1
             ExitCodeCheck $?
             if [[ $lastcode == 0 ]]; then
                break;
@@ -1500,7 +1500,7 @@ configure_gnss(){
          else
             for i in `seq 1 3`; do
                #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
                ExitCodeCheck $?
                if [[ $lastcode == 0 ]]; then
                   break;
@@ -1515,7 +1515,7 @@ configure_gnss(){
 
 start_rtkbase_services(){
   #echo ${RTKBASE_TOOLS}/insall.sh -u ${RTKBASE_USER} -s
-  ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -s
+  ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -s 2>&1
   ExitCodeCheck $?
 
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
