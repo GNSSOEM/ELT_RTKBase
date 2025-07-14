@@ -1,5 +1,5 @@
 {
-  "version": "193",
-  "new_release": "v1.9.3",
+  "version": "194",
+  "new_release": "v1.9.4",
   "comment": "NTRIP v2 HTTP\r\nNTRIP v2 RSTP\r\nNTRIP v2 UDP\r\n5 NTRIP servers"
 }
