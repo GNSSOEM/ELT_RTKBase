@@ -82,10 +82,16 @@ detect_speed_Bynav() {
 detect_Ublox() {
     echo 'DETECTION Ublox ON ' ${1} ' at ' ${2}
     ubxVer=$(python3 "${rtkbase_path}"/tools/ubxtool -f /dev/$1 -s $2 -p MON-VER -w 5 2>/dev/null)
+    #echo ubxVer=${ubxVer}
     if [[ "${ubxVer}" =~ 'ZED-F9P' ]]; then
        #echo Receiver ${ubxVer} found on ${1} ${port_speed}
        detected_gnss[0]=${1}
        detected_gnss[1]=u-blox_ZED-F9P
+       detected_gnss[2]=${2}
+    elif [[ "${ubxVer}" =~ 'ZED-X20P' ]]; then
+       #echo Receiver ${ubxVer} found on ${1} ${port_speed}
+       detected_gnss[0]=${1}
+       detected_gnss[1]=u-blox_ZED-X20P
        detected_gnss[2]=${2}
     fi
 }
@@ -186,7 +192,12 @@ detect_usb() {
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
              elif [[ "$ID_SERIAL" =~ 1a86_USB_Dual_Serial ]]; then # 1a86 - QinHeng Electronics, CH340 or CH341
                 echo ${devname} >> "${BynavDevices}"
+             elif [[ "$ID_SERIAL" =~ FTDI_TTL232R-3V3 ]]; then
+                #echo detect_speed_Ublox ${devname}
+                detect_speed_Ublox ${devname}
              else                                                  # ordinary CH340 - "1a86_USB_Serial"
+                #echo detect_speed_Ublox ${devname}
+                detect_speed_Ublox ${devname}
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
                 [[ ${#detected_gnss[*]} -eq 3 ]] && break
@@ -256,7 +267,7 @@ detect_configure() {
 
           if [[ -f "${rtkbase_path}/settings.conf" ]]  && grep -qE "^com_port=.*" "${rtkbase_path}"/settings.conf #check if settings.conf exists
           then
-            if [[ "${detected_gnss[1]}" =~ u-blox ]]; then
+            if [[ "${detected_gnss[1]}" =~ "u-blox_ZED-F9P" ]]; then
                recvformat=ubx
             #elif [[ "${detected_gnss[1]}" =~ Septentrio ]]; then
             #   recvformat=sbf
