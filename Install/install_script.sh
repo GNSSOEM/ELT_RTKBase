@@ -969,8 +969,9 @@ configure_for_septentrio(){
    if [[ ! -f ${LINK_RULES}/${SEPTENTRIO_LINK} ]]; then
       NEW_MOSAIC_ETH=septentrio
       OLD_MOSAIC_ETH=$(ip route | grep 192.168.3.0 | awk -F ' ' '{print $3}')
-      #echo OLD_MOSAIC_ETH=${OLD_MOSAIC_ETH} NEW_MOSAIC_ETH=${NEW_MOSAIC_ETH}
-      if [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "${NEW_MOSAIC_ETH}" ]]; then
+      HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
+      #echo OLD_MOSAIC_ETH=${OLD_MOSAIC_ETH} NEW_MOSAIC_ETH=${NEW_MOSAIC_ETH} HAVE_MOSAI=${HAVE_MOSAIC}
+      if [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "${NEW_MOSAIC_ETH}" ]]; then
          echo '################################'
          echo 'CONFIGURE USB-ETH FOR SEPTENTRIO'
          echo '################################'
