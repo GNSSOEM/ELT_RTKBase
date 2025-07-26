@@ -1,8 +1,8 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..b73908c 100755
+index db7a656..7f003ff 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,85 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,100 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
@@ -74,10 +74,14 @@ index db7a656..b73908c 100755
 -#add receiver options if it exists
 -[[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
 +  #add receiver options if it exists
-+  [[ ! -z "${ntrip_receiver_options}" ]] && out_caster=""${out_caster}" -opt "${ntrip_receiver_options}""
++  if [[ "${svr_mode}" < 2 ]]; then
++     [[ ! -z "${ntrip_receiver_options}" ]] && out_caster=""${out_caster}" -opt "${ntrip_receiver_options}""
++     flags="-t ${level} -fl ${logdir}/str2str_ntrip_${2}.log -fg ${BASEDIR}/ntrip_${2}.flg"
++     #echo flags=\"${flags}\"
++  fi
 +
 +  #echo out_caster_${2}=\"${out_caster}\"
-+  eval out_caster_${2}=\"${out_caster}\"
++  #eval out_caster_${2}=\"${out_caster}\"
 +}
 +
 +StartNtripServer(){
@@ -85,18 +89,29 @@ index db7a656..b73908c 100755
 +  echo Starting... >${BASEDIR}/ntrip_${3}.flg
 +  PrepareNtripServer $2 $3
 +  #echo out_caster_${3}=\"${out_caster}\"
++  ntrip_flag="${BASEDIR}/tools/ntrip_led.sh ${3}"
 +  if [[ "${svr_mode}" < 2 ]]; then
-+     #echo ${cast} -in ${!1} -out \"${out_caster}\" -msg \"${rtcm_msg}\" -p ${position} -i \"${receiver_info}\" -a \"${antenna_info}\" -t ${level} -fl ${logdir}/str2str_ntrip_${3}.log -fg ${BASEDIR}/ntrip_${3}.flg \&
-+     ${cast} -in ${!1} -out "${out_caster}" -msg "${rtcm_msg}" -p ${position} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_${3}.log -fg ${BASEDIR}/ntrip_${3}.flg &
++     if [[ "$3" == "A" ]]; then
++        #echo ${cast} -in ${!1} -out \"${out_caster}\" -msg \"${rtcm_msg}\" -p ${position} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags}  -fe \"${ntrip_flag}"\ \&
++        ${cast} -in ${!1} -out "${out_caster}" -msg "${rtcm_msg}" -p ${position} -i "${receiver_info}" -a "${antenna_info}" ${flags} -fe "${ntrip_flag}" &
++     else
++        #echo ${cast} -in ${!1} -out \"${out_caster}\" -msg \"${rtcm_msg}\" -p ${position} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags} \&
++        ${cast} -in ${!1} -out "${out_caster}" -msg "${rtcm_msg}" -p ${position} -i "${receiver_info}" -a "${antenna_info}" ${flags} &
++     fi
 +  else
-+     #echo ${cast2} ${in_tcp2} ${out_caster} \&
-+     ${cast2} ${in_tcp2} ${out_caster} &
++     if [[ "$3" == "A" ]]; then
++        #echo ${cast2} ${in_tcp2} ${out_caster} -Q \"${ntrip_flag}\" \&
++        ${cast2} ${in_tcp2} ${out_caster} -Q "${ntrip_flag}" &
++     else
++        #echo ${cast2} ${in_tcp2} ${out_caster} \&
++        ${cast2} ${in_tcp2} ${out_caster} &
++     fi
 +  fi
 +}
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +95,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +110,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -115,7 +130,7 @@ index db7a656..b73908c 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +119,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +134,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -164,7 +179,7 @@ index db7a656..b73908c 100755
      ;;
  
    out_local_caster)
-@@ -105,5 +194,9 @@ mkdir -p ${logdir}
+@@ -105,5 +209,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;
