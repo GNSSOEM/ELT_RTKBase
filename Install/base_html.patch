@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/base.html b/web_app/templates/base.html
-index 4a7ecb4..ccb5b21 100644
+index 4a7ecb4..fc18f93 100644
 --- a/web_app/templates/base.html
 +++ b/web_app/templates/base.html
 @@ -10,6 +10,8 @@
@@ -11,17 +11,16 @@ index 4a7ecb4..ccb5b21 100644
      {% endblock %}
  
      <title>RTKBase</title>
-@@ -28,7 +30,13 @@
+@@ -28,7 +30,12 @@
      {% block content %}{% endblock %}
    </main>
      <footer style="flex-grow: 0; display: block;"></footer>
 -      <div class="container text-center bg-light"><span class="text-muted small"><a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a></span></div>
 +      <div class="container text-center bg-light"><span class="text-muted small">
-+      <a href="https://github.com/GNSSOEM/ELT_RTKBase/raw/main/Doc/ELT_RTKBase_v1.8.1_EN.pdf" target="_self">Documentation</a>
-+      <a href="https://github.com/GNSSOEM/ELT_RTKBase" target="_blank">ELT_RTKBase v{{ g.elt_version }}</a>
-+      <a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a>
-+      <a href="https://gnss.store" target="_blank">gnss.store</a>
-+      <a href="https://gnss.design" target="_blank">gnss.design</a>
++      <a href="https://github.com/GNSSOEM/ELT_RTKBase" target="_blank">ELT_RTKBase v{{ g.elt_version }}</a> based on
++      <a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a> Our store
++      <a href="https://gnss.store/78-onocoy-miners" target="_blank">gnss.store</a> Read
++      <a href="https://github.com/GNSSOEM/ELT_RTKBase/raw/main/Doc/ELT_RTKBase_v1.8.1_EN.pdf" target="_self">documentation</a>
 +      </span></div>
      </footer>
  
