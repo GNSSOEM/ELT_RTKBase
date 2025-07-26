@@ -393,7 +393,34 @@ install_additional_utilies(){
    install_packet_if_not_installed ntpdate
    install_packet_if_not_installed gpiod
    install_packet_if_not_installed raspi-utils-core
-
+   install_packet_if_not_installed chrony
+   install_packet_if_not_installed gpsd
+   install_packet_if_not_installed git
+   install_packet_if_not_installed build-essential
+   install_packet_if_not_installed pps-tools
+   install_packet_if_not_installed python3-pip
+   install_packet_if_not_installed python3-venv
+   install_packet_if_not_installed python3-dev
+   install_packet_if_not_installed python3-setuptools
+   install_packet_if_not_installed python3-wheel
+   install_packet_if_not_installed python3-serial
+   install_packet_if_not_installed libsystemd-dev
+   install_packet_if_not_installed bc
+   install_packet_if_not_installed dos2unix
+   install_packet_if_not_installed socat
+   install_packet_if_not_installed zip
+   install_packet_if_not_installed unzip
+   install_packet_if_not_installed pkg-config
+   install_packet_if_not_installed psmisc
+   install_packet_if_not_installed proj-bin
+   install_packet_if_not_installed nftables
+   install_packet_if_not_installed libxml2-dev
+   install_packet_if_not_installed libxslt-dev
+   if [[ $platform =~ 'aarch64' ]] || [[ $platform =~ 'x86_64' ]]; then
+       # More dependencies needed for aarch64 as there is no prebuilt wheel on piwheels.org
+      install_packet_if_not_installed libssl-dev
+      install_packet_if_not_installed libffi-dev
+   fi
    #echo NEED_INSTALL=${NEED_INSTALL}
    if [[ "${NEED_INSTALL}" != "" ]]
    then
