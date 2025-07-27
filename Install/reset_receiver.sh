@@ -26,9 +26,18 @@ if [[ "${HAVE_ELT0x33}" != "" ]] || [[ "${HAVE_PI4}" == "" ]] || [[ "${HAVE_DEB1
    exit 2
 fi
 
+if [[ -c /dev/gpiochip0 ]]; then
+   CHIP=0
+elif [[ -c /dev/gpiochip512 ]]; then
+   CHIP=512
+else
+   echo Raspberry gpiochip NOT found!
+   exit 3
+fi
+
 GPIO=8
-pinctrl set ${GPIO} op dl
+gpioset gpiochip${CHIP} ${GPIO}=0
 sleep 0.2
-pinctrl set ${GPIO} op dh
+gpioset gpiochip${CHIP} ${GPIO}=1
 echo Receiver reboted
 exit 0

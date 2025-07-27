@@ -17,6 +17,15 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_PI4}" != "" ]] && [[ "${HAVE_TYPE
    USE_FTDI=N
    GPIO=16
    state=
+   if [[ -c /dev/gpiochip0 ]]; then
+      CHIP=0
+   elif [[ -c /dev/gpiochip512 ]]; then
+      CHIP=512
+   else
+      echo Raspberry gpiochip NOT found!
+      systemctl stop rtkbase_check_internet.service
+      exit 3
+   fi
 elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
    for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name product); do
        product=`cat ${sysdevpath}`
@@ -83,11 +92,7 @@ elif [[ "${USE_FTDI}" = "M" ]]; then
    done
    return ${lastcode}
 else
-   if [[ "${1}" == "1" ]]; then
-      pinctrl set ${GPIO} op dh
-   else
-      pinctrl set ${GPIO} op dl
-   fi
+   gpioset gpiochip${CHIP} ${GPIO}=${1}
 fi
 }
 
