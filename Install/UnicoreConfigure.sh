@@ -183,6 +183,12 @@ detect_usb() {
                 detect_speed_Septentrio ${devname}
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
                 break
+             elif [[ "$ID_SERIAL" == "Cypress_Semiconductor_USB-Serial__Dual_Channel_" ]]; then
+                #echo detect_speed_Ublox ${devname}
+                detect_speed_Ublox ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Unicore ${devname}
+                detect_speed_Unicore ${devname}
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
@@ -198,6 +204,7 @@ detect_usb() {
              else                                                  # ordinary CH340 - "1a86_USB_Serial"
                 #echo detect_speed_Ublox ${devname}
                 detect_speed_Ublox ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
                 [[ ${#detected_gnss[*]} -eq 3 ]] && break
@@ -621,6 +628,26 @@ configure_ublox_UBX(){
     fi
 }
 
+configure_ublox_RTCM3(){
+    RECVPORT=${1}
+    RECVSPEED=${2}
+    echo RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
+    echo get ublox firmware release
+    firmware=$(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER | grep 'FWVER' | awk '{print $NF}')
+    echo "${receiver}" 'Firmware:' "${firmware}"
+    #now that the receiver is configured, we can set the right values inside settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/ "${rtkbase_path}"/settings.conf
+    #sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'U-blox_ZED-F9P\'/ "${rtkbase_path}"/settings.conf
+    add_TADJ
+    echo configure the "${receiver}" for RTKBase
+    "${rtkbase_path}"/tools/set_zed-f9p.sh ${RECVDEV} ${RECVSPEED} "${rtkbase_path}"/receiver_cfg/U-Blox_ZED-F9P_rtkbase.cfg                   && \
+    echo "${receiver}" ' Successfuly configured'                                                                                               && \
+    #remove SBAS Rtcm message (1107) as it is disabled in the F9P configuration.
+    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf             && \
+    sudo -u "${RTKBASE_USER}" sed -i -r '/^rtcm_/s/1107(\([0-9]+\))?,//' "${rtkbase_path}"/settings.conf                                       && \
+    return $?
+}
+
 configure_gnss(){
     echo '################################'
     echo 'CONFIGURE GNSS RECEIVER'
@@ -652,6 +679,8 @@ configure_gnss(){
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
            elif [[ ${receiver} =~ "Septentrio" ]]; then
               configure_septentrio_RTCM3 ${RECVPORT}
+           elif [[ ${receiver} =~ "u-blox" ]]; then
+              configure_ublox_RTCM3 ${RECVPORT}
            else
               echo 'Unknown RTCM3 Gnss receiver has'\''t  been set. We can'\''t configure '${RECVPORT}
               Result=1
