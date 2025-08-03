@@ -11,7 +11,7 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + Open a terminal and:
 
   ```bash
-  wget https://github.com/GNSSOEM/ELT_RTKBase/raw/main/install.sh.
+  wget https://github.com/GNSSOEM/ELT_RTKBase/raw/main/install.sh
   chmod +x install.sh
   ./install.sh
   ```
