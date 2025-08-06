@@ -330,10 +330,9 @@ check_boot_configiration(){
 }
 
 is_packet_not_installed(){
-   instaled=`dpkg-query -W ${1} 2>/dev/null | grep ${1}`
+   instaled=`dpkg-query -l ${1} 2>/dev/null | grep ${1}|awk -F ' ' '{print $1}'`
    #echo 1=${1} instaled=${instaled}
-   if [[ ${instaled} != "" ]]
-   then
+   if [[ ${instaled} == "ii" ]]; then
       return 1
    fi
 }
@@ -422,15 +421,28 @@ install_additional_utilies(){
    install_packet_if_not_installed proj-bin
    install_packet_if_not_installed nftables
    install_packet_if_not_installed libxml2-dev
-   install_packet_if_not_installed libxslt-dev
+   install_packet_if_not_installed libxslt1-dev
+   install_packet_if_not_installed git-man
+   install_packet_if_not_installed javascript-common
+   install_packet_if_not_installed liberror-perl
+   install_packet_if_not_installed libexpat1-dev
+   install_packet_if_not_installed libjs-jquery
+   install_packet_if_not_installed libjs-sphinxdoc
+   install_packet_if_not_installed libjs-underscore
+   install_packet_if_not_installed libpython3-dev
+   install_packet_if_not_installed libpython3.11-dev
+   install_packet_if_not_installed python3.11-dev
+   install_packet_if_not_installed zlib1g-dev
+   install_packet_if_not_installed libssl-dev
+   install_packet_if_not_installed libssl3
+   install_packet_if_not_installed openssl
    if [[ $platform =~ 'aarch64' ]] || [[ $platform =~ 'x86_64' ]]; then
        # More dependencies needed for aarch64 as there is no prebuilt wheel on piwheels.org
       install_packet_if_not_installed libssl-dev
       install_packet_if_not_installed libffi-dev
    fi
    #echo NEED_INSTALL=${NEED_INSTALL}
-   if [[ "${NEED_INSTALL}" != "" ]]
-   then
+   if [[ "${NEED_INSTALL}" != "" ]]; then
       apt-get install -q -y ${NEED_INSTALL}
       ExitCodeCheck $?
       NEED_INSTALL=
