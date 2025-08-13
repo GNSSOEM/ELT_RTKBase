@@ -35,6 +35,7 @@ CONFX20P=X20P_${CONF_TAIL}
 SERVER_PATCH=server_py.patch
 GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
+UBX_PY_PATCH=ubx_py.patch
 STATUS_PATCH=status_js.patch
 SETTING_PATCH=settings_js.patch
 BASE_PATCH=base_html.patch
@@ -1303,6 +1304,15 @@ configure_for_unicore(){
    rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
    ExitCodeCheck $?
 
+   UBX_PY=${RTKBASE_TOOLS}/gps/ubx.py
+   #echo UBX_PY=${UBX_PY}
+   patch -f ${UBX_PY} ${BASEDIR}/${UBX_PY_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${UBX_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${UBX_PY_PATCH}
+   ExitCodeCheck $?
+
    STATUS_JS=${RTKBASE_WEB}/static/status.js
    #echo STATUS_JS=${STATUS_JS}
    patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
@@ -1695,7 +1705,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CHECK_SATELITES_SERVICE} ${PBC} ${SEPTENTRIO_LINK} \
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
-              ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2}"
+              ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
 

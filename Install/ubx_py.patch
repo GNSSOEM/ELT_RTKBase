@@ -1,0 +1,15 @@
+diff --git a/tools/gps/ubx.py b/tools/gps/ubx.py
+index a50ad08..b241210 100644
+--- a/tools/gps/ubx.py
++++ b/tools/gps/ubx.py
+@@ -7195,6 +7195,10 @@ qErrInvalid add in protVer 34 and up
+                 # a byte, probably read from a serial port
+                 c = int(this_byte)
+ 
++            if 'NMEA' == state:
++                if 0x80 <= c:
++                    state = 'BASE'
++
+             if gps.VERB_RAW <= self.verbosity:
+                 if ord(' ') <= c <= ord('~'):
+                     # c is printable
