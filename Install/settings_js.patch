@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..1174f9c 100644
+index 9f48006..1f37525 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -288,7 +288,7 @@ index 9f48006..1174f9c 100644
                  document.querySelector('#com_port_settings').value = response['port_speed'] + ':8:n:1';
 +                document.querySelector('#receiver').value = response['gnss_type'];
 +                var recvformat;
-+                if (response['gnss_type'].search(/u-blox/) != -1) {
++                if (response['gnss_type'].search(/u-blox_ZED-F9P/) != -1) {
 +                   recvformat = "ubx"
 +                // } else if (response['gnss_type'].search(/Septentrio/) != -1) {
 +                //   recvformat = "sbf"
