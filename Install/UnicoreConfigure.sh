@@ -138,7 +138,8 @@ detect_usb() {
          #If the receiver is a U-Blox, it will add the TADJ=1 option on all ntrip/rtcm outputs.
          #If there are several receiver, the last one detected will be add to settings.conf.
          BynavDevices="${rtkbase_path}"/BynavDevlist.txt
-         rm -rf "${BynavDevices}"
+         CypressDevices="${rtkbase_path}"/CypressDevlist.txt
+         rm -rf "${BynavDevices}" "${CypressDevices}"
          for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name dev); do
              ID_SERIAL=''
              syspath="${sysdevpath%/dev}"
@@ -184,11 +185,7 @@ detect_usb() {
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
                 break
              elif [[ "$ID_SERIAL" == "Cypress_Semiconductor_USB-Serial__Dual_Channel_" ]]; then
-                #echo detect_speed_Ublox ${devname}
-                detect_speed_Ublox ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Unicore ${devname}
-                detect_speed_Unicore ${devname}
+                echo ${devname} >> "${CypressDevices}"
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
@@ -218,16 +215,27 @@ detect_usb() {
             #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
             ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
          fi
-         if [[ -f  "${BynavDevices}" ]]
-         then
-            #cat ${BynavDevices}
+         if [[ -f  "${BynavDevices}" ]]; then
+            #cat "${BynavDevices}"
             for devname in `cat "${BynavDevices}" | sort`; do
-               #echo detect_speed_Bynav ${devname}
-               detect_speed_Bynav ${devname}
-               #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
-               [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Bynav ${devname}
+                detect_speed_Bynav ${devname}
+                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
             done
             rm -rf "${BynavDevices}"
+         fi
+         if [[ -f  "${CypressDevices}" ]]; then
+            #cat "${CypressDevices}"
+            for devname in `cat "${CypressDevices}" | sort`; do
+                #echo detect_speed_Ublox ${devname}
+                detect_speed_Ublox ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                #echo detect_speed_Unicore ${devname}
+                detect_speed_Unicore ${devname}
+                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+            done
+            rm -rf "${CypressDevices}"
          fi
       fi
 }
