@@ -97,7 +97,7 @@ detect_Ublox() {
 }
 
 detect_speed_Ublox() {
-    for port_speed in 38400 115200 921600 230400 460800; do
+    for port_speed in 38400 115200 921600 230400 460800 9600; do
         detect_Ublox ${1} ${port_speed}
         [[ ${#detected_gnss[*]} -eq 3 ]] && break
     done
@@ -145,9 +145,9 @@ detect_speed_All() {
         if [[ ${port_speed} -ge 115200 ]]; then
            detect_Unicore ${1} ${port_speed}
            [[ ${#detected_gnss[*]} -eq 3 ]] && break
-           detect_speed_Bynav ${devname}
+           detect_Bynav ${1} ${port_speed}
            [[ ${#detected_gnss[*]} -eq 3 ]] && break
-           detect_speed_Septentrio ${devname}
+           detect_Septentrio ${1} ${port_speed}
            [[ ${#detected_gnss[*]} -eq 3 ]] && break
         fi
         detect_Ublox ${1} ${port_speed}
