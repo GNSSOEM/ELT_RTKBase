@@ -81,7 +81,7 @@ detect_speed_Bynav() {
 
 detect_Ublox() {
     echo 'DETECTION Ublox ON ' ${1} ' at ' ${2}
-    ubxVer=$(python3 "${rtkbase_path}"/tools/ubxtool -f /dev/$1 -s $2 -p MON-VER -w 5 2>/dev/null)
+    ubxVer=$(python3 "${rtkbase_path}"/tools/ubxtool -f /dev/$1 -s $2 -p MON-VER -P50.02 2>/dev/null)
     #echo ubxVer=${ubxVer}
     if [[ "${ubxVer}" =~ 'ZED-F9P' ]]; then
        #echo Receiver ${ubxVer} found on ${1} ${port_speed}
@@ -125,6 +125,32 @@ detect_Septentrio() {
 detect_speed_Septentrio() {
     for port_speed in 115200 921600 230400 460800; do
         detect_Septentrio ${1} ${port_speed}
+        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+    done
+}
+
+detect_speed_Unicore_Ublox() {
+    for port_speed in 115200 38400 921600 230400 460800 9600; do
+        if [[ ${port_speed} -ge 115200 ]]; then
+           detect_Unicore ${1} ${port_speed}
+           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        fi
+        detect_Ublox ${1} ${port_speed}
+        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+    done
+}
+
+detect_speed_All() {
+    for port_speed in 115200 38400 921600 230400 460800 9600; do
+        if [[ ${port_speed} -ge 115200 ]]; then
+           detect_Unicore ${1} ${port_speed}
+           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           detect_speed_Bynav ${devname}
+           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           detect_speed_Septentrio ${devname}
+           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        fi
+        detect_Ublox ${1} ${port_speed}
         [[ ${#detected_gnss[*]} -eq 3 ]] && break
     done
 }
@@ -174,14 +200,8 @@ detect_usb() {
                 detected_ELT0x33=Y
                 #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
                 ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
-                #echo detect_speed_Unicore ${devname}
-                detect_speed_Unicore ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Bynav ${devname}
-                detect_speed_Bynav ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Septentrio ${devname}
-                detect_speed_Septentrio ${devname}
+                echo detect_speed_All ${devname}
+                detect_speed_All ${devname}
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
                 break
              elif [[ "$ID_SERIAL" == "Cypress_Semiconductor_USB-Serial__Dual_Channel_" ]]; then
@@ -228,11 +248,8 @@ detect_usb() {
          if [[ -f  "${CypressDevices}" ]]; then
             #cat "${CypressDevices}"
             for devname in `cat "${CypressDevices}" | sort`; do
-                #echo detect_speed_Ublox ${devname}
-                detect_speed_Ublox ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Unicore ${devname}
-                detect_speed_Unicore ${devname}
+                #echo detect_speed_Unicore_Ublox ${devname}
+                detect_speed_Unicore_Ublox ${devname}
                 [[ ${#detected_gnss[*]} -eq 3 ]] && break
             done
             rm -rf "${CypressDevices}"
