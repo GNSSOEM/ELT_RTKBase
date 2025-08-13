@@ -200,10 +200,8 @@ detect_usb() {
                 detected_ELT0x33=Y
                 #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
                 ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} ON
-                echo detect_speed_All ${devname}
+                #echo detect_speed_All ${devname}
                 detect_speed_All ${devname}
-                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
-                break
              elif [[ "$ID_SERIAL" == "Cypress_Semiconductor_USB-Serial__Dual_Channel_" ]]; then
                 echo ${devname} >> "${CypressDevices}"
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
@@ -212,23 +210,16 @@ detect_usb() {
                 [[ ${#detected_gnss[*]} -eq 3 ]] && break
                 #echo detect_speed_Bynav ${devname}
                 detect_speed_Bynav ${devname}
-                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
              elif [[ "$ID_SERIAL" =~ 1a86_USB_Dual_Serial ]]; then # 1a86 - QinHeng Electronics, CH340 or CH341
                 echo ${devname} >> "${BynavDevices}"
              elif [[ "$ID_SERIAL" =~ FTDI_TTL232R-3V3 ]]; then
                 #echo detect_speed_Ublox ${devname}
                 detect_speed_Ublox ${devname}
              else                                                  # ordinary CH340 - "1a86_USB_Serial"
-                #echo detect_speed_Ublox ${devname}
-                detect_speed_Ublox ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Unicore ${devname}
-                detect_speed_Unicore ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                #echo detect_speed_Bynav ${devname}
-                detect_speed_Bynav ${devname}
-                #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
+                #echo detect_speed_All ${devname}
+                detect_speed_All ${devname}
              fi
+             #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
              [[ ${#detected_gnss[*]} -eq 3 ]] && break
          done
          if [[ "${detected_ELT0x33}" == "Y" ]]; then
