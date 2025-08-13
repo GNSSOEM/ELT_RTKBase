@@ -255,19 +255,8 @@ detect_uart() {
     echo '################################'
       if [[ ${#detected_gnss[*]} < 2 ]]; then
         for port in ttyAMA5 ttyAMA4 ttyAMA3 ttyAMA2 ttyAMA1 ttyAMA0 ttyS0 ttyS5 serial0; do
-            if [[ -c /dev/${port} ]]
-            then
-               detect_speed_Unicore ${port}
-               #exit loop if a receiver is detected
-               [[ ${#detected_gnss[*]} -eq 3 ]] && break
-
-               detect_speed_Bynav ${port}
-               [[ ${#detected_gnss[*]} -eq 3 ]] && break
-
-               detect_speed_Ublox ${port}
-               [[ ${#detected_gnss[*]} -eq 3 ]] && break
-
-               detect_speed_Septentrio ${port}
+            if [[ -c /dev/${port} ]]; then
+               detect_speed_All ${port}
                [[ ${#detected_gnss[*]} -eq 3 ]] && break
             fi
         done
