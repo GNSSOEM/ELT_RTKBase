@@ -1,8 +1,128 @@
 diff --git a/tools/gps/ubx.py b/tools/gps/ubx.py
-index a50ad08..b241210 100644
+index a50ad08..1165702 100644
 --- a/tools/gps/ubx.py
 +++ b/tools/gps/ubx.py
-@@ -7195,6 +7195,10 @@ qErrInvalid add in protVer 34 and up
+@@ -296,6 +296,11 @@ class ubx(object):
+          "Use AssistNow Autonomous"),
+         ("CFG-ANA-ORBMAXERR", 0x30230002, "U2", 1, "m",
+          "Maximum acceptable (modeled) orbit error"),
++        # CFG-BDS-
++        ("CFG-BDS", 0x1034FFFF, "", 0, "",
++         "get all CFG-BDS"),
++        ("CFG-BDS-D1D2_NAVDATA", 0x20340009, "U1", 1, "",
++         "Enable only the given BDS D1/D2 navigation data streams, ignoring the others"),
+         # CFG-BATCH-
+         ("CFG-BATCH", 0x1026FFFF, "", 0, "",
+          "get all CFG-BATCH"),
+@@ -1515,6 +1520,8 @@ class ubx(object):
+          "GPS L1C/A"),
+         ("CFG-SIGNAL-GPS_L2C_ENA", 0x10310003, "L", 1, "",
+          "GPS L2C"),
++        ("CFG-SIGNAL-GPS_L5_ENA", 0x10310004, "L", 1, "",
++         "GPS L5"),
+         ("CFG-SIGNAL-SBAS_ENA", 0x10310020, "L", 1, "",
+          "SBAS enable"),
+         ("CFG-SIGNAL-SBAS_L1CA_ENA", 0x10310005, "L", 1, "",
+@@ -1523,14 +1530,24 @@ class ubx(object):
+          "Galileo enable"),
+         ("CFG-SIGNAL-GAL_E1_ENA", 0x10310007, "L", 1, "",
+          "Galileo E1"),
++        ("CFG-SIGNAL-GAL_E5A_ENA", 0x10310009, "L", 1, "",
++         "Galileo E5a"),
+         ("CFG-SIGNAL-GAL_E5B_ENA", 0x1031000a, "L", 1, "",
+          "Galileo E5b"),
++        ("CFG-SIGNAL-GAL_E6_ENA", 0x1031000b, "L", 1, "",
++         "Galileo E6"),
+         ("CFG-SIGNAL-BDS_ENA", 0x10310022, "L", 1, "",
+          "BeiDou Enable"),
+         ("CFG-SIGNAL-BDS_B1_ENA", 0x1031000d, "L", 1, "",
+          "BeiDou B1I"),
++        ("CFG-SIGNAL-BDS_B1C_ENA", 0x1031000f, "L", 1, "",
++         "BeiDou B1C"),
+         ("CFG-SIGNAL-BDS_B2_ENA", 0x1031000e, "L", 1, "",
+          "BeiDou B2I"),
++        ("CFG-SIGNAL-BDS_B2A_ENA", 0x10310028, "L", 1, "",
++         "BeiDou B2A"),
++        ("CFG-SIGNAL-BDS_B3_ENA", 0x10310010, "L", 1, "",
++         "BeiDou B3I"),
+         ("CFG-SIGNAL-QZSS_ENA", 0x10310024, "L", 1, "",
+          "QZSS enable"),
+         ("CFG-SIGNAL-QZSS_L1CA_ENA", 0x10310012, "L", 1, "",
+@@ -1539,12 +1556,21 @@ class ubx(object):
+          "QZSS L1S"),
+         ("CFG-SIGNAL-QZSS_L2C_ENA", 0x10310015, "L", 1, "",
+          "QZSS L2C"),
++        ("CFG-SIGNAL-QZSS_L5_ENA", 0x10310017, "L", 1, "",
++         "QZSS L5"),
+         ("CFG-SIGNAL-GLO_ENA", 0x10310025, "L", 1, "",
+          "GLONASS enable"),
+         ("CFG-SIGNAL-GLO_L1_ENA", 0x10310018, "L", 1, "",
+          "GLONASS L1"),
+         ("CFG-SIGNAL-GLO_L2_ENA", 0x1031001a, "L", 1, "",
+          "GLONASS L2"),
++        ("CFG-SIGNAL-NAVIC_ENA", 0x10310026, "L", 1, "",
++         "NavIC enable"),
++        ("CFG-SIGNAL-NAVIC_L5_ENA", 0x1031001d, "L", 1, "",
++         "NavIC L5"),
++        ("CFG-SIGNAL-PLAN", 0x2031003a, "U1", 1, "",
++         "SIGNAL PLAN"),
++
+         # CFG-SPI-
+         ("CFG-SPI", 0x1064ffff, "", 0, "",
+          "get all CFG-SPI"),
+@@ -5764,9 +5790,9 @@ protVer 34 and up
+ 
+         # unmung u-blox 30 bit words in 32 bits
+         page = 0
+-        for i in range(0, 10):
++        for word in words:
+             page <<= 30
+-            page |= words[i] & 0x03fffffff
++            page |= word & 0x03fffffff
+ 
+         # sanity check
+         if (FraID != ((page >> 282) & 7)):
+@@ -6533,6 +6559,16 @@ protVer 34 and up
+         u = struct.unpack_from('<BBBBBBBB', buf, 0)
+         s = (' gnssId %u svId %3u reserved1 %u freqId %u numWords %u\n'
+              '  chn %u version %u reserved2 %u' % u)
++
++        if buf[6] not in set([1, 2]):
++            s += "\n    WARNING: unknown version %u" % buf[6]
++            return s
++
++        elen = 8 + (4 * buf[4])
++        if len(buf) != elen:
++            s += "\n    WARNING: expected %u bytes, got %u" % (elen, len(buf))
++            return s
++
+         words = ()
+         for i in range(0, u[4]):
+             u1 = struct.unpack_from('<L', buf, 8 + (i * 4))
+@@ -6564,6 +6600,10 @@ protVer 34 and up
+                 # from u-blox each of 10 words right aligned into 32 bits
+                 #             plus something in top 2 bits?
+                 preamble = words[0] >> 22
++                if 0x8b != preamble:
++                    s += "\n    WARNING: preamble %#x - NOT LNAV-L" % (preamble)
++                    return s
++
+                 subframe = (words[1] >> 8) & 0x07
+                 s += ("\n  LNAV-L: preamble %#x TLM %#x ISF %u" %
+                       (preamble, (words[0] >> 8) & 0xffff,
+@@ -6575,6 +6615,11 @@ protVer 34 and up
+                        1 if (words[0] & 0x800) else 0,
+                        subframe))
+ 
++                needwords = 10
++                if len(words) != needwords:
++                    s += "\n    WARNING: expected %u words, got %u" % (needwords, len(words))
++                    return s
++
+                 if 1 == subframe:
+                     # not well validated decode, possibly wrong...
+                     # [1] Figure 20-1 Sheet 1, Table 20-I
+@@ -7195,6 +7240,10 @@ qErrInvalid add in protVer 34 and up
                  # a byte, probably read from a serial port
                  c = int(this_byte)
  
