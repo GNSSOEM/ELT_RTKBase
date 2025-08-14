@@ -389,7 +389,7 @@ configure_unicore(){
     #echo RECVCONF=${RECVCONF}
 
     #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Unicore_${RECVNAME}\'/ "${rtkbase_path}"/settings.conf
     clear_TADJ
@@ -463,7 +463,7 @@ configure_bynav(){
     #echo RECVCONF=${RECVCONF} RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
 
     #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Bynav_${RECVNAME}\'/ "${rtkbase_path}"/settings.conf
     clear_TADJ
@@ -512,7 +512,7 @@ configure_septentrio_SBF(){
       echo get mosaic-X5 firmware release
       firmware="$(python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command get_firmware --retry 5)" || firmware='?'
       echo 'Mosaic-X5 Firmware: ' "${firmware}"
-      sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/ "${rtkbase_path}"/settings.conf   && \
+      sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf   && \
       sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf  && \
       sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Septentrio_Mosaic-X5\'/ "${rtkbase_path}"/settings.conf            && \
       clear_TADJ
@@ -569,7 +569,7 @@ configure_septentrio_RTCM3() {
 
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
     #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Septentrio_${RECVNAME}\'/ "${rtkbase_path}"/settings.conf
     clear_TADJ
@@ -617,7 +617,7 @@ configure_ublox_UBX(){
        firmware=$(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER | grep 'FWVER' | awk '{print $NF}')
        echo 'F9P Firmware: ' "${firmware}"
        #now that the receiver is configured, we can set the right values inside settings.conf
-       sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/ "${rtkbase_path}"/settings.conf                && \
+       sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf                && \
        sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf               && \
        sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'U-blox_ZED-F9P\'/ "${rtkbase_path}"/settings.conf                               && \
        add_TADJ                                                                                                                                   && \
@@ -641,7 +641,8 @@ configure_ublox_RTCM3(){
     firmware=$(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER | grep 'FWVER' | awk '{print $NF}')
     echo "${receiver}" 'Firmware:' "${firmware}"
     #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/ "${rtkbase_path}"/settings.conf
+    #echo sudo -u "${RTKBASE_USER}" \"sed -i \"s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/\" "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf
     #sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'U-blox_ZED-F9P\'/ "${rtkbase_path}"/settings.conf
     add_TADJ
     echo configure the "${receiver}" for RTKBase
