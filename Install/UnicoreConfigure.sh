@@ -670,25 +670,32 @@ configure_gnss(){
         RECVSPEED=${com_port_settings%%:*}
         RECVDEV=/dev/${com_port}
         RECVPORT=${RECVDEV}:${RECVSPEED}
+        #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} RECVSPEED=${RECVSPEED}
         Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
            configure_septentrio_SBF /dev/ttyGNSS_CTRL ${RECVSPEED}
+           Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox_UBX ${RECVPORT} ${RECVSPEED}
+           Result=$?
         elif [[ ${receiver_format} == "rtcm3" ]]; then
            #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
            ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
            if [[ ${receiver} =~ "Unicore" ]]; then
               configure_unicore ${RECVPORT}
+              Result=$?
            elif [[ ${receiver} =~ "Bynav" ]]; then
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
+              Result=$?
            elif [[ ${receiver} =~ "Septentrio" ]]; then
               configure_septentrio_RTCM3 ${RECVPORT}
+              Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
               configure_ublox_RTCM3 ${RECVPORT}
+              Result=$?
            else
-              echo 'Unknown RTCM3 Gnss receiver has'\''t  been set. We can'\''t configure '${RECVPORT}
+              echo 'Unknown RTCM3 Gnss receiver' ${receiver} 'has'\''t been set. We can'\''t configure '${RECVPORT}
               Result=1
            fi
            #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} OFF
