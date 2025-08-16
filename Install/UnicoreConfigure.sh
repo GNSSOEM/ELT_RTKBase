@@ -163,8 +163,8 @@ detect_usb() {
          #This function try to detect a gnss receiver and write the port/format inside settings.conf
          #If the receiver is a U-Blox, it will add the TADJ=1 option on all ntrip/rtcm outputs.
          #If there are several receiver, the last one detected will be add to settings.conf.
-         BynavDevices="${rtkbase_path}"/BynavDevlist.txt
-         CypressDevices="${rtkbase_path}"/CypressDevlist.txt
+         BynavDevices=/run/BynavDevlist.txt
+         CypressDevices=/run/CypressDevlist.txt
          rm -rf "${BynavDevices}" "${CypressDevices}"
          for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name dev); do
              ID_SERIAL=''
@@ -548,8 +548,9 @@ configure_septentrio_RTCM3() {
     RECVPORT=${1}
     #echo RECVPORT=${RECVPORT}
 
-    TEMPFILE=/run/Septentrio.tmp
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
+    TEMPFILE=/run/Septentrio.tmp
+    rm -rf ${TEMPFILE}
     ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
     RECVERROR=`cat ${TEMPFILE} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
