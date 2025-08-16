@@ -633,51 +633,112 @@ configure_septentrio_RTCM3() {
     fi
 }
 
-configure_ublox_UBX(){
+configure_ublox(){
     RECVPORT=${1}
-    RECVSPEED=${2}
-    #echo RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
+    RECVDEV=${2}
+    RECVSPEED=${3}
+    FORMAT=${4}
+    #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} RECVSPEED=${RECVSPEED} ${FORMAT}=${FORMAT}
 
-    if [[ $(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER) =~ 'ZED-F9P' ]]
-    then
-       echo get F9P firmware release
-       firmware=$(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER | grep 'FWVER' | awk '{print $NF}')
-       echo 'F9P Firmware: ' "${firmware}"
-       #now that the receiver is configured, we can set the right values inside settings.conf
-       sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf                && \
-       sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf               && \
-       sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'U-blox_ZED-F9P\'/ "${rtkbase_path}"/settings.conf                               && \
-       add_TADJ                                                                                                                                   && \
-       #configure the F9P for RTKBase
-       "${rtkbase_path}"/tools/set_zed-f9p.sh ${RECVDEV} ${RECVSPEED} "${rtkbase_path}"/receiver_cfg/U-Blox_ZED-F9P_rtkbase.cfg && \
-       echo 'U-Blox F9P Successfuly configured'                                                                                                   && \
-       #remove SBAS Rtcm message (1107) as it is disabled in the F9P configuration.
-       sudo -u "${RTKBASE_USER}" sed -i -r '/^rtcm_/s/1107(\([0-9]+\))?,//' "${rtkbase_path}"/settings.conf                                       && \
-       return $?
-    else
-       echo 'No UBX Gnss receiver hasn''t been set. We can'\''t configure '${RECVPORT}
+    TEMPFILE=/run/ublox_version.tmp
+    rm -rf ${TEMPFILE}
+    good=
+    for i in `seq 1 5`; do
+       python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER -P50.02 >${TEMPFILE} 2>&1
+       if [[ $(cat ${TEMPFILE}) =~ "UBX-MON-VER" ]]; then
+          good=Y
+          break
+       elif [[ $(cat ${TEMPFILE}) =~ "Traceback" ]]; then
+          good=T
+          break
+       elif [[ $(cat ${TEMPFILE}) =~ "ERROR checksum failed" ]]; then
+          good=C
+       fi
+    done
+    FIRMWARE=$(cat ${TEMPFILE} | grep swVersion | sed s/^.*EXT\ //)
+    RECVNAME=$(cat ${TEMPFILE} | grep "extension MOD=" | sed "s/^.*MOD=//")
+    if [[ ${RECVNAME} == "" ]] || [[ ${FIRMWARE} == "" ]] || [[ "${good}" != "Y" ]]; then
+       echo Receiver ${receiver} not found\(${good}\) on ${RECVPORT}
+       cat ${TEMPFILE}
        return 1
     fi
-}
+    echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
+    #echo sudo -u "${RTKBASE_USER}" \"sed -i \"s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/\" "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
+    #echo sudo -u "${RTKBASE_USER}" sed -i \"s/^receiver=.*/receiver=\'u-blox_${RECVNAME}\'/\" "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver=.*/receiver=\'u-blox_${RECVNAME}\'/" "${rtkbase_path}"/settings.conf
 
-configure_ublox_RTCM3(){
-    RECVPORT=${1}
-    RECVSPEED=${2}
-    echo RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
-    echo get ublox firmware release
-    firmware=$(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER | grep 'FWVER' | awk '{print $NF}')
-    echo "${receiver}" 'Firmware:' "${firmware}"
-    #now that the receiver is configured, we can set the right values inside settings.conf
-    #echo sudo -u "${RTKBASE_USER}" \"sed -i \"s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/\" "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf
-    #sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'U-blox_ZED-F9P\'/ "${rtkbase_path}"/settings.conf
-    add_TADJ
-    echo configure the "${receiver}" for RTKBase
-    "${rtkbase_path}"/tools/set_zed-f9p.sh ${RECVDEV} ${RECVSPEED} "${rtkbase_path}"/receiver_cfg/U-Blox_ZED-F9P_rtkbase.cfg                   && \
-    echo "${receiver}" ' Successfuly configured'                                                                                               && \
-    #remove SBAS Rtcm message (1107) as it is disabled in the F9P configuration.
-    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf             && \
-    sudo -u "${RTKBASE_USER}" sed -i -r '/^rtcm_/s/1107(\([0-9]+\))?,//' "${rtkbase_path}"/settings.conf                                       && \
+    if [[ ${FORMAT} == "rtcm3" ]]; then
+       SHORTNAME=$(echo ${RECVNAME} | sed s/^.*-//)
+       CONFNAME="${SHORTNAME}_RTCM3_OUT.txt"
+       clear_TADJ
+    elif [[ ${FORMAT} == "ubx" ]]; then
+       CONFNAME="U-Blox_${RECVNAME}_rtkbase.cfg"
+       add_TADJ
+       change_mode_to_NTRIPv1
+    fi
+
+    RECVCONF="${rtkbase_path}"/receiver_cfg/${CONFNAME}
+    if [[ -z ${CONFNAME} ]] || ! [[ -f "${RECVCONF}" ]]; then
+       echo Confiuration file for ${RECVNAME} \(${CONFNAME}\) NOT FOUND.
+       return 1
+    fi
+
+    python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p RESET -v 0 >/dev/null 2>&1
+    if [[ $? != 0 ]]; then
+       echo Receiver ${RECVNAME} not reseted on ${RECVPORT}
+       return 1
+    fi
+    #echo "${RECVNAME}" reseted
+
+    INITSPEED=38400
+    #echo INITSPEED=${INITSPEED}  SPEED=${SPEED}
+    if [[ ${INITSPEED} != ${SPEED} ]]; then
+       #echo python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${INITSPEED} -z CFG-UART1-BAUDRATE,${SPEED}
+       python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${INITSPEED} -z CFG-UART1-BAUDRATE,${SPEED}
+       if ! [[ $(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${SPEED} -p MON-VER) =~ "${RECVNAME}" ]]; then
+          echo Receiver ${RECVNAME} not change speed ${RECVSPEED} to ${SPEED} on ${RECVPORT}
+          return 1
+       fi
+       #echo speed changed from ${INITSPEED} to ${SPEED} for "${RECVNAME}"
+    fi
+    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
+
+    #echo configure the "${RECVNAME}" for ELT_RTKBase by ${CONFNAME}
+    while read setting; do
+       #echo "${setting}" | grep -q "^#" && echo Skipped "${setting}" && continue
+       echo "${setting}" | grep -q "^#" && continue
+       for i in `seq 1 5`; do
+          #echo Execute ${setting} pass $i
+          python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${SPEED} -z "${setting}" -v 0 -P50.02 >${TEMPFILE} 2>&1
+          if [[ $(cat ${TEMPFILE}) =~ "UBX-ACK-ACK" ]]; then
+             good=Y
+             break
+          elif [[ $(cat ${TEMPFILE}) =~ "UBX-ACK-NAK" ]]; then
+             good=NAK
+             break
+          elif [[ $(cat ${TEMPFILE}) =~ "Traceback" ]]; then
+             good=Traceback
+             cat ${TEMPFILE}
+          elif [[ $(cat ${TEMPFILE}) =~ "ERROR checksum failed" ]]; then
+             good=CRC
+          elif [[ $(cat ${TEMPFILE}) =~ "ubxtool: ERROR:" ]]; then
+             good=ERROR
+             break
+          elif [[ $(cat ${TEMPFILE}) =~ "ubxtool: failed to read" ]]; then
+             good="NOT READ"
+             break
+          fi
+          #echo ${setting} pass $i failed\(${good}\)
+       done
+       if [[ "${good}" != "Y" ]]; then
+          echo Receiver ${RECVNAME} configuration failed\(${good}\) on ${setting}
+          cat ${TEMPFILE}
+          return 1
+       fi
+    done <${RECVCONF}
+
+    echo Ublox ${RECVNAME}\(${FIRMWARE}\) successfuly configured as ${FORMAT}
     return $?
 }
 
@@ -704,7 +765,7 @@ configure_gnss(){
            configure_septentrio_SBF /dev/ttyGNSS_CTRL ${RECVSPEED}
            Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
-           configure_ublox_UBX ${RECVPORT} ${RECVSPEED}
+           configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
            Result=$?
         elif [[ ${receiver_format} == "rtcm3" ]]; then
            #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${com_port} ON
@@ -719,7 +780,7 @@ configure_gnss(){
               configure_septentrio_RTCM3 ${RECVPORT}
               Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
-              configure_ublox_RTCM3 ${RECVPORT}
+              configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
               Result=$?
            else
               echo 'Unknown RTCM3 Gnss receiver' ${receiver} 'has'\''t been set. We can'\''t configure '${RECVPORT}
