@@ -1,5 +1,6 @@
 Other/*
 Test/*
+Tools/Dont_publish/*
 *.tmp
 *.log
 Windows/Ini.cmd
