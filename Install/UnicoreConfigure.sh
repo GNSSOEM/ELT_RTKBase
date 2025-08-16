@@ -336,10 +336,31 @@ detect_gnss() {
     detect_configure ${1}
 }
 
+change_mode_to_NTRIPv1() {
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'2\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'2\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'2\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'2\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'2\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'3\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'3\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'3\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'3\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'3\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'4\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'4\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'4\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'4\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'4\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
+}
+
 add_TADJ() {
     #add option -TADJ=1 on rtcm/ntrip_a/ntrip_b/serial outputs
     sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_a_receiver_options=.*/ntrip_a_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_b_receiver_options=.*/ntrip_b_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_c_receiver_options=.*/ntrip_c_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_d_receiver_options=.*/ntrip_d_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_e_receiver_options=.*/ntrip_e_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^local_ntripc_receiver_options=.*/local_ntripc_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_receiver_options=.*/rtcm_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_client_receiver_options=.*/rtcm_client_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
@@ -348,10 +369,14 @@ add_TADJ() {
     sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_serial_receiver_options=.*/rtcm_serial_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
 }
 
+
 clear_TADJ() {
     #add option -TADJ=1 on rtcm/ntrip_a/ntrip_b/serial outputs
     sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_a_receiver_options=.*/ntrip_a_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_b_receiver_options=.*/ntrip_b_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_c_receiver_options=.*/ntrip_c_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_d_receiver_options=.*/ntrip_d_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
+    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_e_receiver_options=.*/ntrip_e_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^local_ntripc_receiver_options=.*/local_ntripc_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_receiver_options=.*/rtcm_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_client_receiver_options=.*/rtcm_client_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
@@ -516,6 +541,7 @@ configure_septentrio_SBF(){
       sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf  && \
       sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Septentrio_Mosaic-X5\'/ "${rtkbase_path}"/settings.conf            && \
       clear_TADJ
+      change_mode_to_NTRIPv1
 
       #configure the mosaic-X5 for RTKBase
       echo 'Resetting the mosaic-X5 settings....'
