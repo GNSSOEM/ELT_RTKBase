@@ -908,9 +908,9 @@ install_tune_power(){
   ExitCodeCheck $?
 }
 
-correct_units(){
+patch_rtkbase(){
    echo '################################'
-   echo 'CORRECT UNITS'
+   echo 'PATCH RTKBASE'
    echo '################################'
 
    #echo mv ${BASEDIR}/${NTRIP_C} ${RTKBASE_UNIT}
@@ -950,6 +950,111 @@ correct_units(){
       sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       ExitCodeCheck $?
    done
+
+   SERVER_PY=${RTKBASE_WEB}/server.py
+   #echo SERVER_PY=${SERVER_PY}
+   patch -f ${SERVER_PY} ${BASEDIR}/${SERVER_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SERVER_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SERVER_PATCH}
+   ExitCodeCheck $?
+
+   GNSS_RPROXY_PY=${RTKBASE_WEB}/gnss_rproxy_server.py
+   #echo GNSS_RPROXY_PY=${GNSS_RPROXY_PY}
+   patch -f ${GNSS_RPROXY_PY} ${BASEDIR}/${GNSS_RPROXY_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${GNSS_RPROXY_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${GNSS_RPROXY_PATCH}
+   ExitCodeCheck $?
+
+   RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_WEB}/RTKBaseConfigManager.py
+   #echo RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_CONFIG_MANAGER_PY}
+   patch -f ${RTKBASE_CONFIG_MANAGER_PY} ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${RTKBASE_CONFIG_MANAGER_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
+   ExitCodeCheck $?
+
+   UBX_PY=${RTKBASE_TOOLS}/gps/ubx.py
+   #echo UBX_PY=${UBX_PY}
+   patch -f ${UBX_PY} ${BASEDIR}/${UBX_PY_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${UBX_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${UBX_PY_PATCH}
+   ExitCodeCheck $?
+
+   STATUS_JS=${RTKBASE_WEB}/static/status.js
+   #echo STATUS_JS=${STATUS_JS}
+   patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${STATUS_JS}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${STATUS_PATCH}
+   ExitCodeCheck $?
+
+   SETTING_JS=${RTKBASE_WEB}/static/settings.js
+   #echo SETTING_JS=${SETTING_JS}
+   patch -f ${SETTING_JS} ${BASEDIR}/${SETTING_JS_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SETTING_JS}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SETTING_JS_PATCH}
+   ExitCodeCheck $?
+
+   SETTING_HTML=${RTKBASE_WEB}/templates/settings.html
+   #echo SETTING_HTML=${SETTING_HTML}
+   patch -f ${SETTING_HTML} ${BASEDIR}/${SETTING_HTML_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SETTING_HTML}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SETTING_HTML_PATCH}
+   ExitCodeCheck $?
+
+   patch -f ${SETTINGS_DEFAULT} ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${SETTINGS_DEFAULT}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${SETTINGS_CONF_PATCH}
+   ExitCodeCheck $?
+
+   BASE_HTML=${RTKBASE_WEB}/templates/base.html
+   #echo BASE_HTML=${BASE_HTML}
+   patch -f ${BASE_HTML} ${BASEDIR}/${BASE_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${BASE_HTML}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${BASE_PATCH}
+   ExitCodeCheck $?
+
+   RUNCAST_SH=${RTKBASE_GIT}/run_cast.sh
+   #echo RUNCAST_SH=${RUNCAST_SH}
+   patch -f ${RUNCAST_SH} ${BASEDIR}/${RUNCAST_PATCH}
+   ExitCodeCheck $?
+   chmod 755 ${RUNCAST_SH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${RUNCAST_PATCH}
+   ExitCodeCheck $?
+
+   PPP_CONF=${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf
+   #echo PPP_CONF=${PPP_CONF}
+   patch -f ${PPP_CONF} ${BASEDIR}/${PPP_CONF_PATCH}
+   ExitCodeCheck $?
+   chmod 755 ${PPP_CONF}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${PPP_CONF_PATCH}
+   ExitCodeCheck $?
+
+   OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
+   #echo OPIZERO_TEMP=${OPIZERO_TEMP}
+   patch -f ${OPIZERO_TEMP} ${BASEDIR}/${OPIZERO_TEMP_PATCH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${OPIZERO_TEMP_PATCH}
+   ExitCodeCheck $?
+
 }
 
 rtkbase_install(){
@@ -962,7 +1067,7 @@ rtkbase_install(){
       #ls -la ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    fi
 
-   correct_units
+   patch_rtkbase
 
    #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
    ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g 2>&1
@@ -1281,110 +1386,6 @@ configure_for_unicore(){
    ExitCodeCheck $?
    #echo chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
    chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
-   ExitCodeCheck $?
-
-   SERVER_PY=${RTKBASE_WEB}/server.py
-   #echo SERVER_PY=${SERVER_PY}
-   patch -f ${SERVER_PY} ${BASEDIR}/${SERVER_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SERVER_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SERVER_PATCH}
-   ExitCodeCheck $?
-
-   GNSS_RPROXY_PY=${RTKBASE_WEB}/gnss_rproxy_server.py
-   #echo GNSS_RPROXY_PY=${GNSS_RPROXY_PY}
-   patch -f ${GNSS_RPROXY_PY} ${BASEDIR}/${GNSS_RPROXY_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${GNSS_RPROXY_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${GNSS_RPROXY_PATCH}
-   ExitCodeCheck $?
-
-   RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_WEB}/RTKBaseConfigManager.py
-   #echo RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_CONFIG_MANAGER_PY}
-   patch -f ${RTKBASE_CONFIG_MANAGER_PY} ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${RTKBASE_CONFIG_MANAGER_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
-   ExitCodeCheck $?
-
-   UBX_PY=${RTKBASE_TOOLS}/gps/ubx.py
-   #echo UBX_PY=${UBX_PY}
-   patch -f ${UBX_PY} ${BASEDIR}/${UBX_PY_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${UBX_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${UBX_PY_PATCH}
-   ExitCodeCheck $?
-
-   STATUS_JS=${RTKBASE_WEB}/static/status.js
-   #echo STATUS_JS=${STATUS_JS}
-   patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${STATUS_JS}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${STATUS_PATCH}
-   ExitCodeCheck $?
-
-   SETTING_JS=${RTKBASE_WEB}/static/settings.js
-   #echo SETTING_JS=${SETTING_JS}
-   patch -f ${SETTING_JS} ${BASEDIR}/${SETTING_JS_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTING_JS}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTING_JS_PATCH}
-   ExitCodeCheck $?
-
-   SETTING_HTML=${RTKBASE_WEB}/templates/settings.html
-   #echo SETTING_HTML=${SETTING_HTML}
-   patch -f ${SETTING_HTML} ${BASEDIR}/${SETTING_HTML_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTING_HTML}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTING_HTML_PATCH}
-   ExitCodeCheck $?
-
-   patch -f ${SETTINGS_DEFAULT} ${BASEDIR}/${SETTINGS_CONF_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTINGS_DEFAULT}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTINGS_CONF_PATCH}
-   ExitCodeCheck $?
-
-   BASE_HTML=${RTKBASE_WEB}/templates/base.html
-   #echo BASE_HTML=${BASE_HTML}
-   patch -f ${BASE_HTML} ${BASEDIR}/${BASE_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${BASE_HTML}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${BASE_PATCH}
-   ExitCodeCheck $?
-
-   RUNCAST_SH=${RTKBASE_GIT}/run_cast.sh
-   #echo RUNCAST_SH=${RUNCAST_SH}
-   patch -f ${RUNCAST_SH} ${BASEDIR}/${RUNCAST_PATCH}
-   ExitCodeCheck $?
-   chmod 755 ${RUNCAST_SH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RUNCAST_PATCH}
-   ExitCodeCheck $?
-
-   PPP_CONF=${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf
-   #echo PPP_CONF=${PPP_CONF}
-   patch -f ${PPP_CONF} ${BASEDIR}/${PPP_CONF_PATCH}
-   ExitCodeCheck $?
-   chmod 755 ${PPP_CONF}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${PPP_CONF_PATCH}
-   ExitCodeCheck $?
-
-   OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
-   #echo OPIZERO_TEMP=${OPIZERO_TEMP}
-   patch -f ${OPIZERO_TEMP} ${BASEDIR}/${OPIZERO_TEMP_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${OPIZERO_TEMP_PATCH}
    ExitCodeCheck $?
 
    restart_rtkbase_if_started
