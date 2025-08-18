@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..7820063 100755
+index db7a656..310dedf 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,130 @@ BASEDIR="$(dirname "$0")"
@@ -58,7 +58,7 @@ index db7a656..7820063 100755
 +  fi
 +  if [[ "${receiver}" =~ "Unicore" ]]; then
 +     receive_type=1
-+  elif [[ "${receiver}" =~ "Ublox" ]]; then
++  elif [[ "${receiver}" =~ "u-blox" ]]; then
 +     receive_type=4
 +  elif [[ "${receiver}" =~ "Bynav" ]]; then
 +     receive_type=6
