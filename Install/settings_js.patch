@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..1f37525 100644
+index 9f48006..d3a96e6 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -478,7 +478,7 @@ index 9f48006..1f37525 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +885,96 @@ $(document).ready(function () {
+@@ -735,5 +885,104 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -510,7 +510,9 @@ index 9f48006..1f37525 100644
 +        const index = selectElem.selectedIndex;
 +        // https://developer.mozilla.org/en-US/docs/Web/API/HTMLSelectElement/selectedIndex
 +        //console.log(selectElem.name + "=" + index);
++        svr_addr = document.getElementById("svr_addr_" + letter);
 +        svr_login = $("#svr_login_" + letter + "_group");
++        svr_input = $("#svr_login_" + letter);
 +        svr_pwd = $("#svr_pwd_" + letter + "_group");
 +        mnt_name = $("#mnt_name_" + letter + "_group");
 +        mnt_input = $("#mnt_name_" + letter);
@@ -523,7 +525,14 @@ index 9f48006..1f37525 100644
 +                   svr_login.prop("hidden", false);
 +                   svr_pwd.prop("hidden", false);
 +                   mnt_name.prop("hidden", false);
-+                   mnt_input.prop("required", true);
++                   if ((svr_addr.value === "servers.onocoy.com") && (index === 2)) {
++                      //console.log("Onocoy v2 mode");
++                      mnt_input.prop("required", false);
++                      svr_input.prop("required", true);
++                   } else {
++                      mnt_input.prop("required", true);
++                      svr_input.prop("required", false);
++                   }
 +                   rtcm_msg.prop("hidden", true);
 +                   receiver_options.prop("hidden", true);
 +                   break;
@@ -536,10 +545,9 @@ index 9f48006..1f37525 100644
 +                   receiver_options.prop("hidden", false);
 +                   break;
 +           default: // NTRIP v1
-+                   svr_addr = document.getElementById("svr_addr_" + letter);
 +                   //console.log(svr_addr.value);
 +                   if (svr_addr.value === "servers.onocoy.com") {
-+                      //console.log("Onocoy mode");
++                      //console.log("Onocoy v1 mode");
 +                      svr_login.prop("hidden", false);
 +                      mnt_input.prop("required", false);
 +                      mnt_name.prop("hidden", true);

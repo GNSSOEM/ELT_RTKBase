@@ -1,8 +1,8 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..310dedf 100755
+index db7a656..f98df6b 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,130 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,132 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
@@ -81,6 +81,8 @@ index db7a656..310dedf 100755
 +          out_caster="-O 5 -a ${svr_addr} -p ${svr_port} -L ${BASEDIR}/ntrip_${2}.flg"
 +       elif [[ -z "${svr_login}"  ]]; then
 +          out_caster="-O 3 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
++       elif [[ -z "${mnt_name}"  ]]; then
++          out_caster="-O 3 -a ${svr_addr} -p ${svr_port} -n ${svr_login} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
 +       else
 +          out_caster="-O 1 -a ${svr_addr} -p ${svr_port} -m ${mnt_name} -n ${svr_login} -c ${svr_pwd} -L ${BASEDIR}/ntrip_${2}.flg"
 +       fi
@@ -141,7 +143,7 @@ index db7a656..310dedf 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +140,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +142,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -160,7 +162,7 @@ index db7a656..310dedf 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +164,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +166,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -209,7 +211,7 @@ index db7a656..310dedf 100755
      ;;
  
    out_local_caster)
-@@ -105,5 +239,9 @@ mkdir -p ${logdir}
+@@ -105,5 +241,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;
