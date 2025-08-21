@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..d3a96e6 100644
+index 9f48006..d0adf89 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -435,7 +435,7 @@ index 9f48006..d3a96e6 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -703,6 +839,17 @@ $(document).ready(function () {
+@@ -703,6 +839,22 @@ $(document).ready(function () {
            };
        };
  
@@ -443,17 +443,22 @@ index 9f48006..d3a96e6 100644
 +
 +    document.getElementById('tailscale-button').onclick = function (){
 +        document.body.style.cursor = 'wait';
++        $('#tailscale-error').text('');
 +        socket.emit("get tailscale href");
 +    }
 +    socket.on("tailscale_href", function(msg) {
 +        window.open(msg, '_blank');
 +        document.body.style.cursor = 'default';
 +    })
++    socket.on("tailscale_error", function(msg) {
++        $('#tailscale-error').text(msg);
++        document.body.style.cursor = 'default';
++    })
 +
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -714,16 +861,19 @@ $(document).ready(function () {
+@@ -714,16 +866,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -478,7 +483,7 @@ index 9f48006..d3a96e6 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +885,104 @@ $(document).ready(function () {
+@@ -735,5 +890,104 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
