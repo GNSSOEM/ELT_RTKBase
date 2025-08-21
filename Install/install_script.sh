@@ -449,6 +449,8 @@ install_additional_utilies(){
       ExitCodeCheck $?
       NEED_INSTALL=
    fi
+   sync
+   ExitCodeCheck $?
 }
 
 install_tailscale(){
@@ -1055,6 +1057,8 @@ patch_rtkbase(){
    rm -f ${BASEDIR}/${OPIZERO_TEMP_PATCH}
    ExitCodeCheck $?
 
+   sync
+   ExitCodeCheck $?
 }
 
 rtkbase_install(){
@@ -1791,6 +1795,8 @@ have_full || info_reboot
 have_receiver && info_open
 have_receiver || info_bug
 can_reboot || do_reboot END
+sync
+ExitCodeCheck $?
 #echo exit $exitcode
 exit $exitcode
 
