@@ -60,3 +60,5 @@ ELT_RTKBase uses [RtkBase](https://github.com/Stefal/rtkbase) (AGPL v3) by Stefa
 ELT_RTKBase uses [PBC](https://github.com/kcdtv/PBC) (GPL v3) by kcdtv
 
 ELT_RTKBase uses [ntripserver](https://github.com/simeononsecurity/ntripserver) (GPL v2) by German Federal Agency for Cartography and Geodesy (BKG)
+
+ELT_RTKBase uses [GPSD](https://gitlab.com/gpsd/gpsd) ([BSD](https://gitlab.com/gpsd/gpsd/-/blob/master/COPYING)) by [authors](https://gitlab.com/gpsd/gpsd/-/blob/master/AUTHORS)
