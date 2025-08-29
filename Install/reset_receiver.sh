@@ -12,7 +12,7 @@ fi
 
 source <( grep -v '^#' "${rtkbase_path}"/settings.conf | grep '=' ) #import settings
 
-if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
+if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Septentrio ]] && [[ ! "${receiver}" =~ u-blox ]]; then
    echo Receiver ${receiver} NOT reboted!
    exit 1
 fi
