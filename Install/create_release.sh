@@ -31,7 +31,7 @@ tar --exclude-vcs \
     70-usb-net-mobile.link gnss_rproxy_server_py.patch \
     rtkbase_modem_web_proxy.service opizero_temp_offset.patch \
     X20P_RTCM3_OUT.txt config.original2 ubx_py.patch \
-    U-Blox_ZED-X20P_rtkbase.cfg
+    X20P_UBX_OUT.txt
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

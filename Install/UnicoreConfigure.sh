@@ -81,17 +81,12 @@ detect_speed_Bynav() {
 
 detect_Ublox() {
     echo 'DETECTION Ublox ON ' ${1} ' at ' ${2}
-    ubxVer=$(python3 "${rtkbase_path}"/tools/ubxtool -f /dev/$1 -s $2 -p MON-VER -P50.02 2>/dev/null)
+    ubxVer=$(${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" QUIET | awk -F ',' '{print $1}')
     #echo ubxVer=${ubxVer}
-    if [[ "${ubxVer}" =~ 'ZED-F9P' ]]; then
+    if [[ -n "${ubxVer}" ]]; then
        #echo Receiver ${ubxVer} found on ${1} ${port_speed}
        detected_gnss[0]=${1}
-       detected_gnss[1]=u-blox_ZED-F9P
-       detected_gnss[2]=${2}
-    elif [[ "${ubxVer}" =~ 'ZED-X20P' ]]; then
-       #echo Receiver ${ubxVer} found on ${1} ${port_speed}
-       detected_gnss[0]=${1}
-       detected_gnss[1]=u-blox_ZED-X20P
+       detected_gnss[1]=u-blox_${ubxVer}
        detected_gnss[2]=${2}
     fi
 }
@@ -639,27 +634,11 @@ configure_ublox(){
     RECVSPEED=${3}
     FORMAT=${4}
     #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} RECVSPEED=${RECVSPEED} ${FORMAT}=${FORMAT}
-
-    TEMPFILE=/run/ublox_version.tmp
-    rm -rf ${TEMPFILE}
-    good=
-    for i in `seq 1 5`; do
-       python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p MON-VER -P50.02 >${TEMPFILE} 2>&1
-       if [[ $(cat ${TEMPFILE}) =~ "UBX-MON-VER" ]]; then
-          good=Y
-          break
-       elif [[ $(cat ${TEMPFILE}) =~ "Traceback" ]]; then
-          good=T
-          break
-       elif [[ $(cat ${TEMPFILE}) =~ "ERROR checksum failed" ]]; then
-          good=C
-       fi
-    done
-    FIRMWARE=$(cat ${TEMPFILE} | grep swVersion | sed s/^.*EXT\ //)
-    RECVNAME=$(cat ${TEMPFILE} | grep "extension MOD=" | sed "s/^.*MOD=//")
-    if [[ ${RECVNAME} == "" ]] || [[ ${FIRMWARE} == "" ]] || [[ "${good}" != "Y" ]]; then
-       echo Receiver ${receiver} not found\(${good}\) on ${RECVPORT}
-       cat ${TEMPFILE}
+    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" QUIET`
+    FIRMWARE=$(echo ${RECVINFO} | awk -F ',' '{print $2}')
+    RECVNAME=$(echo ${RECVINFO} | awk -F ',' '{print $1}')
+    if [[ ${RECVNAME} == "" ]] || [[ ${FIRMWARE} == "" ]]; then
+       echo Receiver ${receiver} not found on ${RECVPORT}
        return 1
     fi
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
@@ -668,12 +647,12 @@ configure_ublox(){
     #echo sudo -u "${RTKBASE_USER}" sed -i \"s/^receiver=.*/receiver=\'u-blox_${RECVNAME}\'/\" "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i "s/^receiver=.*/receiver=\'u-blox_${RECVNAME}\'/" "${rtkbase_path}"/settings.conf
 
+    SHORTNAME=$(echo ${RECVNAME} | sed s/^.*-//)
     if [[ ${FORMAT} == "rtcm3" ]]; then
-       SHORTNAME=$(echo ${RECVNAME} | sed s/^.*-//)
        CONFNAME="${SHORTNAME}_RTCM3_OUT.txt"
        clear_TADJ
     elif [[ ${FORMAT} == "ubx" ]]; then
-       CONFNAME="U-Blox_${RECVNAME}_rtkbase.cfg"
+       CONFNAME="${SHORTNAME}_UBX_OUT.txt"
        add_TADJ
        change_mode_to_NTRIPv1
     fi
@@ -684,62 +663,24 @@ configure_ublox(){
        return 1
     fi
 
-    python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${RECVSPEED} -p RESET -v 0 >/dev/null 2>&1
-    if [[ $? != 0 ]]; then
-       echo Receiver ${RECVNAME} not reseted on ${RECVPORT}
+    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
+    exitcode=$?
+    #echo exitcode=${exitcode}
+    if [[ ${exitcode} != 0 ]]; then
+       echo Ublox confiuration FAILED for ${RECVNAME} on ${RECVPORT}
        return 1
     fi
-    #echo "${RECVNAME}" reseted
 
-    INITSPEED=38400
-    #echo INITSPEED=${INITSPEED}  SPEED=${SPEED}
-    if [[ ${INITSPEED} != ${SPEED} ]]; then
-       #echo python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${INITSPEED} -z CFG-UART1-BAUDRATE,${SPEED}
-       python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${INITSPEED} -z CFG-UART1-BAUDRATE,${SPEED}
-       if ! [[ $(python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${SPEED} -p MON-VER) =~ "${RECVNAME}" ]]; then
-          echo Receiver ${RECVNAME} not change speed ${RECVSPEED} to ${SPEED} on ${RECVPORT}
-          return 1
-       fi
-       #echo speed changed from ${INITSPEED} to ${SPEED} for "${RECVNAME}"
-    fi
     sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
-
-    #echo configure the "${RECVNAME}" for ELT_RTKBase by ${CONFNAME}
-    while read setting; do
-       #echo "${setting}" | grep -q "^#" && echo Skipped "${setting}" && continue
-       echo "${setting}" | grep -q "^#" && continue
-       for i in `seq 1 5`; do
-          #echo Execute ${setting} pass $i
-          python3 "${rtkbase_path}"/tools/ubxtool -f ${RECVDEV} -s ${SPEED} -z "${setting}" -v 0 -P50.02 >${TEMPFILE} 2>&1
-          if [[ $(cat ${TEMPFILE}) =~ "UBX-ACK-ACK" ]]; then
-             good=Y
-             break
-          elif [[ $(cat ${TEMPFILE}) =~ "UBX-ACK-NAK" ]]; then
-             good=NAK
-             break
-          elif [[ $(cat ${TEMPFILE}) =~ "Traceback" ]]; then
-             good=Traceback
-             cat ${TEMPFILE}
-          elif [[ $(cat ${TEMPFILE}) =~ "ERROR checksum failed" ]]; then
-             good=CRC
-          elif [[ $(cat ${TEMPFILE}) =~ "ubxtool: ERROR:" ]]; then
-             good=ERROR
-             break
-          elif [[ $(cat ${TEMPFILE}) =~ "ubxtool: failed to read" ]]; then
-             good="NOT READ"
-             break
-          fi
-          #echo ${setting} pass $i failed\(${good}\)
-       done
-       if [[ "${good}" != "Y" ]]; then
-          echo Receiver ${RECVNAME} configuration failed\(${good}\) on ${setting}
-          cat ${TEMPFILE}
-          return 1
-       fi
-    done <${RECVCONF}
-
     echo Ublox ${RECVNAME}\(${FIRMWARE}\) successfuly configured as ${FORMAT}
-    return $?
+
+    RECEIVER_CONF=${rtkbase_path}/receiver.conf
+    echo recv_port=${com_port}>${RECEIVER_CONF}
+    echo recv_speed=${SPEED}>>${RECEIVER_CONF}
+    echo recv_position=>>${RECEIVER_CONF}
+    echo recv_ant=${DEFAULT_ANT}>>${RECEIVER_CONF}
+    chown ${RTKBASE_USER}:${RTKBASE_USER} ${RECEIVER_CONF}
+    return 0
 }
 
 configure_gnss(){
