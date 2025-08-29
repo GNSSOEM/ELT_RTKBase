@@ -28,7 +28,7 @@ if [[ "${receiver}" == "unknown" ]]; then
    exit 1
 fi
 
-if [[ ! "${receiver}" =~ Unicore* ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]]; then
+if [[ ! "${receiver}" =~ Unicore ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "${receiver}" =~ Septentrio ]] && [[ ! "${receiver}" =~ u-blox ]]; then
    exit 0
 fi
 
@@ -169,10 +169,11 @@ then
              SETSPEED=N
           fi
       fi
-   elif [[ "${receiver}" =~ Septentrio ]]
-   then
+   elif [[ "${receiver}" =~ Septentrio ]]; then
       SAVECONF=Y
       SETSPEED=N
+   elif [[ "${receiver}" =~ u-blox ]]; then
+      recv_com=NO
    fi
    if [[ "${recv_com}" != "" ]]; then
       SAVECONF=Y
@@ -204,16 +205,26 @@ then
          #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"SERIALCONFIG ${recv_com} ${com_speed}\" QUIET
          ${BASEDIR}/NmeaConf ${OLDDEV} "SERIALCONFIG ${recv_com} ${com_speed}" QUIET
          lastcode=$?
+      elif [[ "${receiver}" =~ u-blox ]]; then
+         #echo ${BASEDIR}/NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
+         ${BASEDIR}/NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
+         lastcode=$?
       fi
       #echo lastcode=${lastcode}
-      if [[ ${lastcode} == 0 ]] || [[ ${lastcode} == 3 ]]
-      then
-          #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-          ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-          lastcode=$?
+      if [[ ${lastcode} == 0 ]] || [[ ${lastcode} == 3 ]]; then
+          if [[ "${receiver}" =~ u-blox ]]; then
+             #echo ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+             ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+             lastcode=$?
+          else
+             #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             lastcode=$?
+          fi
+          #echo lastcode=${lastcode}
           if [[ ${lastcode} == 0 ]]
           then
-             echo Speed changed on $i iteration
+             echo Speed changed on $i iteration from ${recv_speed} to ${com_speed}
              SPEEDCHANGED=Y
              recv_speed=${com_speed}
              SAVECONF=Y
@@ -221,7 +232,7 @@ then
           fi
       else
          ExitCodeCheck ${lastcode}
-         echo speed changed incorrectly, not saved
+         echo speed changed from ${recv_speed} to ${com_speed} incorrectly, not saved
          exit_code=1
          break
       fi
@@ -229,7 +240,7 @@ then
 
    if [[ ${SPEEDCHANGED} != "Y" ]]
    then
-      echo receiver not answer after changing speed
+      echo receiver not answer after changing speed from ${recv_speed} to ${com_speed}
       exit_code=2
    fi
 
@@ -272,8 +283,7 @@ then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"MODE BASE 1 ${position}\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "MODE BASE 1 ${position}" QUIET
       lastcode=$?
-      if [[ $lastcode == 0 ]]
-      then
+      if [[ $lastcode == 0 ]]; then
          CHECKPOS=Y
          SAVEPOS=Y
       else
@@ -322,10 +332,22 @@ then
          BADPOS=Y
          TIMEPOS=Y
       fi
+   elif [[ "${receiver}" =~ u-blox ]]; then
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
+      lastcode=$?
+      if [[ $lastcode == 0 ]]; then
+         BADPOS=N
+         SAVECONF=Y
+         recv_position="${position}"
+      else
+         BADPOS=Y
+         TIMEPOS=Y
+      fi
    fi
 fi
 
-#echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS}
+#echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS} SAVECONF=${SAVECONF} BADPOS=${BADPOS}
 if [[ ${CHECKPOS} == Y ]]
 then
    #echo UNICORE_ANSWER=\`${BASEDIR}/NmeaConf ${DEVICE} CONFIG\`
@@ -359,7 +381,7 @@ fi
 
 if [[ "${BADPOS}" != "" ]]
 then
-   echo BADPOS=${BADPOS} BADNOW=${BADNOW} BADPOSFILE=${BADPOSFILE}
+   #echo BADPOS=${BADPOS} BADNOW=${BADNOW} BADPOSFILE=${BADPOSFILE}
    if [[ ${BADPOS} != ${BADNOW} ]]
    then
       if [[ ${BADPOS} == Y ]]
@@ -375,6 +397,7 @@ then
    #ls -la ${BADPOSFILE}
 fi
 
+#echo TIMEPOS=${TIMEPOS}
 if [[ ${TIMEPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
@@ -392,6 +415,10 @@ then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setPVTMode, , , auto\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "setPVTMode, , , auto" QUIET
       ExitCodeCheck $?
+   elif [[ "${receiver}" =~ u-blox ]]; then
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
+      ExitCodeCheck $?
    fi
    recv_position="${ZEROPOS}"
    #echo recv_position=${recv_position}
@@ -402,18 +429,20 @@ fi
 if [[ ${SETANT} == Y ]]; then
    if [[ "${antenna_info}" == "ELT0123" ]] || [[ "${antenna_info}" == "ELT0323" ]]; then
       if [[ "${receiver}" =~ Unicore ]]; then
-         antenna_info="HXCSX627A"
+         ANTINFO="HXCSX627A"
       else
-         antenna_info="HXCSX627A       NONE"
+         ANTINFO="HXCSX627A       NONE"
       fi
+   else
+      ANTINFO="${antenna_info}"
    fi
-   ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
-   ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
-   ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
+   ANTNAME=`echo "${ANTINFO}" | awk -F ',' '{print $1}'`
+   ANTSERIAL=`echo "${ANTINFO}" | awk -F ',' '{print $2}'`
+   ANTSETUP=`echo "${ANTINFO}" | awk -F ',' '{print $3}'`
    if [[ "${ANTSETUP}" == "" ]]; then
       ANTSETUP=0
    fi
-   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP} antenna_info=${antenna_info}
+   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP} ANTINFO=${ANTINFO}
    if [[ "${receiver}" =~ Unicore ]]; then
       if [[ "${ANTSERIAL}" == "" ]]; then
          ANTSERIAL=0
@@ -449,7 +478,7 @@ then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"exeCopyConfigFile, Current, Boot\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "exeCopyConfigFile, Current, Boot" QUIET
       ExitCodeCheck $?
-   else
+   elif [[ ! "${receiver}" =~ u-blox ]]; then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
       ExitCodeCheck $?
@@ -462,6 +491,7 @@ then
    fi
 fi
 
+#echo SAVECONF=${SAVECONF}
 if [[ ${SAVECONF} == Y ]]
 then
    #echo SAVE OLDCONF=${OLDCONF} recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
@@ -472,6 +502,7 @@ then
    echo recv_com=${recv_com}>>${OLDCONF}
 fi
 
+#echo lastcode=${lastcode}
 if [[ ${lastcode} == N ]]; then
    if [[ "${receiver}" =~ Unicore ]]
    then
@@ -493,6 +524,10 @@ if [[ ${lastcode} == N ]]; then
          #sudo lsof /dev/${com_port}
       done
       ExitCodeCheck ${lastcode}
+   elif [[ "${receiver}" =~ u-blox ]]; then
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+      ExitCodeCheck $?
    fi
 fi
 
