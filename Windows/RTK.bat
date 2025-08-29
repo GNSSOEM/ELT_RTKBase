@@ -45,55 +45,69 @@
 @Set Recv=%RecvIP%:%RecvPort%
 @Echo Check Receiver on %Recv%...
 @Set VerFile=versionRTK.tmp
-@NmeaConf.exe +%Recv% Version QUIET >%VerFile%
+@NmeaConf.exe +%Recv% UBX-MON-VER QUIET >%VerFile%
 @If ERRORLEVEL 1 @(
     @Rem @Echo NmeaConf ErrorLevel=%ErrorLevel%
-    @NmeaConf.exe +%Recv% "Log Version" QUIET >%VerFile%
+    @NmeaConf.exe +%Recv% Version QUIET >%VerFile%
     @If ERRORLEVEL 1 @(
         @Rem @Echo NmeaConf ErrorLevel=%ErrorLevel%
-        @NmeaConf.exe +%Recv% SEPTENTRIO_TEST.txt QUIET >%VerFile%
+        @NmeaConf.exe +%Recv% "Log Version" QUIET >%VerFile%
         @If ERRORLEVEL 1 @(
-            @Echo NOT connected to %Recv%
-            @Pause
-            @Exit
-       ) Else @(
-            find "mosaic" %VerFile% >NUL
+            @Rem @Echo NmeaConf ErrorLevel=%ErrorLevel%
+            @NmeaConf.exe +%Recv% SEPTENTRIO_TEST.txt QUIET >%VerFile%
+            @If ERRORLEVEL 1 @(
+               @Echo NOT connected to %Recv%
+               @Pause
+               @Exit
+            ) Else @(
+                 find "mosaic" %VerFile% >NUL
+                 @If NOT ERRORLEVEL 1 @(
+                     @Set Receiver=Septentrio
+                     @Set Prefix=Septentrio
+                 ) Else (
+                     @Echo Receiver on %Recv% is Unknown
+                     @Pause
+                     @Exit
+                )
+            )
+        ) Else @(
+            @find "BDVER" %VerFile% >NUL
             @If NOT ERRORLEVEL 1 @(
-                @Set Receiver=Septentrio
-                @Set Prefix=Septentrio
+                @Set Receiver=Bynav
+                @Set Prefix=Bynav
             ) else (
                 @Echo Receiver on %Recv% is Unknown
                 @Pause
                 @Exit
            )
-       )
+        )
     ) Else @(
-        @find "BDVER" %VerFile% >NUL
+        @find "UM982"  %VerFile% >NUL
         @If NOT ERRORLEVEL 1 @(
-            @Set Receiver=Bynav
-            @Set Prefix=Bynav
-        ) else (
-            @Echo Receiver on %Recv% is Unknown
-            @Pause
-            @Exit
-       )
-    )
-) Else @(
-    @find "UM982"  %VerFile% >NUL
-    @If NOT ERRORLEVEL 1 @(
-        @Set Receiver=UM982
-        @Set Prefix=UM
-    ) else @(
-        find "UM980"  %VerFile% >NUL
-        @If NOT ERRORLEVEL 1 @(
-            @Set Receiver=UM980
+            @Set Receiver=UM982
             @Set Prefix=UM
-        ) else (
-            @Echo Receiver on %Recv% is Unknown
-            @Pause
-            @Exit
-       )
+        ) else @(
+            find "UM980"  %VerFile% >NUL
+            @If NOT ERRORLEVEL 1 @(
+                @Set Receiver=UM980
+                @Set Prefix=UM
+            ) else (
+                @Echo Receiver on %Recv% is Unknown
+                @Pause
+                @Exit
+           )
+        )
     )
+) Else (
+  @find "ZED" %VerFile% >NUL
+  @If NOT ERRORLEVEL 1 @(
+      @Set Receiver=U-Blox
+      @Set Prefix=Ublox
+  ) else (
+      @Echo Receiver on %Recv% is Unknown
+      @Pause
+      @Exit
+  )
 )
 @Echo Receiver is %Receiver%
 
