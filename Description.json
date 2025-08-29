@@ -1,5 +1,5 @@
 {
   "version": "195",
   "new_release": "v1.9.5",
-  "comment": "NTRIP v2 HTTP\r\nNTRIP v2 RSTP\r\nNTRIP v2 UDP\r\n5 NTRIP servers"
+  "comment": "NTRIP v2 HTTP\r\nNTRIP v2 RSTP\r\nNTRIP v2 UDP\r\n5 NTRIP servers\r\nUblox ZED-X20P support"
 }
