@@ -57,7 +57,7 @@ detect_speed_Unicore() {
 detect_Bynav() {
     echo 'DETECTION Bynav ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
+    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" SILENT`
     if [[ "${RECVINFO}" != "" ]]
     then
        #echo RECVINFO=${RECVINFO}
@@ -81,12 +81,15 @@ detect_speed_Bynav() {
 
 detect_Ublox() {
     echo 'DETECTION Ublox ON ' ${1} ' at ' ${2}
-    ubxVer=$(${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" QUIET | awk -F ',' '{print $1}')
-    #echo ubxVer=${ubxVer}
-    if [[ -n "${ubxVer}" ]]; then
-       #echo Receiver ${ubxVer} found on ${1} ${port_speed}
+    RECVPORT=/dev/${1}:${2}
+    ubxVer=$(${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" SILENT)
+    lastcode=$?
+    #echo lastcode=${lastcode} ubxVer=${ubxVer}
+    if [[ "${lastcode}" == 0 ]]; then
+       ubxName=$(echo ${ubxVer} | awk -F ',' '{print $1}')
+       #echo Receiver ${ubxName} found on ${1} ${port_speed}
        detected_gnss[0]=${1}
-       detected_gnss[1]=u-blox_${ubxVer}
+       detected_gnss[1]=u-blox_${ubxName}
        detected_gnss[2]=${2}
     fi
 }
@@ -102,7 +105,7 @@ detect_Septentrio() {
     echo 'DETECTION Septentrio ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET | grep "hwplatform product"`
+    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} SILENT | grep "hwplatform product"`
     if [[ "${RECVINFO}" != "" ]]
     then
        #echo RECVINFO=${RECVINFO}
@@ -284,10 +287,10 @@ detect_configure() {
             #echo detected_gnss[1]=${detected_gnss[1]} recvformat=${recvformat}
 
             #change the com port value/settings inside settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i s/^com_port=.*/com_port=\'${detected_gnss[0]}\'/ "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'${detected_gnss[1]}\'/ "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${detected_gnss[2]}:8:n:1\'/ "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i s/^receiver_format=.*/receiver_format=\'${recvformat}\'/ "${rtkbase_path}"/settings.conf
+            sudo -u "${RTKBASE_USER}" sed -i "s/^com_port=.*/com_port=\'${detected_gnss[0]}\'/" "${rtkbase_path}"/settings.conf
+            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver=.*/receiver=\'${detected_gnss[1]}\'/" "${rtkbase_path}"/settings.conf
+            sudo -u "${RTKBASE_USER}" sed -i "s/^com_port_settings=.*/com_port_settings=\'${detected_gnss[2]}:8:n:1\'/" "${rtkbase_path}"/settings.conf
+            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_format=.*/receiver_format=\'${recvformat}\'/" "${rtkbase_path}"/settings.conf
 
             RECEIVER_CONF=${rtkbase_path}/receiver.conf
             echo recv_port=${detected_gnss[0]}>${RECEIVER_CONF}
