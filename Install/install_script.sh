@@ -731,8 +731,8 @@ install_rtklib() {
        ExitCodeCheck $?
     else
        echo RtkLib will be compiled from original and patches
-       echo Get Rtklib 2.4.3 b34j release and unpack it
-       sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/rtklibexplorer/RTKLIB/archive/refs/tags/b34j.tar.gz | tar -xvz >/dev/null
+       echo Get Rtklib 2.4.3 b34L release and unpack it
+       sudo -u "${RTKBASE_USER}" wget -qO - https://github.com/rtklibexplorer/RTKLIB/archive/refs/tags/b34L.tar.gz | tar -xvz >/dev/null
        ExitCodeCheck $?
        #Install Rtklib app
        RTKLIB_CURDIR=`pwd`
@@ -741,9 +741,12 @@ install_rtklib() {
        doPatch ${RTKLIB_GIT}/src/stream.c ${RTKLIB_PATCH}/stream.patch
        doPatch ${RTKLIB_GIT}/src/streamsvr.c ${RTKLIB_PATCH}/streamsvr.patch
        doPatch ${RTKLIB_GIT}/src/rinex.c ${RTKLIB_PATCH}/rinex.patch
+       doPatch ${RTKLIB_GIT}/src/rtkpos.c ${RTKLIB_PATCH}/rtkpos.patch
+       doPatch ${RTKLIB_GIT}/src/ppp.c ${RTKLIB_PATCH}/ppp.patch
+       doPatch ${RTKLIB_GIT}/src/rcv/septentrio.c ${RTKLIB_PATCH}/septentrio.patch
+       doPatch ${RTKLIB_GIT}/src/rcv/unicore.c ${RTKLIB_PATCH}/unicore.patch
        doPatch ${RTKLIB_GIT}/app/consapp/str2str/str2str.c ${RTKLIB_PATCH}/str2str.patch
        doPatch ${RTKLIB_GIT}/app/consapp/str2str/gcc/makefile ${RTKLIB_PATCH}/str2str_makefile.patch
-       doPatch ${RTKLIB_GIT}/app/consapp/convbin/convbin.c ${RTKLIB_PATCH}/convbin.patch
        doPatch ${RTKLIB_GIT}/app/consapp/convbin/gcc/makefile ${RTKLIB_PATCH}/convbin_makefile.patch
        doPatch ${RTKLIB_GIT}/app/consapp/rtkrcv/gcc/makefile ${RTKLIB_PATCH}/rtkrcv_makefile.patch
        #TODO add correct CTARGET in makefile?

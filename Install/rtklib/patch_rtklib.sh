@@ -36,9 +36,12 @@ ExitCodeCheck $?
 doPatch src/stream.c stream.patch
 doPatch src/streamsvr.c streamsvr.patch
 doPatch src/rinex.c rinex.patch
+doPatch src/rtkpos.c rtkpos.patch
+doPatch src/ppp.c ppp.patch
+doPatch src/rcv/septentrio.c septentrio.patch
+doPatch src/rcv/unicore.c unicore.patch
 doPatch app/consapp/str2str/str2str.c str2str.patch
 doPatch app/consapp/str2str/gcc/makefile str2str_makefile.patch
-doPatch app/consapp/convbin/convbin.c convbin.patch
 doPatch app/consapp/convbin/gcc/makefile convbin_makefile.patch
 doPatch app/consapp/rtkrcv/gcc/makefile rtkrcv_makefile.patch
 

@@ -1,0 +1,14 @@
+diff --git a/src/ppp.c b/src/ppp.c
+index e85ef6e..3c163a7 100644
+--- a/src/ppp.c
++++ b/src/ppp.c
+@@ -464,7 +464,8 @@ static void detslp_ll(rtk_t *rtk, const obsd_t *obs, int n)
+ 
+         trace(3,"detslp_ll: slip detected sat=%2d f=%d\n",obs[i].sat,j+1);
+ 
+-        rtk->ssat[obs[i].sat-1].slip[j]=LLI_SLIP;
++        if (j < NFREQ)
++           rtk->ssat[obs[i].sat-1].slip[j]=LLI_SLIP;
+     }
+ }
+ /* detect cycle slip by geometry free phase jump -----------------------------*/

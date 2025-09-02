@@ -1,0 +1,19 @@
+diff --git a/src/rtkpos.c b/src/rtkpos.c
+index 534f20f..8fc4166 100644
+--- a/src/rtkpos.c
++++ b/src/rtkpos.c
+@@ -660,9 +660,11 @@ static void detslp_code(rtk_t *rtk, const obsd_t *obs, int i, int rcv) {
+       rtk->ssat[sat - 1].code[f][rcv - 1] = code;
+       // Skip flagging a slip and emitting a message when initializing.
+       if (ccode != CODE_NONE) {
+-        rtk->ssat[sat - 1].slip[f] |= LLI_SLIP;
+-        errmsg(rtk, "slip detected, code change (sat=%3d rcv=%d F=%d code=%2d %2s to %2d %2s)\n", sat,
+-               rcv, f, ccode, code2obs(ccode), code, code2obs(code));
++        if (f < NFREQ)
++           rtk->ssat[sat - 1].slip[f] |= LLI_SLIP;
++        errmsg(rtk, "slip detected, code change (sat=%3d rcv=%d F=%d%s code=%2d %2s to %2d %2s)\n", sat,
++               rcv, f, (f < NFREQ) ? "" : "(INVALID F!!!)", ccode, code2obs(ccode), code, code2obs(code));
++
+       }
+     }
+   }

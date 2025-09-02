@@ -1,0 +1,21 @@
+diff --git a/src/rcv/septentrio.c b/src/rcv/septentrio.c
+index b26b714..438aa96 100644
+--- a/src/rcv/septentrio.c
++++ b/src/rcv/septentrio.c
+@@ -1686,13 +1686,13 @@ static int decode_gpsrawcnav(raw_t *raw, int sys) {
+     return -1;
+   }
+   offset += 8;
+-  uint8_t prn2 = getbitu(buff, offset, 6);
++  //uint8_t prn2 = getbitu(buff, offset, 6);
+   offset += 6;
+   uint8_t type = getbitu(buff, offset, 6);
+   offset += 8;
+-  uint32_t tow = getbitu(buff, offset, 17);
++  //uint32_t tow = getbitu(buff, offset, 17);
+   offset += 17;
+-  uint8_t alert = getbitu(buff, offset, 1);
++  //uint8_t alert = getbitu(buff, offset, 1);
+   offset += 1;
+ 
+   switch (type) {

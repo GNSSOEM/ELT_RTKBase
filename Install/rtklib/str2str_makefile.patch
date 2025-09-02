@@ -1,12 +1,12 @@
 diff --git a/app/consapp/str2str/gcc/makefile b/app/consapp/str2str/gcc/makefile
-index e2fa756..1019cae 100644
+index 3d3ab7e..8083011 100644
 --- a/app/consapp/str2str/gcc/makefile
 +++ b/app/consapp/str2str/gcc/makefile
 @@ -7,8 +7,8 @@ SRC    = ../../../../src
  #CTARGET= -mfpu=neon -mfloat-abi=softfp -ffast-math
  CTARGET=
  
--OPTION = -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN -DTRACE -DNFREQ=3 -DNEXOBS=3 -DSVR_REUSEADDR
+-OPTION = -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN -DTRACE -DNFREQ=4 -DNEXOBS=3 -DSVR_REUSEADDR
 -CFLAGS = -std=c99 -Wall -O3 -pedantic -Wno-unused-but-set-variable -I$(SRC) $(OPTION) $(CTARGET) -g
 +OPTION = -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN -DTRACE -DNFREQ=3 -DNEXOBS=3 -DSVR_REUSEADDR -DCLOCK_MONOTONIC_RAW
 +CFLAGS = -std=c99 -Wall -O3 -pedantic -Wno-unused-but-set-variable -I$(SRC) $(OPTION) $(CTARGET)

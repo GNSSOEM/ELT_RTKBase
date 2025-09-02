@@ -1,8 +1,8 @@
 diff --git a/src/rinex.c b/src/rinex.c
-index 605c920..d24df28 100644
+index 62795f3..5c02f9d 100644
 --- a/src/rinex.c
 +++ b/src/rinex.c
-@@ -359,16 +359,16 @@ static void decode_obsh(FILE *fp, char *buff, double ver, int *tsys,
+@@ -353,16 +353,16 @@ static void decode_obsh(FILE *fp, char *buff, double ver, int *tsys,
                          char tobs[][MAXOBSTYPE][4], nav_t *nav, sta_t *sta)
  {
      /* default codes for unknown code */

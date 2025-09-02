@@ -1,8 +1,8 @@
 diff --git a/src/streamsvr.c b/src/streamsvr.c
-index 19733b0..0be19a2 100644
+index 53d3db5..1cfa37b 100644
 --- a/src/streamsvr.c
 +++ b/src/streamsvr.c
-@@ -479,6 +479,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
+@@ -481,6 +481,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
          if (!*q) break;
      }
  }
@@ -17,7 +17,7 @@ index 19733b0..0be19a2 100644
  /* stearm server thread ------------------------------------------------------*/
  #ifdef WIN32
  static DWORD WINAPI strsvrthread(void *arg)
-@@ -490,7 +498,7 @@ static void *strsvrthread(void *arg)
+@@ -492,7 +500,7 @@ static void *strsvrthread(void *arg)
      sol_t sol_nmea={{0}};
      uint32_t tick,tick_nmea;
      uint8_t buff[1024];
@@ -26,7 +26,7 @@ index 19733b0..0be19a2 100644
      
      tracet(3,"strsvrthread:\n");
      
-@@ -499,10 +507,25 @@ static void *strsvrthread(void *arg)
+@@ -501,10 +509,25 @@ static void *strsvrthread(void *arg)
      
      for (cyc=0;svr->state;cyc++) {
          tick=tickget();
@@ -53,7 +53,7 @@ index 19733b0..0be19a2 100644
              /* write data to output streams */
              for (i=1;i<svr->nstr;i++) {
                  if (svr->conv[i-1]) {
-@@ -521,19 +544,6 @@ static void *strsvrthread(void *arg)
+@@ -523,19 +546,6 @@ static void *strsvrthread(void *arg)
              }
              rtklib_unlock(&svr->lock);
          }
@@ -73,7 +73,7 @@ index 19733b0..0be19a2 100644
          /* write periodic command to input stream */
          for (i=0;i<svr->nstr;i++) {
              periodic_cmd(cyc*svr->cycle,svr->cmds_periodic[i],svr->stream+i);
-@@ -547,7 +557,8 @@ static void *strsvrthread(void *arg)
+@@ -549,7 +559,8 @@ static void *strsvrthread(void *arg)
              strsendnmea(svr->stream,&sol_nmea);
              tick_nmea=tick;
          }
@@ -83,7 +83,7 @@ index 19733b0..0be19a2 100644
      }
      for (i=0;i<svr->nstr;i++) strclose(svr->stream+i);
      for (i=0;i<svr->nstr;i++) strclose(svr->strlog+i);
-@@ -761,10 +772,10 @@ extern void strsvrstop(strsvr_t *svr, char **cmds)
+@@ -763,10 +774,10 @@ extern void strsvrstop(strsvr_t *svr, const char **cmds)
  extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
                         int *bps, char *msg)
  {
@@ -95,7 +95,7 @@ index 19733b0..0be19a2 100644
      
      for (i=0;i<svr->nstr;i++) {
          if (i==0) {
-@@ -773,9 +784,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
+@@ -775,9 +786,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
          else {
              strsum(svr->stream+i,NULL,&bps_in,byte+i,bps+i);
          }

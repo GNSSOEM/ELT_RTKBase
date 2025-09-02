@@ -1,10 +1,10 @@
 diff --git a/app/consapp/convbin/gcc/makefile b/app/consapp/convbin/gcc/makefile
-index eeaf86c..298e231 100644
+index 809ed52..fbb2ca9 100644
 --- a/app/consapp/convbin/gcc/makefile
 +++ b/app/consapp/convbin/gcc/makefile
 @@ -9,7 +9,7 @@ SRC    = ../../../../src
  INCLUDE= -I$(SRC)
- OPTIONS= -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=3 -DNEXOBS=3
+ OPTIONS= -DTRACE -DENAGLO -DENAQZS -DENAGAL -DENACMP -DENAIRN -DNFREQ=4 -DNEXOBS=3
  
 -CFLAGS = -std=c99 -O3 -pedantic -Wall -Wno-unused-but-set-variable $(INCLUDE) $(OPTIONS) -g
 +CFLAGS = -std=c99 -O3 -pedantic -Wall -Wno-unused-but-set-variable $(INCLUDE) $(OPTIONS)
