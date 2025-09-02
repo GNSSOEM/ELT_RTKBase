@@ -1,12 +1,12 @@
 # ELT_RTKBase
 
-### Raspberry Pi OS compatible RtkBase software for Unicore UM98x, Bynav M2x and Septentrio Mosaic X5
+### Raspberry Pi OS compatible RtkBase software for Unicore UM98x, Bynav M2x, Septentrio Mosaic X5 and u-blox ZED-X20P
 
 Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 
 
 ## Easy installation:
-+ Connect your Unicore, Bynav or Septentrio receiver to your raspberry pi/orange pi/....
++ Connect your Unicore, Bynav, Septentrio or u-blox receiver to your raspberry pi/orange pi/....
 
 + Open a terminal and:
 
@@ -29,7 +29,7 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + If mount and password are both TCP, use TCP-client instead of NTRIP-server
 + Setup base position to receiver
 + Timeout for PPP-solution is extended to 36 hours
-+ Default settings is adopted to Unicore, Bynav or Septentrio receiver, onocoy.com and rtkdirect.com
++ Default settings is adopted to Unicore, Bynav, Septentrio or u-blox receiver, onocoy.com and rtkdirect.com
 + Windows RTK & HAS utilities for precise resolving RTK base position
 + Zeroconf configuration as rtkbase.local in the local network
 + When speed changed in main settings, speed of receiver will be changing too
