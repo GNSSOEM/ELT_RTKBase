@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..d0adf89 100644
+index 9f48006..63f54bd 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -382,7 +382,8 @@ index 9f48006..d0adf89 100644
 +        $("#updateModal .modal-title").text(response.result);
          $("#updateModal .modal-body").text("");
          for (line of response.error) {
-             $("#updateModal .modal-body").append("<p>" + line + "</p>");
+-            $("#updateModal .modal-body").append("<p>" + line + "</p>");
++            $("#updateModal .modal-body").append(line + "<br>");
          }
 -        $("#start-update-button").html('Update');
 +        $("#start-update-button").html('Update...');
