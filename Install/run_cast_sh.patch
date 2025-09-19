@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..f98df6b 100755
+index db7a656..268804f 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,132 @@ BASEDIR="$(dirname "$0")"
@@ -143,7 +143,7 @@ index db7a656..f98df6b 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +142,15 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +142,17 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -154,15 +154,17 @@ index db7a656..f98df6b 100755
  [[ ! -z "${local_ntripc_receiver_options}" ]] && out_local_caster="${out_local_caster} -opt ${local_ntripc_receiver_options}"
 -out_tcp="tcpsvr://:${tcp_port}"
 +out_tcp="tcpsvr://localhost:${tcp_port}"
++
  
  out_file="file://${datadir}/${file_name}.${receiver_format}::T::S=${file_rotate_time} -f ${file_overlap_time}"
  
 -out_rtcm_svr="tcpsvr://:${rtcm_svr_port}#rtcm3 -msg ${rtcm_svr_msg} -p ${position}"
-+out_rtcm_svr="tcpsvr://:${rtcm_svr_port} -b 1 -msg ${rtcm_svr_msg} -p ${position}"
++[[  "${receiver_format}" != "rtcm3" ]] && rtcm_out_format="#rtcm3"
++out_rtcm_svr="tcpsvr://:${rtcm_svr_port}${rtcm_out_format} -b 1 -msg ${rtcm_svr_msg} -p ${position}"
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +166,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +168,44 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -211,7 +213,7 @@ index db7a656..f98df6b 100755
      ;;
  
    out_local_caster)
-@@ -105,5 +241,9 @@ mkdir -p ${logdir}
+@@ -105,5 +243,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;
