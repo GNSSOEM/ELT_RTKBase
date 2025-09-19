@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index c8f257b..b4a2315 100644
+index c8f257b..ce5aba1 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -19,6 +19,15 @@ index c8f257b..b4a2315 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
+@@ -103,7 +104,7 @@
+ 
+     </div>
+           <div class="clearfix">
+-            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
++            <button type="submit" id="main_service_save" class="btn btn-primary float-right" disabled>Save</button>
+           </div>
+       </form>
+ 
 @@ -119,13 +120,28 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
@@ -492,7 +501,7 @@ index c8f257b..b4a2315 100644
          </div>
        </div>
 -      <div class="form-group row">
-+      <div class="form-group row" hidden>
++      <div class="form-group row" id="rtcm_svr_msg_group" hidden>
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
