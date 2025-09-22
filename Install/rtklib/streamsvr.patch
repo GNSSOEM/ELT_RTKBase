@@ -1,8 +1,183 @@
 diff --git a/src/streamsvr.c b/src/streamsvr.c
-index 53d3db5..1cfa37b 100644
+index 53d3db5..26445f5 100644
 --- a/src/streamsvr.c
 +++ b/src/streamsvr.c
-@@ -481,6 +481,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
+@@ -452,6 +452,174 @@ static void strconv(stream_t *str, strconv_t *conv, uint8_t *buff, int n)
+     write_nav_cycle(str,conv);
+     write_sta_cycle(str,conv);
+ }
++/* decode UBX ---------------------------------------------------------------*/
++struct T_DecState {
++   int CalcCRC;                //“екущее значение CRC. “о есть оно мен€етс€ с каждым обрабатываемым байтом (или словом).
++   int RecvCRC;
++   int Counter;                //Schetchik bajt dannih v predl.
++   int Data_Limit;             //Ogranichenie na sluchaj propu-
++   int MessageType;            //Tip predlozhenija
++   int State;                  //Sostojanie avtomata
++};
++
++static void Fletcher_CRC(int *crc, uint8_t c)
++{
++     uint8_t sum1 = (uint8_t)(*crc + c);
++     uint8_t sum2 = (uint8_t)((*crc >> 8) + sum1);
++     *crc = (sum2 << 8) | sum1;
++}
++
++enum DecResult {drNone,drStart,drError,drOK};
++#define MAX_UBX_DATA_COUNTER 4096
++#define MAX_UBX_BUF_LEN      (MAX_UBX_DATA_COUNTER+1100)
++#define N_UBX_RXM_SFRBX      0x0213
++#define UBX_PREFIX_FIRST     0xB5
++#define UBX_PREFIX_SECOND    0x62
++
++static int ubxValid(int messageType)
++{
++   return (messageType == N_UBX_RXM_SFRBX) ? 1 : 0;
++}
++
++static enum DecResult DecUBX(uint8_t DataByte, struct T_DecState *DecState)
++{
++   switch (DecState->State) {
++      case 0: if (DataByte == UBX_PREFIX_FIRST) {
++                 DecState->State++;
++                 return drStart;
++              } else
++                 DecState->State = 0;
++              break;
++      case 1: if (DataByte == UBX_PREFIX_SECOND)
++                 DecState->State++;
++              else {
++                 DecState->State = 0;
++                 //fprintf(stderr,"DecUBX NO SECOND PREFIX\n");
++                 return drError;
++              }
++              break;
++      case 2: DecState->Counter = 0;
++              DecState->MessageType = DataByte;
++              DecState->MessageType <<= 8;
++              DecState->State++;
++              DecState->CalcCRC = 0;
++              Fletcher_CRC(&DecState->CalcCRC, DataByte);
++              break;
++      case 3: DecState->MessageType |= DataByte;
++              if (ubxValid(DecState->MessageType)) {
++                 DecState->State++;
++                 Fletcher_CRC(&DecState->CalcCRC, DataByte);
++              } else {
++                 DecState->State=0;
++                 //fprintf(stderr,"DecUBX INVALID MessageType=0x%4X\n", DecState->MessageType);
++                 return drError;
++              }
++              break;
++      case 4: DecState->Data_Limit = DataByte;
++              DecState->State++;
++              Fletcher_CRC(&DecState->CalcCRC, DataByte);
++              break;
++      case 5: DecState->Data_Limit = (uint16_t)(DecState->Data_Limit | (DataByte << 8));
++              if (DecState->Data_Limit >= MAX_UBX_DATA_COUNTER) {
++                 DecState->State=0;
++                 //fprintf(stderr,"DecUBX LimitERR Data_Limit=%d\n", DecState->Data_Limit);
++                 return drError;
++              }
++              DecState->State++;
++              Fletcher_CRC(&DecState->CalcCRC, DataByte);
++              break;
++      case 6: if (DecState->Counter >= DecState->Data_Limit)
++                 DecState->State++;
++              else {
++                 Fletcher_CRC(&DecState->CalcCRC, DataByte);
++                 DecState->Counter++;
++                 break;
++              }
++      case 7: DecState->RecvCRC = DataByte;
++              DecState->State++;
++              break;
++      case 8: DecState->RecvCRC |= (DataByte << 8);
++              DecState->State = 0;
++              if ((uint16_t)DecState->CalcCRC != (uint16_t)DecState->RecvCRC) {
++                 //fprintf(stderr,"DecUBX CRCerr CalcCRC=%d RecvCRC=%d\n", DecState->CalcCRC, DecState->RecvCRC);
++                 return drError;
++              } else
++                 return drOK;
++   };
++   return drNone;
++}
++
++int uxbMode = 0;
++void ubxmodesetup(void) {uxbMode=1;}
++
++uint8_t ubxBuf[MAX_UBX_BUF_LEN];
++int ubxBufLen=0;
++int ubxStart = -1;
++struct T_DecState ubxState = {0, 0, 0, 0, 0, 0};
++
++static void ubxSend(stream_t *str)
++{
++   if (ubxStart > 0) {
++      if (ubxBufLen >= ubxStart)
++         strwrite(str,ubxBuf,ubxStart);
++      else
++         strwrite(str,ubxBuf,ubxBufLen);
++      if (ubxBufLen > ubxStart) {
++         memmove(ubxBuf, &ubxBuf[ubxStart], ubxBufLen - ubxStart);
++         ubxBufLen -= ubxStart;
++         ubxStart = 0;
++      } else {
++         ubxBufLen = 0;
++         ubxStart = -1;
++      }
++   } else {
++      if (ubxStart < 0)
++         strwrite(str,ubxBuf,ubxBufLen);
++      ubxBufLen = 0;
++      ubxStart = -1;
++   }
++}
++static void strubx(stream_t *str, strconv_t *conv, uint8_t *buff, int n)
++{
++    int oldIType = conv->itype;
++    conv->itype = STRFMT_UBX;
++    char *msg=str->msg;
++    for (int i=0;i<n;i++) {
++        if (ubxBufLen >= (MAX_UBX_BUF_LEN-1)) {
++           sprintf(msg,"strubx Overflow i=%d n=%d ubxStart=%d ubxBufLen=%d", i, n, ubxStart, ubxBufLen);
++           ubxSend(str);
++        }
++        ubxBuf[ubxBufLen++]=buff[i];
++        enum DecResult ubxResult = DecUBX(buff[i], &ubxState);
++        switch (ubxResult) {
++           case drNone:  break;
++           case drStart: ubxStart = ubxBufLen - 1;
++                         //sprintf(msg,"strubx drStart ubxStart=%d ubxBufLen=%d", ubxStart, ubxBufLen);
++                         break;
++           case drError: //if ((ubxBufLen-ubxStart) > 4)
++                         //   sprintf(msg,"strubx drError ubxStart=%d ubxBufLen=%d", ubxStart, ubxBufLen);
++                         ubxStart = -1;
++                         break;
++           case drOK:    if (ubxStart >= 0) {
++                            if (ubxStart > 0)
++                               strwrite(str,ubxBuf,ubxStart);
++                            strconv(str, conv, &ubxBuf[ubxStart], ubxBufLen - ubxStart);
++                            ubxBufLen = 0;
++                            ubxStart = -1;
++                         } else
++                            sprintf(msg,"strubx drOK ubxStart=%d ubxBufLen=%d", ubxStart, ubxBufLen);
++                         break;
++
++        }
++        if (ubxBufLen <= ubxStart)
++           sprintf(msg,"ubxSend BUG ubxResult=%d i=%d n=%d ubxBufLen=%d ubxStart=%d", ubxResult, i, n, ubxBufLen, ubxStart);
++    }; // for (int i=0;i<n;i++)
++
++    //sprintf(msg,"strubx end n=%d ubxBufLen=%d ubxStart=%d", n, ubxBufLen, ubxStart);
++    if ((ubxBufLen > 0) && (ubxStart != 0))
++       ubxSend(str);
++    conv->itype = oldIType;
++}
+ /* periodic command ----------------------------------------------------------*/
+ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
+ {
+@@ -481,6 +649,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
          if (!*q) break;
      }
  }
@@ -17,7 +192,7 @@ index 53d3db5..1cfa37b 100644
  /* stearm server thread ------------------------------------------------------*/
  #ifdef WIN32
  static DWORD WINAPI strsvrthread(void *arg)
-@@ -492,7 +500,7 @@ static void *strsvrthread(void *arg)
+@@ -492,7 +668,7 @@ static void *strsvrthread(void *arg)
      sol_t sol_nmea={{0}};
      uint32_t tick,tick_nmea;
      uint8_t buff[1024];
@@ -26,7 +201,7 @@ index 53d3db5..1cfa37b 100644
      
      tracet(3,"strsvrthread:\n");
      
-@@ -501,10 +509,25 @@ static void *strsvrthread(void *arg)
+@@ -501,14 +677,32 @@ static void *strsvrthread(void *arg)
      
      for (cyc=0;svr->state;cyc++) {
          tick=tickget();
@@ -53,7 +228,15 @@ index 53d3db5..1cfa37b 100644
              /* write data to output streams */
              for (i=1;i<svr->nstr;i++) {
                  if (svr->conv[i-1]) {
-@@ -523,19 +546,6 @@ static void *strsvrthread(void *arg)
+-                    strconv(svr->stream+i,svr->conv[i-1],svr->buff,n);
++                    if (uxbMode)
++                        strubx(svr->stream+i,svr->conv[i-1],svr->buff,n);
++                    else
++                        strconv(svr->stream+i,svr->conv[i-1],svr->buff,n);
+                 }
+                 else {
+                     strwrite(svr->stream+i,svr->buff,n);
+@@ -523,19 +717,6 @@ static void *strsvrthread(void *arg)
              }
              rtklib_unlock(&svr->lock);
          }
@@ -73,7 +256,7 @@ index 53d3db5..1cfa37b 100644
          /* write periodic command to input stream */
          for (i=0;i<svr->nstr;i++) {
              periodic_cmd(cyc*svr->cycle,svr->cmds_periodic[i],svr->stream+i);
-@@ -549,7 +559,8 @@ static void *strsvrthread(void *arg)
+@@ -549,7 +730,8 @@ static void *strsvrthread(void *arg)
              strsendnmea(svr->stream,&sol_nmea);
              tick_nmea=tick;
          }
@@ -83,7 +266,7 @@ index 53d3db5..1cfa37b 100644
      }
      for (i=0;i<svr->nstr;i++) strclose(svr->stream+i);
      for (i=0;i<svr->nstr;i++) strclose(svr->strlog+i);
-@@ -763,10 +774,10 @@ extern void strsvrstop(strsvr_t *svr, const char **cmds)
+@@ -763,10 +945,10 @@ extern void strsvrstop(strsvr_t *svr, const char **cmds)
  extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
                         int *bps, char *msg)
  {
@@ -95,7 +278,7 @@ index 53d3db5..1cfa37b 100644
      
      for (i=0;i<svr->nstr;i++) {
          if (i==0) {
-@@ -775,9 +786,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
+@@ -775,9 +957,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
          else {
              strsum(svr->stream+i,NULL,&bps_in,byte+i,bps+i);
          }

@@ -1,5 +1,5 @@
 diff --git a/app/consapp/str2str/str2str.c b/app/consapp/str2str/str2str.c
-index d755086..879dbea 100644
+index d755086..9d5c187 100644
 --- a/app/consapp/str2str/str2str.c
 +++ b/app/consapp/str2str/str2str.c
 @@ -40,9 +40,14 @@
@@ -9,7 +9,7 @@ index d755086..879dbea 100644
 +extern void flagsetup(const char *path);
 +extern void eventsetup(const char *path);
 +extern void revisionsetup(const char *str);
-+
++extern void ubxmodesetup(void);
  /* global variables ----------------------------------------------------------*/
  static strsvr_t strsvr;                /* stream server */
 -static volatile int intrflg=0;         /* interrupt flag */
@@ -18,17 +18,18 @@ index d755086..879dbea 100644
  
  /* help text -----------------------------------------------------------------*/
  static const char *help[]={
-@@ -114,6 +119,9 @@ static const char *help[]={
+@@ -114,6 +119,10 @@ static const char *help[]={
  " -b  str_no        relay back messages from output str to input str [no]",
  " -t  level         trace level [0]",
  " -fl file          log file [str2str.trace]",
 +" -fg file          flag file",
 +" -fe file          event command for change state",
 +" -fr string        revision string",
++" -ub               ublox efemeride transaltion mode",
  " --deamon          detach from the console",
  " --version         print version",
  " -h                print help",
-@@ -138,10 +146,17 @@ static void printhelp(void)
+@@ -138,10 +147,17 @@ static void printhelp(void)
      exit(0);
  }
  /* signal handler ------------------------------------------------------------*/
@@ -46,7 +47,7 @@ index d755086..879dbea 100644
  /* decode format -------------------------------------------------------------*/
  static void decodefmt(char *path, int *fmt)
  {
-@@ -279,7 +294,7 @@ int main(int argc, char **argv)
+@@ -279,7 +295,7 @@ int main(int argc, char **argv)
  {
      static char cmd_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
      static char cmd_periodic_strs[MAXSTR][MAXRCVCMD]={"","","","",""};
@@ -70,6 +71,7 @@ index d755086..879dbea 100644
 +        else if (!strcmp(argv[i],"-fg" )&&i+1<argc) flagsetup(argv[++i]);
 +        else if (!strcmp(argv[i],"-fe" )&&i+1<argc) eventsetup(argv[++i]);
 +        else if (!strcmp(argv[i],"-fr" )&&i+1<argc) revisionsetup(argv[++i]);
++        else if (!strcmp(argv[i],"-ub" ))           ubxmodesetup();
          else if (!strcmp(argv[i],"-t"  )&&i+1<argc) trlevel=atoi(argv[++i]);
          else if (!strcmp(argv[i], "--deamon")) deamon=1;
          else if (!strcmp(argv[i], "--version")) {
@@ -123,7 +125,7 @@ index d755086..879dbea 100644
      for (i=0;i<n;i++) {
          strconvfree(conv[i]);
      }
-@@ -440,5 +464,5 @@ int main(int argc, char **argv)
+@@ -440,5 +469,5 @@ int main(int argc, char **argv)
          traceclose();
      }
      fprintf(stderr,"stream server stop\n");
