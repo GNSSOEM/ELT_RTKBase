@@ -105,6 +105,7 @@ detect_Septentrio() {
     echo 'DETECTION Septentrio ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
+    #echo RECVINFO=\`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} SILENT | grep "hwplatform product"\`
     RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} SILENT | grep "hwplatform product"`
     if [[ "${RECVINFO}" != "" ]]
     then
@@ -186,9 +187,9 @@ detect_usb() {
                 [[ '/dev/ttyGNSS' -ef '/dev/'"${detected_gnss[0]}" ]] && break
              elif [[ "$ID_SERIAL" =~ Septentrio ]]; then
                 if [[ '/dev/ttyGNSS' -ef '/dev/'"${devname}" ]]; then
-                   detect_Septentrio ${devname} 115200
+                   detect_Septentrio ttyGNSS_CTRL 115200
+                   detected_gnss[0]=ttyGNSS
                    [[ ${#detected_gnss[*]} -eq 3 ]] && break
-                   detected_gnss[0]=${devname}
                    detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
                    break
                 fi
@@ -575,6 +576,7 @@ configure_septentrio_RTCM3() {
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
     rm -rf ${TEMPFILE}
+    #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET \>${TEMPFILE} 2\>\&1
     ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
     RECVERROR=`cat ${TEMPFILE} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
@@ -700,13 +702,17 @@ configure_gnss(){
         fi
 
         RECVSPEED=${com_port_settings%%:*}
-        RECVDEV=/dev/${com_port}
+        if [[ ${receiver} =~ "Septentrio" ]] &&  [[ ${com_port} == "ttyGNSS" ]]; then
+           RECVDEV=/dev/ttyGNSS_CTRL
+        else
+           RECVDEV=/dev/${com_port}
+        fi
         RECVPORT=${RECVDEV}:${RECVSPEED}
         #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} RECVSPEED=${RECVSPEED}
         Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
-           configure_septentrio_SBF /dev/ttyGNSS_CTRL ${RECVSPEED}
+           configure_septentrio_SBF ${RECVPORT} ${RECVSPEED}
            Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}

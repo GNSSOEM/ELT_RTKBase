@@ -37,6 +37,11 @@ if [[ ${com_speed} -lt 115200 ]]; then
    exit 3
 fi
 
+if [[ ${receiver} =~ "Septentrio" ]] &&  [[ ${com_port} == "ttyGNSS" ]]; then
+   com_port=ttyGNSS_CTRL
+   #echo com_port=${com_port}
+fi
+
 lastcode=N
 exitcode=0
 
