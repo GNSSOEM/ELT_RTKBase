@@ -1576,7 +1576,9 @@ configure_gnss(){
          source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
          if [[ "${com_port}" == "" ]]; then
             echo 'GNSS receiver is not specified. We can'\''t configure.'
-            ExitCodeCheck 1
+            if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
+               ExitCodeCheck 1
+            fi
          else
             for i in `seq 1 3`; do
                #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
