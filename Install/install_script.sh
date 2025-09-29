@@ -33,6 +33,8 @@ CONFSEPTENTRIO=Septentrio_${CONF_TAIL}
 TESTSEPTENTRIO=Septentrio_TEST.txt
 CONFX20P=X20P_${CONF_TAIL}
 CFGX20P=X20P_UBX_OUT.txt
+CONFF9P=F9P_${CONF_TAIL}
+CFGF9P=F9P_UBX_OUT.txt
 SERVER_PATCH=server_py.patch
 GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
@@ -1291,6 +1293,20 @@ configure_for_unicore(){
    chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGX20P}
    ExitCodeCheck $?
 
+   #echo mv ${BASEDIR}/${CONFF9P} ${RTKBASE_RECV}/
+   mv ${BASEDIR}/${CONFF9P} ${RTKBASE_RECV}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFF9P}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFF9P}
+   ExitCodeCheck $?
+
+   #echo mv ${BASEDIR}/${CFGF9P} ${RTKBASE_RECV}/
+   mv ${BASEDIR}/${CFGF9P} ${RTKBASE_RECV}/
+   ExitCodeCheck $?
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGF9P}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGF9P}
+   ExitCodeCheck $?
+
    #echo mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
    mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
    ExitCodeCheck $?
@@ -1722,7 +1738,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
-              ${CFGX20P}"
+              ${CFGX20P} ${CONFF9P} ${CFGF9P}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
 

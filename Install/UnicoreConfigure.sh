@@ -179,8 +179,7 @@ detect_usb() {
              #echo devname=${devname} ID_SERIAL=${ID_SERIAL} IS_SERIAL=${IS_SERIAL}
              if [[ -z "$IS_SERIAL" ]]; then continue; fi
              if [[ "$ID_SERIAL" =~ (u-blox|skytraq) ]]; then
-                detected_gnss[0]=$devname
-                detected_gnss[1]=$ID_SERIAL
+                detect_Ublox ${devname} 115200
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"
                 # If /dev/ttyGNSS is a symlink of the detected serial port, we've found the gnss receiver, break the loop.
                 # This test is useful with gnss receiver offering several serial ports (like mosaic X5). The Udev rule should symlink the right one with ttyGNSS
@@ -278,13 +277,13 @@ detect_configure() {
 
           if [[ -f "${rtkbase_path}/settings.conf" ]]  && grep -qE "^com_port=.*" "${rtkbase_path}"/settings.conf #check if settings.conf exists
           then
-            if [[ "${detected_gnss[1]}" =~ "u-blox_ZED-F9P" ]]; then
-               recvformat=ubx
+            #if [[ "${detected_gnss[1]}" =~ "u-blox_ZED-F9P" ]]; then
+               #recvformat=ubx
             #elif [[ "${detected_gnss[1]}" =~ Septentrio ]]; then
             #   recvformat=sbf
-            else
+            #else
                recvformat=rtcm3
-            fi
+            #fi
             #echo detected_gnss[1]=${detected_gnss[1]} recvformat=${recvformat}
 
             #change the com port value/settings inside settings.conf

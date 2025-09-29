@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..1ef6c51 100644
+index 9f48006..bee6e8e 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -279,7 +279,7 @@ index 9f48006..1ef6c51 100644
          detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Detecting GNSS receiver...';
          socket.emit("detect_receiver", {"then_configure" : false});
          $('#detectModal').modal();
-@@ -347,8 +467,20 @@ $(document).ready(function () {
+@@ -347,8 +467,18 @@ $(document).ready(function () {
          if (response['result'] === 'success') {
              detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
@@ -287,20 +287,18 @@ index 9f48006..1ef6c51 100644
                  document.querySelector('#com_port').value = response['port'].replace(/^\/dev\//, '');
                  document.querySelector('#com_port_settings').value = response['port_speed'] + ':8:n:1';
 +                document.querySelector('#receiver').value = response['gnss_type'];
-+                var recvformat;
-+                if (response['gnss_type'].search(/u-blox_ZED-F9P/) != -1) {
-+                   recvformat = "ubx"
++                var recvformat = "rtcm3";
++                //if (response['gnss_type'].search(/u-blox_ZED-F9P/) != -1) {
++                //   recvformat = "ubx"
 +                // } else if (response['gnss_type'].search(/Septentrio/) != -1) {
 +                //   recvformat = "sbf"
-+                } else {
-+                   recvformat = "rtcm3"
-+                }
++                //}
 +                document.querySelector('#receiver_format').value = recvformat;
 +                set_rtcm_mode();
                  // NEW METHOD from https://stackoverflow.com/questions/35154348/trigger-form-submission-with-javascript
                  document.getElementById("main").dispatchEvent(new SubmitEvent('submit', {cancelable: true}));
                  if (response['then_configure']) {
-@@ -381,7 +513,7 @@ $(document).ready(function () {
+@@ -381,7 +511,7 @@ $(document).ready(function () {
          detectApplyBtnElt.onclick = function (){}; //remove the previous attached event which launched the gnss configuration
          detectApplyBtnElt.innerText = "Close";
          detectApplyBtnElt.setAttribute('disabled', '');
@@ -309,7 +307,7 @@ index 9f48006..1ef6c51 100644
          detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Configuring GNSS receiver...';
          socket.emit("configure_receiver");
          $('#detectModal').modal();
-@@ -419,20 +551,24 @@ $(document).ready(function () {
+@@ -419,20 +549,24 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -338,7 +336,7 @@ index 9f48006..1ef6c51 100644
              var newFeaturesArray = response['comment'].split('\r\n');
              $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
              $.each( newFeaturesArray, function( index, value ){
-@@ -460,14 +596,18 @@ $(document).ready(function () {
+@@ -460,14 +594,18 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data
                  });
@@ -359,7 +357,7 @@ index 9f48006..1ef6c51 100644
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-@@ -477,11 +617,11 @@ $(document).ready(function () {
+@@ -477,11 +615,11 @@ $(document).ready(function () {
  
      socket.on("downloading_update", function(msg) {
          response = JSON.parse(msg);
@@ -373,7 +371,7 @@ index 9f48006..1ef6c51 100644
              $("#start-update-button").html('Update...');
              $("#cancel-button").prop("disabled", false);
          }
-@@ -489,13 +629,13 @@ $(document).ready(function () {
+@@ -489,13 +627,13 @@ $(document).ready(function () {
  
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
@@ -391,7 +389,7 @@ index 9f48006..1ef6c51 100644
          $("#start-update-button").prop("disabled", true);
          $("#cancel-button").prop("disabled", false);
      })
-@@ -505,16 +645,21 @@ $(document).ready(function () {
+@@ -505,16 +643,21 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -422,7 +420,7 @@ index 9f48006..1ef6c51 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -531,14 +676,6 @@ $(document).ready(function () {
+@@ -531,14 +674,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -437,7 +435,7 @@ index 9f48006..1ef6c51 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -703,6 +840,22 @@ $(document).ready(function () {
+@@ -703,6 +838,22 @@ $(document).ready(function () {
            };
        };
  
@@ -460,7 +458,7 @@ index 9f48006..1ef6c51 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -714,16 +867,19 @@ $(document).ready(function () {
+@@ -714,16 +865,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -485,7 +483,7 @@ index 9f48006..1ef6c51 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +891,123 @@ $(document).ready(function () {
+@@ -735,5 +889,123 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

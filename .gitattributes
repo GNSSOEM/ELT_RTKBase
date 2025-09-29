@@ -22,7 +22,7 @@
 *.service text eol=lf
 iso3166.tab text eol=lf
 config.* text eol=lf
-X20P_RTCM3_OUT.txt text eol=lf
+*_OUT.txt text eol=lf
 *.cfg text eol=lf
 *.link text eol=lf
 *.rules text eol=lf
