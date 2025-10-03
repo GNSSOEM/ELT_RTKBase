@@ -53,5 +53,5 @@ elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
 fi
 #echo finished >>${LOG}
 echo >${FLAG_TMP}
-chmod 666 >${FLAG_TMP}
+chmod 666 ${FLAG_TMP}
 mv ${FLAG_TMP} ${FLAG_INIT}
