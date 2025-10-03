@@ -1,8 +1,8 @@
 diff --git a/src/streamsvr.c b/src/streamsvr.c
-index 53d3db5..26445f5 100644
+index 53d3db5..76902f9 100644
 --- a/src/streamsvr.c
 +++ b/src/streamsvr.c
-@@ -452,6 +452,174 @@ static void strconv(stream_t *str, strconv_t *conv, uint8_t *buff, int n)
+@@ -452,6 +452,195 @@ static void strconv(stream_t *str, strconv_t *conv, uint8_t *buff, int n)
      write_nav_cycle(str,conv);
      write_sta_cycle(str,conv);
  }
@@ -26,13 +26,34 @@ index 53d3db5..26445f5 100644
 +enum DecResult {drNone,drStart,drError,drOK};
 +#define MAX_UBX_DATA_COUNTER 4096
 +#define MAX_UBX_BUF_LEN      (MAX_UBX_DATA_COUNTER+1100)
-+#define N_UBX_RXM_SFRBX      0x0213
 +#define UBX_PREFIX_FIRST     0xB5
 +#define UBX_PREFIX_SECOND    0x62
 +
++#define ID_NAVSOL   0x0106      /* ubx message id: nav solution info */
++#define ID_NAVPVT   0x0107      /* ubx message id: Navigation position velocity time solution */
++#define ID_NAVTIME  0x0120      /* ubx message id: nav time gps */
++#define ID_RXMRAW   0x0210      /* ubx message id: raw measurement data */
++#define ID_RXMSFRB  0x0211      /* ubx message id: subframe buffer */
++#define ID_RXMSFRBX 0x0213      /* ubx message id: raw subframe data */
++#define ID_RXMRAWX  0x0215      /* ubx message id: multi-gnss raw meas data */
++#define ID_TRKD5    0x030A      /* ubx message id: trace mesurement data */
++#define ID_TRKMEAS  0x0310      /* ubx message id: trace mesurement data */
++#define ID_TRKSFRBX 0x030F      /* ubx message id: trace subframe buffer */
++#define ID_TIMTM2   0x0D03      /* ubx message id: time mark data */
 +static int ubxValid(int messageType)
 +{
-+   return (messageType == N_UBX_RXM_SFRBX) ? 1 : 0;
++   int res = (messageType == ID_NAVSOL) ||
++             (messageType == ID_NAVPVT) ||
++             (messageType == ID_NAVTIME) ||
++             (messageType == ID_RXMRAW) ||
++             (messageType == ID_RXMSFRB) ||
++             (messageType == ID_RXMSFRBX) ||
++             (messageType == ID_RXMRAWX) ||
++             (messageType == ID_TRKD5) ||
++             (messageType == ID_TRKMEAS) ||
++             (messageType == ID_TRKSFRBX) ||
++             (messageType == ID_TIMTM2);
++   return res;
 +}
 +
 +static enum DecResult DecUBX(uint8_t DataByte, struct T_DecState *DecState)
@@ -177,7 +198,7 @@ index 53d3db5..26445f5 100644
  /* periodic command ----------------------------------------------------------*/
  static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
  {
-@@ -481,6 +649,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
+@@ -481,6 +670,14 @@ static void periodic_cmd(int cycle, const char *cmd, stream_t *stream)
          if (!*q) break;
      }
  }
@@ -192,7 +213,7 @@ index 53d3db5..26445f5 100644
  /* stearm server thread ------------------------------------------------------*/
  #ifdef WIN32
  static DWORD WINAPI strsvrthread(void *arg)
-@@ -492,7 +668,7 @@ static void *strsvrthread(void *arg)
+@@ -492,7 +689,7 @@ static void *strsvrthread(void *arg)
      sol_t sol_nmea={{0}};
      uint32_t tick,tick_nmea;
      uint8_t buff[1024];
@@ -201,7 +222,7 @@ index 53d3db5..26445f5 100644
      
      tracet(3,"strsvrthread:\n");
      
-@@ -501,14 +677,32 @@ static void *strsvrthread(void *arg)
+@@ -501,14 +698,32 @@ static void *strsvrthread(void *arg)
      
      for (cyc=0;svr->state;cyc++) {
          tick=tickget();
@@ -236,7 +257,7 @@ index 53d3db5..26445f5 100644
                  }
                  else {
                      strwrite(svr->stream+i,svr->buff,n);
-@@ -523,19 +717,6 @@ static void *strsvrthread(void *arg)
+@@ -523,19 +738,6 @@ static void *strsvrthread(void *arg)
              }
              rtklib_unlock(&svr->lock);
          }
@@ -256,7 +277,7 @@ index 53d3db5..26445f5 100644
          /* write periodic command to input stream */
          for (i=0;i<svr->nstr;i++) {
              periodic_cmd(cyc*svr->cycle,svr->cmds_periodic[i],svr->stream+i);
-@@ -549,7 +730,8 @@ static void *strsvrthread(void *arg)
+@@ -549,7 +751,8 @@ static void *strsvrthread(void *arg)
              strsendnmea(svr->stream,&sol_nmea);
              tick_nmea=tick;
          }
@@ -266,7 +287,7 @@ index 53d3db5..26445f5 100644
      }
      for (i=0;i<svr->nstr;i++) strclose(svr->stream+i);
      for (i=0;i<svr->nstr;i++) strclose(svr->strlog+i);
-@@ -763,10 +945,10 @@ extern void strsvrstop(strsvr_t *svr, const char **cmds)
+@@ -763,10 +966,10 @@ extern void strsvrstop(strsvr_t *svr, const char **cmds)
  extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
                         int *bps, char *msg)
  {
@@ -278,7 +299,7 @@ index 53d3db5..26445f5 100644
      
      for (i=0;i<svr->nstr;i++) {
          if (i==0) {
-@@ -775,9 +957,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
+@@ -775,9 +978,9 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *log_stat, int *byte,
          else {
              strsum(svr->stream+i,NULL,&bps_in,byte+i,bps+i);
          }
