@@ -132,6 +132,11 @@ else
    recv_com=
    SETSPEED=N
    SAVECONF=Y
+   if [[ "${position}" == "${ZEROPOS}" ]]; then
+      TIMEPOS=Y
+      SETPOS=N
+      BADPOS=N
+   fi
 fi
 
 OLDDEV=/dev/${com_port}:${recv_speed}
