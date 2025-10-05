@@ -38,8 +38,22 @@ if [[ ${com_speed} -lt 115200 ]]; then
 fi
 
 if [[ ${receiver} =~ "Septentrio" ]] &&  [[ ${com_port} == "ttyGNSS" ]]; then
-   com_port=ttyGNSS_CTRL
-   #echo com_port=${com_port}
+   HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
+   FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
+   if [[ "${HAVE_ZERO}" != "" ]]; then
+      com_port=ttyGNSS_CTRL
+      if [[ ${recv_port} == "ttyGNSS" ]]; then
+         recv_port=ttyGNSS_CTRL
+      fi
+      echo com_port=${com_port} recv_port=${recv_port}
+      for i in `seq 0 25`; do
+          if [[ -f ${FLAG_INITED} ]]; then
+             echo Inited after $i seconds
+             break
+          fi
+          sleep 1
+      done
+   fi
 fi
 
 lastcode=N

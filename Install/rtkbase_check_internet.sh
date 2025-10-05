@@ -4,6 +4,7 @@ FLAG=/usr/local/rtkbase/NetworkChange.flg
 rm -f ${FLAG}
 state=DOWN
 FLAG_INIT=/usr/local/rtkbase/ledInited.flg
+FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
 
 #We work only on Pi4 with USB devices in Type C.
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
@@ -100,7 +101,20 @@ WPS_FLAG=/usr/local/rtkbase/WPS.flg
 RESET_INTERNET_LED_FLAG=/usr/local/rtkbase/reset_intenet_led.flg
 wasWPS=
 
+ALL_CNT=0
+
 while : ; do
+   if [[ ${ALL_CNT} -ge 7 ]] && [[ ${ALL_CNT} -le 15 ]]; then
+      if [[ "${USE_FTDI}" == "M" ]]; then
+         if [[ ! -f ${FLAG_INITED} ]]; then
+            FLAG_TMP=${FLAG_INITED}.tmp
+            echo >${FLAG_TMP}
+            chmod 666 ${FLAG_TMP}
+            mv ${FLAG_TMP} ${FLAG_INITED}
+            echo created ${FLAG_INITED}
+         fi
+      fi
+   fi
 
    if [[ -f ${FLAG} ]]; then
       cat ${FLAG}
@@ -119,6 +133,7 @@ while : ; do
       sleep 0.5
       set_gpio 1
       sleep 0.5
+      let ALL_CNT++
    elif [[ "${wasWPS}" != "" ]]; then
       echo WPS finished
       wasWPS=
@@ -151,6 +166,7 @@ while : ; do
          else
             #echo \$\?=$?
             sleep 1
+            let ALL_CNT++
             continue
          fi
       fi
@@ -165,7 +181,10 @@ while : ; do
             break
          fi
          sleep 1
+         let ALL_CNT++
       done
    fi
+
+
 done
 exit 1
