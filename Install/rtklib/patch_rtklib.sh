@@ -38,6 +38,7 @@ doPatch src/streamsvr.c streamsvr.patch
 doPatch src/rinex.c rinex.patch
 doPatch src/rtkpos.c rtkpos.patch
 doPatch src/ppp.c ppp.patch
+doPatch src/rtcm3.c rtcm3.patch
 doPatch src/rcv/septentrio.c septentrio.patch
 doPatch src/rcv/unicore.c unicore.patch
 doPatch app/consapp/str2str/str2str.c str2str.patch

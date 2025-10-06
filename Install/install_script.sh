@@ -38,6 +38,7 @@ CFGF9P=F9P_UBX_OUT.txt
 SERVER_PATCH=server_py.patch
 GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
+RTKCONTROLLER_PATCH=RtkController_py.patch
 UBX_PY_PATCH=ubx_py.patch
 STATUS_PATCH=status_js.patch
 SETTING_PATCH=settings_js.patch
@@ -985,6 +986,15 @@ patch_rtkbase(){
    rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
    ExitCodeCheck $?
 
+   RTKCONTROLLER_PY=${RTKBASE_WEB}/RtkController.py
+   #echo RTKCONTROLLER_PY=${RTKCONTROLLER_PY}
+   patch -f ${RTKCONTROLLER_PY} ${BASEDIR}/${RTKCONTROLLER_PATCH}
+   ExitCodeCheck $?
+   chmod 644 ${RTKCONTROLLER_PY}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${RTKCONTROLLER_PATCH}
+   ExitCodeCheck $?
+
    UBX_PY=${RTKBASE_TOOLS}/gps/ubx.py
    #echo UBX_PY=${UBX_PY}
    patch -f ${UBX_PY} ${BASEDIR}/${UBX_PY_PATCH}
@@ -1738,7 +1748,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${SEPTENTRIO_MODEM} ${REBOOT_SH} ${RESET_RECEIVER} \
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
-              ${CFGX20P} ${CONFF9P} ${CFGF9P}"
+              ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH}"
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
 

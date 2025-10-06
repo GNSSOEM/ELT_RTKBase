@@ -1,0 +1,16 @@
+diff --git a/web_app/RtkController.py b/web_app/RtkController.py
+index 9ef09f7..11a89fb 100644
+--- a/web_app/RtkController.py
++++ b/web_app/RtkController.py
+@@ -55,9 +55,9 @@ class RtkController:
+         a = self.child.expect(["rtkrcv>", pexpect.EOF, "error"])
+         # check rtkrcv output for any errors
+         if a == 1:
+-            print("got EOF while waiting for rtkrcv> . Shutting down")
++            print("got EOF while waiting for rtkrcv> . Shutting down. last_command=" + last_command)
+             print("This means something went wrong and rtkrcv just stopped")
+-            print("output before exception: " + str(self.child))
++            #print("output before exception: " + str(self.child))
+             return -1
+ 
+         if a == 2:

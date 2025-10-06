@@ -1,0 +1,39 @@
+diff --git a/src/rtcm3.c b/src/rtcm3.c
+index 61b8c29..1cb4661 100644
+--- a/src/rtcm3.c
++++ b/src/rtcm3.c
+@@ -2001,7 +2001,7 @@ static void save_msm_obs(rtcm_t *rtcm, int sys, msm_h_t *h, const double *r,
+     double tt,freq;
+     uint8_t code[32];
+     char *msm_type="",*q=NULL;
+-    int i,j,k,type,prn,sat,fcn,index=0,idx[32];
++    int i,j,k,type,prn,sat,fcn,index=0,idx[32],useb1c=0;
+     
+     type=getbitu(rtcm->buff,24,12);
+     
+@@ -2014,6 +2014,10 @@ static void save_msm_obs(rtcm_t *rtcm, int sys, msm_h_t *h, const double *r,
+         case SYS_CMP: msm_type=q=rtcm->msmtype[5]; break;
+         case SYS_IRN: msm_type=q=rtcm->msmtype[6]; break;
+     }
++    /* use B1C instead of B1I */
++    if (sys == SYS_CMP) {
++       if (strstr(rtcm->opt,"-USEB1CINDTEADOFB1I")) useb1c=1;
++    }
+     /* id to signal */
+     for (i=0;i<h->nsig;i++) {
+         switch (sys) {
+@@ -2029,7 +2033,13 @@ static void save_msm_obs(rtcm_t *rtcm, int sys, msm_h_t *h, const double *r,
+         /* signal to rinex obs type */
+         code[i]=obs2code(sig[i]);
+         idx[i]=code2idx(sys,code[i]);
+-        
++        if (useb1c && (sys == SYS_CMP)) {
++           if (idx[i]==4)
++              idx[i] = 0;
++           else if (idx[i]==0)
++              idx[i] = 4;
++        }
++
+         if (code[i]!=CODE_NONE) {
+             if (q) q+=sprintf(q,"L%s%s",sig[i],i<h->nsig-1?",":"");
+         }
