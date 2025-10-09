@@ -39,6 +39,8 @@ elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
           if [[ "${gpiochip}" != "" ]]; then
              CHIP=`echo ${gpiochip} | sed s/^.*gpiochip//`
              #echo CHIP=${CHIP}
+             #echo gpioset gpiochip${CHIP} 3=0
+             gpioset gpiochip${CHIP} 3=0
              USE_FTDI=Y
              GPIO=1
          fi
