@@ -1,2 +1,2 @@
 @REM "%ProgramFiles%\WinRar\WinRar" A -m5 -rr -afzip -sfx ..\WinRtkBaseUtils HAS.bat RTK.bat nmeaConf.exe rtcm3save.exe UM*.txt BYNAV*.txt
-@"%ProgramFiles%\7-Zip\7z.exe" A -sfx7z.sfx ..\WinRtkBaseUtils HAS.bat RTK.bat nmeaConf.exe rtcm3save.exe UM*.txt BYNAV*.txt SEPTENTRIO*.txt 
+@"%ProgramFiles%\7-Zip\7z.exe" A -sfx7z.sfx ..\WinRtkBaseUtils HAS.bat RTK.bat nmeaConf.exe rtcm3save.exe UM*.txt BYNAV*.txt SEPTENTRIO*.txt UBLOX*.txt 
