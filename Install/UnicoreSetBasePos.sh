@@ -33,8 +33,10 @@ if [[ ! "${receiver}" =~ Unicore ]] && [[ ! "${receiver}" =~ Bynav ]] && [[ ! "$
 fi
 
 if [[ ${com_speed} -lt 115200 ]]; then
-   echo com_speed \(${com_speed}\) is low 115200
-   exit 3
+   if [[ ! "${receiver}" =~ u-blox ]] || [[ ${com_speed} != 38400 ]] ; then
+      echo com_speed \(${com_speed}\) is low 115200
+      exit 3
+   fi
 fi
 
 if [[ ${receiver} =~ "Septentrio" ]] &&  [[ ${com_port} == "ttyGNSS" ]]; then
