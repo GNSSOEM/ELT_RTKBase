@@ -582,7 +582,8 @@ configure_septentrio_SBF(){
 
 configure_septentrio_RTCM3() {
     RECVPORT=${1}
-    #echo RECVPORT=${RECVPORT}
+    FORMAT=${2}
+    #echo RECVPORT=${RECVPORT} FORMAT=${FORMAT}
 
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
@@ -611,8 +612,13 @@ configure_septentrio_RTCM3() {
     sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
     sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Septentrio_${RECVNAME}\'/ "${rtkbase_path}"/settings.conf
     clear_TADJ
+    [[ ${FORMAT} == "sbf" ]] && change_mode_to_NTRIPv1
 
-    RECVCONF=${rtkbase_path}/receiver_cfg/Septentrio_RTCM3_OUT.txt
+    RECVTYPE=$(echo ${RECVNAME} | sed s/^mosaic-//)
+    RECVVER=$(echo ${FIRMWARE} | awk -F '.' '{print $1$2}')
+    [[ ${RECVVER} -gt 414 ]] && RECVVARIANT="_415"
+    RECVCONFNAME=${RECVTYPE}${RECVVARIANT}_${FORMAT^^}_OUT.txt
+    RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
     #echo RECVCONF=${RECVCONF}
 
     if [[ -f "${RECVCONF}" ]]
@@ -627,9 +633,9 @@ configure_septentrio_RTCM3() {
        then
           systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null
           systemctl enable --now rtkbase_gnss_web_proxy.service
-          echo Septentrio ${RECVNAME}\(${FIRMWARE}\) successfuly configured
+          echo Septentrio ${RECVNAME}\(${FIRMWARE}\) successfuly configured by ${RECVCONFNAME}
        else
-          echo Confiuration FAILED for ${RECVNAME} on ${RECVPORT}
+          echo Confiuration FAILED for ${RECVNAME} on ${RECVPORT} by ${RECVCONFNAME}
        fi
        RECEIVER_CONF=${rtkbase_path}/receiver.conf
        echo recv_port=${com_port}>${RECEIVER_CONF}
@@ -639,7 +645,7 @@ configure_septentrio_RTCM3() {
        chown ${RTKBASE_USER}:${RTKBASE_USER} ${RECEIVER_CONF}
        return ${exitcode}
     else
-       echo Confiuration file for ${RECVNAME} \(${RECVCONF}\) NOT FOUND.
+       echo Confiuration file for ${RECVNAME} \(${RECVCONFNAME}\) NOT FOUND.
        return 1
     fi
 }
@@ -738,7 +744,7 @@ configure_gnss(){
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
               Result=$?
            elif [[ ${receiver} =~ "Septentrio" ]]; then
-              configure_septentrio_RTCM3 ${RECVPORT}
+              configure_septentrio_RTCM3 ${RECVPORT} ${receiver_format}
               Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
               configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
