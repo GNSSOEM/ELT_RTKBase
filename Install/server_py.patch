@@ -1,5 +1,5 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index bb39670..2463cba 100755
+index bb39670..7196662 100755
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -39,6 +39,7 @@ import sys
@@ -329,7 +329,7 @@ index bb39670..2463cba 100755
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -608,7 +765,7 @@ def deleteLog(json_msg):
+@@ -608,13 +765,13 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -338,6 +338,14 @@ index bb39670..2463cba 100755
      if answer.returncode == 0 and "/dev/" in answer.stdout:
          #print("DEBUG ok stdout: ", answer.stdout)
          try:
+             device_info = next(x for x in answer.stdout.splitlines() if x.startswith('/dev/')).split(' - ')
+-            port, gnss_type, speed = [x.strip() for x in device_info]
+-            result = {"result" : "success", "port" : port, "gnss_type" : gnss_type, "port_speed" : speed}
++            port, gnss_type, speed, recv_format = [x.strip() for x in device_info]
++            result = {"result" : "success", "port" : port, "gnss_type" : gnss_type, "port_speed" : speed, "recv_format" : recv_format}
+             result.update(json_msg)
+         except Exception:
+             result = {"result" : "failed"}
 @@ -626,6 +783,20 @@ def detect_receiver(json_msg):
      #print('DEBUG result: ', result)
      socketio.emit("gnss_detection_result", json.dumps(result), namespace="/test")

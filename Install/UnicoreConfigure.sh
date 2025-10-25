@@ -50,7 +50,7 @@ detect_Unicore() {
 detect_speed_Unicore() {
     for port_speed in 115200 921600 230400 460800; do
         detect_Unicore ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -ge 3 ]] && break
     done
 }
 
@@ -75,7 +75,7 @@ detect_Bynav() {
 detect_speed_Bynav() {
     for port_speed in 115200 921600 230400 460800; do
         detect_Bynav ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -ge 3 ]] && break
     done
 }
 
@@ -97,8 +97,25 @@ detect_Ublox() {
 detect_speed_Ublox() {
     for port_speed in 38400 115200 921600 230400 460800 9600; do
         detect_Ublox ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -ge 3 ]] && break
     done
+}
+
+set_septetrio_format() {
+    detected_gnss[3]=rtcm3
+    if [[ -c /dev/gpiochip0 ]]; then
+       CHIP=0
+    elif [[ -c /dev/gpiochip512 ]]; then
+       CHIP=512
+    else
+       echo Raspberry gpiochip NOT found!
+       return
+    fi
+    gpio4=$(gpioget gpiochip${CHIP} 4)
+    if [[ "${gpio4}" == "0" ]]; then
+       detected_gnss[3]=sbf
+    fi
+    #echo gpio4=${gpio4} detected_gnss[3]=${detected_gnss[3]}
 }
 
 detect_Septentrio() {
@@ -117,6 +134,7 @@ detect_Septentrio() {
           detected_gnss[0]=${1}
           detected_gnss[1]=Septentrio_${RECVNAME}
           detected_gnss[2]=${2}
+          set_septetrio_format
        fi
     fi
 }
@@ -124,7 +142,7 @@ detect_Septentrio() {
 detect_speed_Septentrio() {
     for port_speed in 115200 921600 230400 460800; do
         detect_Septentrio ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -eq 4 ]] && break
     done
 }
 
@@ -132,10 +150,10 @@ detect_speed_Unicore_Ublox() {
     for port_speed in 115200 38400 921600 230400 460800 9600; do
         if [[ ${port_speed} -ge 115200 ]]; then
            detect_Unicore ${1} ${port_speed}
-           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           [[ ${#detected_gnss[*]} -ge 3 ]] && break
         fi
         detect_Ublox ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -ge 3 ]] && break
     done
 }
 
@@ -143,14 +161,14 @@ detect_speed_All() {
     for port_speed in 115200 38400 921600 230400 460800 9600; do
         if [[ ${port_speed} -ge 115200 ]]; then
            detect_Unicore ${1} ${port_speed}
-           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           [[ ${#detected_gnss[*]} -ge 3 ]] && break
            detect_Bynav ${1} ${port_speed}
-           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           [[ ${#detected_gnss[*]} -ge 3 ]] && break
            detect_Septentrio ${1} ${port_speed}
-           [[ ${#detected_gnss[*]} -eq 3 ]] && break
+           [[ ${#detected_gnss[*]} -ge 3 ]] && break
         fi
         detect_Ublox ${1} ${port_speed}
-        [[ ${#detected_gnss[*]} -eq 3 ]] && break
+        [[ ${#detected_gnss[*]} -ge 3 ]] && break
     done
 }
 
@@ -188,8 +206,9 @@ detect_usb() {
                 if [[ '/dev/ttyGNSS' -ef '/dev/'"${devname}" ]]; then
                    detect_Septentrio ttyGNSS_CTRL 115200
                    detected_gnss[0]=ttyGNSS
-                   [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                   [[ ${#detected_gnss[*]} -ge 3 ]] && break
                    detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
+                   set_septetrio_format
                    break
                 fi
              elif [[ "$ID_SERIAL" =~ ELT0x33 ]]; then
@@ -205,7 +224,7 @@ detect_usb() {
              elif [[ "$ID_SERIAL" =~ FTDI_FT230X_Basic_UART ]]; then
                 #echo detect_speed_Unicore ${devname}
                 detect_speed_Unicore ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                [[ ${#detected_gnss[*]} -ge 3 ]] && break
                 #echo detect_speed_Bynav ${devname}
                 detect_speed_Bynav ${devname}
              elif [[ "$ID_SERIAL" =~ 1a86_USB_Dual_Serial ]]; then # 1a86 - QinHeng Electronics, CH340 or CH341
@@ -218,7 +237,7 @@ detect_usb() {
                 detect_speed_All ${devname}
              fi
              #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
-             [[ ${#detected_gnss[*]} -eq 3 ]] && break
+             [[ ${#detected_gnss[*]} -ge 3 ]] && break
          done
          if [[ "${detected_ELT0x33}" == "Y" ]]; then
             #echo ${rtkbase_path}/tools/onoffELT0x33.sh ${devname} OFF
@@ -230,7 +249,7 @@ detect_usb() {
                 #echo detect_speed_Bynav ${devname}
                 detect_speed_Bynav ${devname}
                 #echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                [[ ${#detected_gnss[*]} -ge 3 ]] && break
             done
             rm -rf "${BynavDevices}"
          fi
@@ -239,7 +258,7 @@ detect_usb() {
             for devname in `cat "${CypressDevices}" | sort`; do
                 #echo detect_speed_Unicore_Ublox ${devname}
                 detect_speed_Unicore_Ublox ${devname}
-                [[ ${#detected_gnss[*]} -eq 3 ]] && break
+                [[ ${#detected_gnss[*]} -ge 3 ]] && break
             done
             rm -rf "${CypressDevices}"
          fi
@@ -255,7 +274,7 @@ detect_uart() {
         for port in ttyAMA5 ttyAMA4 ttyAMA3 ttyAMA2 ttyAMA1 ttyAMA0 ttyS0 ttyS5 serial0; do
             if [[ -c /dev/${port} ]]; then
                detect_speed_All ${port}
-               [[ ${#detected_gnss[*]} -eq 3 ]] && break
+               [[ ${#detected_gnss[*]} -ge 3 ]] && break
             fi
         done
       fi
@@ -264,33 +283,26 @@ detect_uart() {
 detect_configure() {
       # Test if speed is in detected_gnss array. If not, add the default value.
       [[ ${#detected_gnss[*]} -eq 2 ]] && detected_gnss[2]='115200'
+      [[ ${detected_gnss[2]} == "" ]] && detected_gnss[2]='115200'
       # If /dev/ttyGNSS is a symlink of the detected serial port, switch to ttyGNSS
       [[ '/dev/ttyGNSS' -ef '/dev/'"${detected_gnss[0]}" ]] && detected_gnss[0]='ttyGNSS'
+      [[ ${#detected_gnss[*]} -eq 3 ]] && detected_gnss[3]='rtcm3'
       # "send" result
-      echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"
+      echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}"' - ' "${detected_gnss[2]}"' - ' "${detected_gnss[3]}"
 
       #Write Gnss receiver settings inside settings.conf
       #Optional argument --no-write-port (here as variable $1) will prevent settings.conf modifications. It will be just a detection without any modification. 
-      if [[ ${#detected_gnss[*]} -eq 3 ]] && [[ "${1}" -eq 0 ]]
+      if [[ ${#detected_gnss[*]} -eq 4 ]] && [[ "${1}" -eq 0 ]]
         then
-          echo 'GNSS RECEIVER DETECTED: /dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}"
+          echo 'GNSS RECEIVER DETECTED: /dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}"
 
           if [[ -f "${rtkbase_path}/settings.conf" ]]  && grep -qE "^com_port=.*" "${rtkbase_path}"/settings.conf #check if settings.conf exists
           then
-            #if [[ "${detected_gnss[1]}" =~ "u-blox_ZED-F9P" ]]; then
-               #recvformat=ubx
-            #elif [[ "${detected_gnss[1]}" =~ Septentrio ]]; then
-            #   recvformat=sbf
-            #else
-               recvformat=rtcm3
-            #fi
-            #echo detected_gnss[1]=${detected_gnss[1]} recvformat=${recvformat}
-
             #change the com port value/settings inside settings.conf
             sudo -u "${RTKBASE_USER}" sed -i "s/^com_port=.*/com_port=\'${detected_gnss[0]}\'/" "${rtkbase_path}"/settings.conf
             sudo -u "${RTKBASE_USER}" sed -i "s/^receiver=.*/receiver=\'${detected_gnss[1]}\'/" "${rtkbase_path}"/settings.conf
             sudo -u "${RTKBASE_USER}" sed -i "s/^com_port_settings=.*/com_port_settings=\'${detected_gnss[2]}:8:n:1\'/" "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_format=.*/receiver_format=\'${recvformat}\'/" "${rtkbase_path}"/settings.conf
+            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_format=.*/receiver_format=\'${detected_gnss[3]}\'/" "${rtkbase_path}"/settings.conf
 
             RECEIVER_CONF=${rtkbase_path}/receiver.conf
             echo recv_port=${detected_gnss[0]}>${RECEIVER_CONF}
@@ -302,7 +314,7 @@ detect_configure() {
             echo 'settings.conf is missing'
             return 1
           fi
-      elif [[ ${#detected_gnss[*]} -ne 3 ]]
+      elif [[ ${#detected_gnss[*]} -ne 4 ]]
         then
           return 1
       fi
