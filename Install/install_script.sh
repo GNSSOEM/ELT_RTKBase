@@ -9,6 +9,7 @@ RTKBASE_TOOLS=${RTKBASE_GIT}/tools
 RTKBASE_WEB=${RTKBASE_GIT}/web_app
 RTKBASE_UNIT=${RTKBASE_GIT}/unit
 RTKBASE_RECV=${RTKBASE_GIT}/receiver_cfg
+WEB_IMAGES=${RTKBASE_WEB}/static/images
 BASEDIR=`realpath $(dirname $(readlink -f "$0"))`
 BASENAME=`basename $(readlink -f "$0")`
 ORIGDIR=`pwd`
@@ -91,6 +92,7 @@ AUTOCONNECT_CONF=autoconnect-retries-forever.conf
 LINK_RULES=/usr/lib/systemd/network
 MODEM_RULES=/lib/udev/rules.d
 NETWORK_CONF=/usr/lib/NetworkManager/conf.d
+UDEV_RULES=/etc/udev/rules.d
 REBOOT_SH=reboot.sh
 RESET_RECEIVER=reset_receiver.sh
 ONLINE_UPDATE=NO
@@ -1177,257 +1179,103 @@ configure_for_mobile(){
    fi
 }
 
+copy_file(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   ExitCodeCheck $?
+}
+
+copy_script(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   ExitCodeCheck $?
+   #echo chmod +x ${2}/${1}
+   chmod +x ${2}/${1}
+   ExitCodeCheck $?
+}
+
+copy_root(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+}
+
+copy_root_script(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+   #echo chmod +x ${2}/${1}
+   chmod +x ${2}/${1}
+   ExitCodeCheck $?
+}
+
 configure_for_unicore(){
    echo '################################'
    echo 'CONFIGURE FOR UNICORE'
    echo '################################'
 
-   #echo mv ${BASEDIR}/${SET_BASE_POS} ${RTKBASE_GIT}/
-   mv ${BASEDIR}/${SET_BASE_POS} ${RTKBASE_GIT}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}/${SET_BASE_POS}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}/${SET_BASE_POS}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_GIT}/${SET_BASE_POS}
-   chmod +x ${RTKBASE_GIT}/${SET_BASE_POS}
-   ExitCodeCheck $?
+   copy_script "${SET_BASE_POS}" "${RTKBASE_GIT}"
+   copy_script "${NMEACONF}" "${RTKBASE_GIT}"
+   copy_script "${RTCM3LED}" "${RTKBASE_PATH}"
+   copy_script "${UNICORE_CONFIGURE}" "${RTKBASE_TOOLS}"
+   copy_script "${TAILSCALE_GET_HREF}" "${RTKBASE_TOOLS}"
+   copy_script "${SYSTEM_UPGRADE}" "${RTKBASE_TOOLS}"
+   copy_script "${EXEC_UPDATE}" "${RTKBASE_TOOLS}"
+   copy_script "${ONOFF_ELT0x33}" "${RTKBASE_TOOLS}"
+   copy_script "${REBOOT_SH}" "${RTKBASE_TOOLS}"
+   copy_script "${RESET_RECEIVER}" "${RTKBASE_TOOLS}"
+   copy_script "${NTRIP_LED}" "${RTKBASE_TOOLS}"
 
-   #echo mv ${BASEDIR}/${NMEACONF} ${RTKBASE_GIT}/
-   mv ${BASEDIR}/${NMEACONF} ${RTKBASE_GIT}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}/${NMEACONF}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}/${NMEACONF}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_GIT}/${NMEACONF}
-   chmod +x ${RTKBASE_GIT}/${NMEACONF}
-   ExitCodeCheck $?
+   copy_file "${CONF980}" "${RTKBASE_RECV}"
+   copy_file "${CONF982}" "${RTKBASE_RECV}"
+   copy_file "${CONFBYNAV}" "${RTKBASE_RECV}"
+   copy_file "${CONFX5RTCM3}" "${RTKBASE_RECV}"
+   copy_file "${CONFX5415RTCM3}" "${RTKBASE_RECV}"
+   copy_file "${TESTSEPTENTRIO}" "${RTKBASE_RECV}"
+   copy_file "${CONFX20P}" "${RTKBASE_RECV}"
+   copy_file "${CFGX20P}" "${RTKBASE_RECV}"
+   copy_file "${CONFF9P}" "${RTKBASE_RECV}"
+   copy_file "${CFGF9P}" "${RTKBASE_RECV}"
+   copy_file "${FAVICON}" "${WEB_IMAGES}"
 
-   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-      #echo mv ${BASEDIR}/${RTCM3LED} ${RTKBASE_PATH}/
-      mv ${BASEDIR}/${RTCM3LED} ${RTKBASE_PATH}/
-      ExitCodeCheck $?
-   fi
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}/${RTCM3LED}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}/${RTCM3LED}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_PATH}/${RTCM3LED}
-   chmod +x ${RTKBASE_PATH}/${RTCM3LED}
-   ExitCodeCheck $?
+   copy_root_script "${SEPTENTRIO_NAT}" "${RTKBASE_GIT}"
+   copy_root_script "${START_ELT0x33}" "${RTKBASE_PATH}"
+   copy_root_script "${PBC}" "${RTKBASE_PATH}"
 
-   #echo mv ${BASEDIR}/${UNICORE_CONFIGURE} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${UNICORE_CONFIGURE} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
-   chmod +x ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${TAILSCALE_GET_HREF} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${TAILSCALE_GET_HREF} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
-   chmod +x ${RTKBASE_TOOLS}/${TAILSCALE_GET_HREF}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${SYSTEM_UPGRADE} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${SYSTEM_UPGRADE} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
-   chmod +x ${RTKBASE_TOOLS}/${SYSTEM_UPGRADE}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${EXEC_UPDATE} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${EXEC_UPDATE} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${EXEC_UPDATE}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${EXEC_UPDATE}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${EXEC_UPDATE}
-   chmod +x ${RTKBASE_TOOLS}/${EXEC_UPDATE}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONF980} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONF980} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONF980}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONF980}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONF982} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONF982} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONF982}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONF982}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONFBYNAV} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONFBYNAV} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFBYNAV}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFBYNAV}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONFX5RTCM3} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONFX5RTCM3} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX5RTCM3}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX5RTCM3}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONFX5415RTCM3} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONFX5415RTCM3} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX5415RTCM3}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX5415RTCM3}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${TESTSEPTENTRIO} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${TESTSEPTENTRIO} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${TESTSEPTENTRIO}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${TESTSEPTENTRIO}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONFX20P} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONFX20P} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX20P}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFX20P}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CFGX20P} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CFGX20P} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGX20P}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGX20P}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CONFF9P} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CONFF9P} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFF9P}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CONFF9P}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${CFGF9P} ${RTKBASE_RECV}/
-   mv ${BASEDIR}/${CFGF9P} ${RTKBASE_RECV}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGF9P}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_RECV}/${CFGF9P}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
-   mv ${BASEDIR}/${SEPTENTRIO_NAT} ${RTKBASE_GIT}/
-   ExitCodeCheck $?
-
-   #echo chmod +x ${RTKBASE_GIT}/${SEPTENTRIO_NAT}
-   chmod +x ${RTKBASE_GIT}/${SEPTENTRIO_NAT}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
-   mv ${BASEDIR}/${SEPTENTRIO_NAT_SERVICE} ${SERVICE_PATH}/
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${MODEM_WEB_PROXY_SERVICE} ${SERVICE_PATH}/
-   mv ${BASEDIR}/${MODEM_WEB_PROXY_SERVICE} ${SERVICE_PATH}/
-   ExitCodeCheck $?
-
-   WEB_IMAGES=${RTKBASE_WEB}/static/images
-   #echo mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
-   mv ${BASEDIR}/${FAVICON} ${WEB_IMAGES}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WEB_IMAGES}/${FAVICON}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${WEB_IMAGES}/${FAVICON}
-   ExitCodeCheck $?
-
-   UDEV_RULES=/etc/udev/rules.d
-   #echo mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
-   mv ${BASEDIR}/${ELT0x33_RULES} ${UDEV_RULES}/
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
-   mv ${BASEDIR}/${SEPTENTRIO_LINK} ${LINK_RULES}/
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${MOBILE_LINK} ${LINK_RULES}/
-   mv ${BASEDIR}/${MOBILE_LINK} ${LINK_RULES}/
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
-   mv ${BASEDIR}/${SEPTENTRIO_MODEM} ${MODEM_RULES}/
-   ExitCodeCheck $?
+   copy_root "${SEPTENTRIO_NAT_SERVICE}" "${SERVICE_PATH}"
+   copy_root "${MODEM_WEB_PROXY_SERVICE}" "${SERVICE_PATH}"
+   copy_root "${ELT0x33_RULES}" "${UDEV_RULES}"
+   copy_root "${SEPTENTRIO_LINK}" "${LINK_RULES}"
+   copy_root "${MOBILE_LINK}" "${LINK_RULES}"
+   copy_root "${SEPTENTRIO_MODEM}" "${MODEM_RULES}"
 
    #echo mkdir -p ${NETWORK_CONF}
    mkdir -p ${NETWORK_CONF}
    ExitCodeCheck $?
-   #echo mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
-   mv ${BASEDIR}/${AUTOCONNECT_CONF} ${NETWORK_CONF}/
-   ExitCodeCheck $?
-
+   copy_root "${AUTOCONNECT_CONF}" "${NETWORK_CONF}"
    if ! ischroot; then
       #echo nmcli general reload
       nmcli general reload
       ExitCodeCheck $?
    fi
-
-   #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-   if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-      #echo mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
-      mv ${BASEDIR}/${START_ELT0x33} ${RTKBASE_PATH}/
-      ExitCodeCheck $?
-      #echo mv ${BASEDIR}/${PBC} ${RTKBASE_PATH}/
-      mv ${BASEDIR}/${PBC} ${RTKBASE_PATH}/
-      ExitCodeCheck $?
-   fi
-
-   #echo mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${ONOFF_ELT0x33} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
-   chmod +x ${RTKBASE_TOOLS}/${ONOFF_ELT0x33}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${REBOOT_SH} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${REBOOT_SH} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${REBOOT_SH}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${REBOOT_SH}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${REBOOT_SH}
-   chmod +x ${RTKBASE_TOOLS}/${REBOOT_SH}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${RESET_RECEIVER} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${RESET_RECEIVER} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${RESET_RECEIVER}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${RESET_RECEIVER}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${RESET_RECEIVER}
-   chmod +x ${RTKBASE_TOOLS}/${RESET_RECEIVER}
-   ExitCodeCheck $?
-
-   #echo mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
-   mv ${BASEDIR}/${NTRIP_LED} ${RTKBASE_TOOLS}/
-   ExitCodeCheck $?
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${NTRIP_LED}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_TOOLS}/${NTRIP_LED}
-   ExitCodeCheck $?
-   #echo chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
-   chmod +x ${RTKBASE_TOOLS}/${NTRIP_LED}
-   ExitCodeCheck $?
 
    restart_rtkbase_if_started
 }
