@@ -321,29 +321,81 @@ detect_configure() {
       return 0
 }
 
-stoping_main() {
-   for i in `seq 1 3`; do
-       str2str_active=$(systemctl is-active str2str_tcp)
-       #echo str2str_active=${str2str_active}
-
-       if [[ "${str2str_active}" == "active" ]] || [[ "${str2str_active}" == "activating" ]] || [[ "${str2str_active}" == "reloading" ]] || [[ "${str2str_active}" == "refreshing" ]]; then
-          #echo systemctl stop str2str_tcp
-          systemctl stop str2str_tcp
-       elif [[ "${str2str_active}" == "deactivating" ]]; then
-          sleep 1
-       else
-          break
-       fi
+stoping_services() {
+     serviceList="str2str_ntrip_A.service \
+                  str2str_ntrip_B.service \
+                  str2str_ntrip_C.service \
+                  str2str_ntrip_D.service \
+                  str2str_ntrip_E.service \
+                  str2str_local_ntrip_caster \
+                  str2str_rtcm_svr.service \
+                  str2str_rtcm_client.service \
+                  str2str_rtcm_udp_svr.service \
+                  str2str_rtcm_udp_client.service \
+                  str2str_rtcm_serial.service \
+                  str2str_file.service \
+                  rtkbase_raw2nmea.service \
+                  str2str_tcp.service"
+     serviceStartList=
+     for i in `seq 1 3`; do
+         need_sleep=N
+         for service_name in ${serviceList}; do
+             service_active=$(systemctl is-active "${service_name}")
+             if [ "${service_active}" != "inactive" ]; then
+                #echo ${service_name} is ${service_active}
+                [[ "${i}" == "1" ]] && serviceStartList="${service_name} ${serviceStartList}"
+                if [[ "${str2str_active}" == "deactivating" ]]; then
+                   need_sleep=Y
+                else
+                   #echo systemctl stop "${service_name}"
+                   systemctl stop "${service_name}"
+                fi
+                if [ "${service_name}" = "str2str_tcp.service" ]; then
+                   need_sleep=Y
+                fi
+             fi
+         done
+         #echo serviceStartList=${serviceStartList}
+         if [ "${need_sleep}" = "Y" ]; then
+            #echo sleep 2
+            sleep 2
+         else
+            break
+         fi
    done
 }
 
+restart_services() {
+  #echo serviceStartList=${serviceStartList}
+  for service_name in ${serviceStartList}; do
+      service_active=$(systemctl is-active "${service_name}")
+      if [[ "${service_active}" != "active" ]]; then
+         #echo ${service_name} is ${service_active}
+         #echo systemctl start "${service_name}"
+         systemctl start "${service_name}"
+         if [ "${service_name}" = "str2str_tcp.service" ]; then
+            for i in `seq 1 7`; do
+                #echo sleep 1
+                sleep 1
+                service_active=$(systemctl is-active "${service_name}")
+                if [[ "${service_active}" == "active" ]] || [[ "${service_active}" == "failed" ]]; then
+                   break
+                fi
+            done
+         fi
+      fi
+  done
+}
+
+
 detect_gnss() {
-    stoping_main
+    stoping_services
     detect_usb
     if [[ ${#detected_gnss[*]} < 2 ]] && [[ "${detected_ELT0x33}" != "Y" ]]; then
        detect_uart
     fi
     detect_configure ${1}
+    restart_services
 }
 
 change_mode_to_NTRIPv1() {
@@ -712,7 +764,7 @@ configure_gnss(){
       if [ -d "${rtkbase_path}" ]
       then
         source <( grep -v '^#' "${rtkbase_path}"/settings.conf | grep '=' )
-        stoping_main
+        stoping_services
         if [[ "${com_port}" == "" ]]; then
            echo 'GNSS receiver is not specified. We can'\''t configure.'
            return 1
@@ -759,6 +811,7 @@ configure_gnss(){
            echo 'We can'\''t configure '${receiver_format}' receiver on'${RECVPORT}
            Result=1
         fi
+        restart_services
       else #if [ -d "${rtkbase_path}" ]
         echo 'RtkBase not installed!!'
         Result=1

@@ -607,8 +607,8 @@ stop_rtkbase_services(){
                   str2str_rtcm_udp_client.service \
                   str2str_rtcm_serial.service \
                   str2str_file.service \
+                  rtkbase_raw2nmea.service \
                   str2str_tcp.service \
-                  rtkrcv_raw2nmea.service \
                   rtkbase_archive.service \
                   rtkbase_archive.timer \
                   modem_check.service \
@@ -629,7 +629,7 @@ stop_rtkbase_services(){
          service_active=$(systemctl is-active "${service_name}")
          if [ "${service_active}" != "inactive" ]; then
             #echo ${service_name} is ${service_active}
-            serviceStartList="${serviceStartList} ${service_name}"
+            serviceStartList="${service_name} ${serviceStartList}"
             #echo systemctl stop "${service_name}"
             systemctl stop "${service_name}"
             if [ "${service_name}" = "str2str_tcp.service" ]; then
