@@ -29,8 +29,8 @@ if [[ "$1" == "Septentrio04" ]]; then
        fi
    done
    for i in `seq 1 5`; do
-       #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setDataInOut,USB1,CMD,RTCMv3+NMEA\" QLONG\`  >>${LOG}
-       RESULT=`${NMEACONF} ${MOSAIC} "setDataInOut,USB1,CMD,RTCMv3+NMEA" QLONG`
+       #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setDataInOut,USB1,CMD,RTCMv3+SBF+NMEA\" QLONG\`  >>${LOG}
+       RESULT=`${NMEACONF} ${MOSAIC} "setDataInOut,USB1,CMD,RTCMv3+SBF+NMEA" QLONG`
        if [[ "$?" != "0" ]]; then
           #echo ERROR $i:${RESULT}  >>${LOG}
           echo ERROR $i:${RESULT}

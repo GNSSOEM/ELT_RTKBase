@@ -589,50 +589,7 @@ configure_bynav(){
     fi
 }
 
-configure_septentrio_SBF(){
-    RECVPORT=${1}
-    RECVSPEED=${2}
-    #echo RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
-
-    if [[ $(python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command get_model --retry 5) =~ 'mosaic-X5' ]]
-    then
-      echo get mosaic-X5 firmware release
-      firmware="$(python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command get_firmware --retry 5)" || firmware='?'
-      echo 'Mosaic-X5 Firmware: ' "${firmware}"
-      sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${firmware}\'/" "${rtkbase_path}"/settings.conf   && \
-      sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf  && \
-      sudo -u "${RTKBASE_USER}" sed -i s/^receiver=.*/receiver=\'Septentrio_Mosaic-X5\'/ "${rtkbase_path}"/settings.conf            && \
-      clear_TADJ
-      change_mode_to_NTRIPv1
-
-      #configure the mosaic-X5 for RTKBase
-      echo 'Resetting the mosaic-X5 settings....'
-      python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command reset --retry 5
-      sleep_time=30 ; echo 'Waiting '$sleep_time's for mosaic-X5 reboot' ; sleep $sleep_time
-      echo 'Sending settings....'
-      python3 "${rtkbase_path}"/tools/sept_tool.py --port ${RECVPORT} --baudrate ${RECVSPEED} --command send_config_file "${rtkbase_path}"/receiver_cfg/Septentrio_Mosaic-X5.cfg --store --retry 5
-      exitcode=$?
-      RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
-      echo . >${RESET_INTERNET_LED_FLAG}
-      if [[ ${exitcode} -eq  0 ]]
-      then
-        echo 'Septentrio Mosaic-X5 successfuly configured'
-        systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null                                                          && \
-        systemctl enable --now rtkbase_gnss_web_proxy.service                                                                         && \
-        systemctl enable --now rtkbase_septentrio_NAT.service                                                                         && \
-        systemctl start rtkbase_DHCP.service                                                                                          && \
-        return $?
-      else
-        echo 'Failed to configure the Septentrio receiver on '${RECVPORT}
-        return 1
-      fi
-    else
-       echo 'No SBF Gnss receiver has been set. We can'\''t configure '${RECVPORT}
-       return 1
-    fi
-}
-
-configure_septentrio_RTCM3() {
+configure_septentrio() {
     RECVPORT=${1}
     FORMAT=${2}
     #echo RECVPORT=${RECVPORT} FORMAT=${FORMAT}
@@ -671,10 +628,13 @@ configure_septentrio_RTCM3() {
     [[ ${RECVVER} -gt 414 ]] && RECVVARIANT="_415"
     RECVCONFNAME=${RECVTYPE}${RECVVARIANT}_${FORMAT^^}_OUT.txt
     RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
+    if [[ -f "${RECVCONF}" ]]; then
+       RECVCONFNAME=${RECVTYPE}_${FORMAT^^}_OUT.txt
+       RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
+    fi
     #echo RECVCONF=${RECVCONF}
 
-    if [[ -f "${RECVCONF}" ]]
-    then
+    if [[ -f "${RECVCONF}" ]]; then
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
        exitcode=$?
@@ -781,7 +741,7 @@ configure_gnss(){
         Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
-           configure_septentrio_SBF ${RECVPORT} ${RECVSPEED}
+           configure_septentrio ${RECVPORT} ${receiver_format}
            Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
@@ -796,7 +756,7 @@ configure_gnss(){
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
               Result=$?
            elif [[ ${receiver} =~ "Septentrio" ]]; then
-              configure_septentrio_RTCM3 ${RECVPORT} ${receiver_format}
+              configure_septentrio ${RECVPORT} ${receiver_format}
               Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
               configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
