@@ -1,0 +1,27 @@
+SSSSSSSSSS
+SSSSSSSSSS
+exeCopyConfigFile, RxDefault, Current
+setReceiverDynamics,Low,Static
+setSatelliteTracking, -SBAS-C31-C56-C57-C58
+setSignalTracking, all
+setSignalUsage,all
+setPVTMode, Static, StandAlone, auto
+setRTCMv3Formatting, 1, all
+#setRTCMv3Interval, all, 1
+setAntennaOffset, Main, , , , 'HXCSX627A       NONE'
+setPPSParameters, sec1, Low2High, , UTC, 60, 100
+setRTCMv3Output, USB1, RTCM1005+RTCM1006+RTCM1007+RTCM1013+RTCM1033+RTCM1230
+setRTCMv3Output, USB1, +RTCM1077+RTCM1087+RTCM1097+RTCM1117+RTCM1127
+setRTCMv3Output, USB1, +RTCM1019+RTCM1020+RTCM1042+RTCM1044+RTCM1046
+setDataInOut, USB1, CMD, RTCMv3+NMEA
+setDataInOut, USB2, CMD, NMEA
+setUSBInternetAccess, on
+setHealthMask, Tracking, on
+setHealthMask, PVT, on
+setElevationMask, Tracking, 5
+setElevationMask, PVT, 15
+setSmoothingInterval,all,300,30
+setCN0Mask,all,32
+exeCopyConfigFile, Current, Boot
+#lstConfigFile,Current
+

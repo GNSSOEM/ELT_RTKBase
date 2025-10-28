@@ -32,7 +32,8 @@ tar --exclude-vcs \
     rtkbase_modem_web_proxy.service opizero_temp_offset.patch \
     X20P_RTCM3_OUT.txt config.original2 ubx_py.patch \
     X20P_UBX_OUT.txt F9P_RTCM3_OUT.txt F9P_UBX_OUT.txt \
-    RtkController_py.patch X5_SBF_OUT.txt T_SBF_OUT.txt
+    RtkController_py.patch X5_SBF_OUT.txt T_SBF_OUT.txt \
+    H1_RTCM3_OUT.txt H1_SBF_OUT.txt H_RTCM3_OUT.txt H_SBF_OUT.txt
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

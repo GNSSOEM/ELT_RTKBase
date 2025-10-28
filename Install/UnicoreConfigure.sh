@@ -592,7 +592,8 @@ configure_bynav(){
 configure_septentrio() {
     RECVPORT=${1}
     FORMAT=${2}
-    #echo RECVPORT=${RECVPORT} FORMAT=${FORMAT}
+    oldReceiver=${3}
+    #echo RECVPORT=${RECVPORT} FORMAT=${FORMAT} oldReceiver=${oldReceiver}
 
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
@@ -614,6 +615,7 @@ configure_septentrio() {
        echo Receiver Septentrio not found on ${RECVPORT}
        return 1
     fi
+    [[ "${oldReceiver}" == "Septentrio_mosaic-H1" ]] && [[ "${RECVNAME}" == "mosaic-H" ]] && RECVNAME="mosaic-H1"
 
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
     #now that the receiver is configured, we can set the right values inside settings.conf
@@ -741,7 +743,7 @@ configure_gnss(){
         Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
-           configure_septentrio ${RECVPORT} ${receiver_format}
+           configure_septentrio ${RECVPORT} ${receiver_format} ${receiver}
            Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
@@ -756,7 +758,7 @@ configure_gnss(){
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
               Result=$?
            elif [[ ${receiver} =~ "Septentrio" ]]; then
-              configure_septentrio ${RECVPORT} ${receiver_format}
+              configure_septentrio ${RECVPORT} ${receiver_format} ${receiver}
               Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
               configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}

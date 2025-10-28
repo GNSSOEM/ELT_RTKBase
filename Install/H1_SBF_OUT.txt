@@ -1,0 +1,27 @@
+SSSSSSSSSS
+SSSSSSSSSS
+exeCopyConfigFile, RxDefault, Current
+setFrontendMode,SingleAnt
+setReceiverDynamics,Low,Static
+setSatelliteTracking, -SBAS-C31-C56-C57-C58
+setSignalTracking, all
+setSignalUsage,all
+setPVTMode, Static, StandAlone, auto
+setAntennaOffset, Main, , , , 'HXCSX627A       NONE'
+setPPSParameters, sec1, Low2High, , UTC, 60, 100
+setSBFOutput, Stream1, USB1, Measurements+RawNavBits+Rinex, sec1
+setSBFOutput, Stream1, , +PVTGeodetic+ChannelStatus+ReceiverStatus+SatVisibility+ReceiverTime
+setSBFOutput, Stream1, , +xPPSOffset+ExtEvent+ExtEventPVTGeodetic
+setDataInOut, USB1, CMD, SBF+NMEA
+setDataInOut, USB2, CMD, NMEA
+setUSBInternetAccess, on
+setHealthMask, Tracking, on
+setHealthMask, PVT, on
+setElevationMask, Tracking, 5
+setElevationMask, PVT, 15
+setSmoothingInterval,all,300,30
+setCN0Mask,all,32
+exeCopyConfigFile, Current, Boot
+exeResetReceiver,Soft,none
+#lstConfigFile,Current
+
