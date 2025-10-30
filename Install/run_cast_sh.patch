@@ -1,8 +1,8 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..abbaf50 100755
+index db7a656..07d8b10 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,132 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,150 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
@@ -41,7 +41,10 @@ index db7a656..abbaf50 100755
 +     svr_login=
 +  fi
 +  #echo ${svr_addr}:${svr_port} ${mnt_name}@${svr_login}/${svr_pwd}
-+
+ 
+-out_caster_B="ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
+-#add receiver options if it exists
+-[[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
 +  HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
 +  HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
 +  HAVE_TYPEC=`lsusb | grep "Bus 003" | grep -v "root hub"`
@@ -56,6 +59,7 @@ index db7a656..abbaf50 100755
 +  elif [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${HAVE_ZERO}" != "" ]]; then
 +     model_type=3
 +  fi
++  device_type=3
 +  if [[ "${receiver}" =~ "Unicore" ]]; then
 +     receive_type=1
 +  elif [[ "${receiver}" =~ "u-blox" ]]; then
@@ -64,13 +68,30 @@ index db7a656..abbaf50 100755
 +     receive_type=6
 +  elif [[ "${receiver}" =~ "Septentrio" ]]; then
 +     receive_type=7
++     [[ -c /dev/gpiochip0 ]] && CHIP=0
++     [[ -c /dev/gpiochip512 ]] && CHIP=512
++     if [[ -n ${CHIP} ]]; then
++        gpio4=$(gpioget gpiochip${CHIP} 4)
++        if [[ "${gpio4}" == "0" ]]; then
++           model_type=5
++           if [[ "${receiver}" =~ "mosaic-H" ]]; then
++              device_type=1
++           elif [[ "${receiver}" =~ "mosaic-X5" ]]; then
++              device_type=2
++           elif [[ "${receiver}" =~ "mosaic-T" ]]; then
++              device_type=4
++           else
++              device_type=
++           fi
++        fi
++     fi
 +  fi
-+  if [[ "${model_type}" != "" ]] && [[ "${receive_type}" != "" ]]; then
-+     revision="ELT${receive_type}3${model_type}"
++  if [[ "${model_type}" != "" ]] && [[ "${device_type}" != "" ]] && [[ "${receive_type}" != "" ]]; then
++     revision="ELT0${receive_type}${device_type}${model_type}"
 +  else
 +     revision="ELT_RTKBase_DIY"
 +  fi
-+  #echo revision=${revision} receive_type=${receive_type} model_type=${model_type}
++  #echo revision=${revision} receive_type=${receive_type} device_type=${device_type} model_type=${model_type}
 +
 +  case "${svr_mode}" in
 +    1)
@@ -101,10 +122,7 @@ index db7a656..abbaf50 100755
 +       fi
 +       ;;
 +  esac
- 
--out_caster_B="ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
--#add receiver options if it exists
--[[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
++
 +  #add receiver options if it exists
 +  if [[ "${svr_mode}" < 2 ]]; then
 +     [[ ! -z "${ntrip_receiver_options}" ]] && out_caster=""${out_caster}" -opt "${ntrip_receiver_options}""
@@ -143,7 +161,7 @@ index db7a656..abbaf50 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +142,18 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +160,18 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -165,7 +183,7 @@ index db7a656..abbaf50 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +169,45 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +187,45 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -216,7 +234,7 @@ index db7a656..abbaf50 100755
      ;;
  
    out_local_caster)
-@@ -82,8 +222,8 @@ mkdir -p ${logdir}
+@@ -82,8 +240,8 @@ mkdir -p ${logdir}
    
    out_rtcm_client)
      #echo ${cast} -in ${!1} -out $out_rtcm_client
@@ -227,7 +245,7 @@ index db7a656..abbaf50 100755
  
    out_rtcm_udp_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_udp_svr
-@@ -105,5 +245,9 @@ mkdir -p ${logdir}
+@@ -105,5 +263,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;
