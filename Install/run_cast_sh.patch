@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..07d8b10 100755
+index db7a656..65ebbe4 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,150 @@ BASEDIR="$(dirname "$0")"
@@ -183,7 +183,7 @@ index db7a656..07d8b10 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +187,45 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +187,52 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -208,6 +208,13 @@ index db7a656..07d8b10 100755
 -    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
 +    [[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_msg="#rtcm3 -ub -msg 1019,1020,1041,1042,1044,1045,1046"
 +    ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log &
++    RAW2NMEA_SERVICE=rtkbase_raw2nmea.service
++    enabled=$(systemctl is-enabled ${RAW2NMEA_SERVICE})
++    if [[ "${enabled}" == "enabled" ]]; then
++       active=$(systemctl is-active ${RAW2NMEA_SERVICE})
++       #echo enabled=${enabled} active=${active}
++       [[ "${active}" != "active" ]] && systemctl start ${RAW2NMEA_SERVICE}
++    fi
      ;;
  
    out_caster_A)
@@ -234,7 +241,7 @@ index db7a656..07d8b10 100755
      ;;
  
    out_local_caster)
-@@ -82,8 +240,8 @@ mkdir -p ${logdir}
+@@ -82,8 +247,8 @@ mkdir -p ${logdir}
    
    out_rtcm_client)
      #echo ${cast} -in ${!1} -out $out_rtcm_client
@@ -245,7 +252,7 @@ index db7a656..07d8b10 100755
  
    out_rtcm_udp_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_udp_svr
-@@ -105,5 +263,9 @@ mkdir -p ${logdir}
+@@ -105,5 +270,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;

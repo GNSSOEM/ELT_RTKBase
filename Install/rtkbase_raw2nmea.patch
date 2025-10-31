@@ -1,0 +1,13 @@
+diff --git a/unit/rtkbase_raw2nmea.service b/unit/rtkbase_raw2nmea.service
+index ee8ec72..9f18a8a 100644
+--- a/unit/rtkbase_raw2nmea.service
++++ b/unit/rtkbase_raw2nmea.service
+@@ -6,6 +6,8 @@ Requires=str2str_tcp.service
+ Type=simple
+ User=root
+ ExecStart={script_path}/tools/raw2nmea/raw2nmea.sh
++Restart=on-failure
++RestartSec=30
+ ProtectHome=read-only
+ ProtectSystem=strict
+ ReadWritePaths={script_path} /etc/default

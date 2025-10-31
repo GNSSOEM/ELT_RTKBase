@@ -62,6 +62,7 @@ OPIZERO_TEMP_PATCH=opizero_temp_offset.patch
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
+RTKBASE_RAW2NMEA_PATCH=rtkbase_raw2nmea.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -986,6 +987,13 @@ patch_rtkbase(){
    rm -f ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
    ExitCodeCheck $?
 
+   STR2STR_RTCM_SVR=${RTKBASE_UNIT}/rtkbase_raw2nmea.service
+   #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
+   patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${RTKBASE_RAW2NMEA_PATCH}
+   ExitCodeCheck $?
+   rm -f ${BASEDIR}/${RTKBASE_RAW2NMEA_PATCH}
+   ExitCodeCheck $?
+
    for file in ${RTKBASE_UNIT}/str2str*
    do
       #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
@@ -1527,6 +1535,7 @@ start_rtkbase_services(){
   [[ "${DHCP_enabled}" != "disabled" ]] && [[ "${DHCP_enabled}" != "masked" ]] && systemctl disable "${DHCP_SERVICE}"
 
   GNSS_WEB_PROXY=rtkbase_gnss_web_proxy.service
+  RAW2NMEA_SERVICE=rtkbase_raw2nmea.service
   if [[ "${receiver}" =~ Septentrio ]]; then
      #echo systemctl start "${DHCP_SERVICE}"
      systemctl start "${DHCP_SERVICE}"
@@ -1539,6 +1548,16 @@ start_rtkbase_services(){
      #echo systemctl enable --now "${GNSS_WEB_PROXY}"
      systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
+
+     [[ -c /dev/gpiochip0 ]] && CHIP=0
+     [[ -c /dev/gpiochip512 ]] && CHIP=512
+     if [[ -n ${CHIP} ]]; then
+        gpio4=$(gpioget gpiochip${CHIP} 4)
+        if [[ "${gpio4}" == "0" ]]; then
+           #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
+           systemctl enable --now "${RAW2NMEA_SERVICE}"
+        fi
+     fi
   fi
 
   MOBILE=/sys/class/net/mobile
@@ -1642,7 +1661,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${AUTOCONNECT_CONF} ${MOBILE_LINK} ${GNSS_RPROXY_PATCH} \
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
-              ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}"
+              ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
+              ${RTKBASE_RAW2NMEA_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
