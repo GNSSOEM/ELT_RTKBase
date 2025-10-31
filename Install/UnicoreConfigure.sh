@@ -208,6 +208,7 @@ detect_usb() {
                    detected_gnss[0]=ttyGNSS
                    [[ ${#detected_gnss[*]} -ge 3 ]] && break
                    detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
+                   detected_gnss[2]=115200
                    set_septetrio_format
                    break
                 fi
@@ -283,7 +284,6 @@ detect_uart() {
 detect_configure() {
       # Test if speed is in detected_gnss array. If not, add the default value.
       [[ ${#detected_gnss[*]} -eq 2 ]] && detected_gnss[2]='115200'
-      [[ ${detected_gnss[2]} == "" ]] && detected_gnss[2]='115200'
       # If /dev/ttyGNSS is a symlink of the detected serial port, switch to ttyGNSS
       [[ '/dev/ttyGNSS' -ef '/dev/'"${detected_gnss[0]}" ]] && detected_gnss[0]='ttyGNSS'
       [[ ${#detected_gnss[*]} -eq 3 ]] && detected_gnss[3]='rtcm3'
