@@ -479,6 +479,12 @@ if [[ ${SETANT} == Y ]]; then
       #echo ${BASEDIR}/NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
       ${BASEDIR}/NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
       ExitCodeCheck $?
+   elif [[ "${receiver}" =~ Septentrio_mosaic-H ]]; then
+      ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\""
+      #echo ANTINFO=${ANTINFO}
+      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
+      ${BASEDIR}/NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio ]]; then
       ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\", ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}
