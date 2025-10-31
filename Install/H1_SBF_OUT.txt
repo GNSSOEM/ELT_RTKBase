@@ -3,9 +3,9 @@ SSSSSSSSSS
 exeCopyConfigFile, RxDefault, Current
 setFrontendMode,SingleAnt
 setReceiverDynamics,Low,Static
-setSatelliteTracking, -SBAS-C31-C56-C57-C58
+setSatelliteTracking, -C31-C56-C57-C58
 setSignalTracking, all
-setSignalUsage,all
+setSignalUsage,all,all
 setPVTMode, Static, StandAlone, auto
 setAntennaOffset, Main, , , , 'HXCSX627A       NONE'
 setPPSParameters, sec1, Low2High, , UTC, 60, 100
@@ -22,6 +22,5 @@ setElevationMask, PVT, 15
 setSmoothingInterval,all,300,30
 setCN0Mask,all,32
 exeCopyConfigFile, Current, Boot
-exeResetReceiver,Soft,none
 #lstConfigFile,Current
 

@@ -591,9 +591,10 @@ configure_bynav(){
 
 configure_septentrio() {
     RECVPORT=${1}
-    FORMAT=${2}
-    oldReceiver=${3}
-    #echo RECVPORT=${RECVPORT} FORMAT=${FORMAT} oldReceiver=${oldReceiver}
+    RECVDEV=${2}
+    FORMAT=${3}
+    oldReceiver=${4}
+    #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} FORMAT=${FORMAT} oldReceiver=${oldReceiver}
 
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
@@ -637,6 +638,41 @@ configure_septentrio() {
     #echo RECVCONF=${RECVCONF}
 
     if [[ -f "${RECVCONF}" ]]; then
+       if [[ "${RECVNAME}" =~ "mosaic-H" ]]; then
+          WAS_FRONTEND=`${rtkbase_path}/${NMEACONF} ${RECVPORT} getFrontendMode QUIET | awk -F ', ' '{print $2}'`
+          if [[ "${RECVNAME}" == "mosaic-H1" ]]; then
+             NEW_FRONTED=SingleAnt
+          else
+             NEW_FRONTED=Nominal
+          fi
+          #echo WAS_FRONTEND=${WAS_FRONTEND} NEW_FRONTED=${NEW_FRONTED}
+          if [[ ${WAS_FRONTEND} != ${NEW_FRONTED} ]]; then
+             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
+             ${rtkbase_path}/${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
+             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
+             ${rtkbase_path}/${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
+             sleep 15
+             for i in `seq 0 20`; do
+                 if [[ -c ${RECVDEV} ]]; then
+                    #echo Inited after $i seconds
+                    break
+                 fi
+                 sleep 1
+             done
+             sleep 25
+             for i in `seq 1 10`; do
+                 ${rtkbase_path}/${NMEACONF} ${RECVPORT} getFrontendMode NOMSG >/dev/null
+                 lastcode=$?
+                 #echo lastcode=${lastcode}
+                 if [[ ${lastcode} == 0 ]]; then
+                    #echo Worked after $i seconds
+                    break
+                 fi
+                 sleep 1
+             done
+          fi
+       fi
+
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
        exitcode=$?
@@ -743,7 +779,7 @@ configure_gnss(){
         Result=0
 
         if [[ ${receiver_format} == "sbf" ]]; then
-           configure_septentrio ${RECVPORT} ${receiver_format} ${receiver}
+           configure_septentrio ${RECVPORT} ${RECVDEV} ${receiver_format} ${receiver}
            Result=$?
         elif [[ ${receiver_format} == "ubx" ]]; then
            configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
@@ -758,7 +794,7 @@ configure_gnss(){
               configure_bynav ${RECVPORT} ${RECVDEV} ${RECVSPEED}
               Result=$?
            elif [[ ${receiver} =~ "Septentrio" ]]; then
-              configure_septentrio ${RECVPORT} ${receiver_format} ${receiver}
+              configure_septentrio ${RECVPORT} ${RECVDEV} ${receiver_format} ${receiver}
               Result=$?
            elif [[ ${receiver} =~ "u-blox" ]]; then
               configure_ublox ${RECVPORT} ${RECVDEV} ${RECVSPEED} ${receiver_format}
