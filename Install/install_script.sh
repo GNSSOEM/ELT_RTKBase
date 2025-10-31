@@ -229,7 +229,7 @@ configure_config(){
         if [[ ${HAVE_PPS_GPIO} == "" ]]; then
            echo dtoverlay=pps-gpio,gpiopin=18 >> ${BOOTCONFIG}
            echo Add PPS on GPIO 18 into ${BOOTCONFIG}
-           NEEDREBOOT=Y
+           [[ "${ADD_GPIO_REBOOT}" == "YES" ]] && NEEDREBOOT=Y
         fi
 
         if [[ ${HAVE_CORE_FREQ} == "" ]]
@@ -340,7 +340,7 @@ add_pps_module(){
      if [[ ${HAVE_PPS_GPIO} == "" ]]; then
         echo pps-gpio >> ${MODULES}
         echo Add pps-gpio into ${MODULES}
-        NEEDREBOOT=Y
+        [[ "${ADD_GPIO_REBOOT}" == "YES" ]] && NEEDREBOOT=Y
      fi
   fi
 }
@@ -353,6 +353,15 @@ check_boot_configiration(){
       echo 'REPLACE BOOT CONFIGURATION'
    fi
    echo '################################'
+
+   ADD_GPIO_REBOOT=NO
+   [[ -c /dev/gpiochip0 ]] && CHIP=0
+   [[ -c /dev/gpiochip512 ]] && CHIP=512
+   if [[ -n ${CHIP} ]]; then
+      gpio4=$(gpioget gpiochip${CHIP} 4)
+      [[ "${gpio4}" == "0" ]] && ADD_GPIO_REBOOT=YES
+   fi
+   #echo ADD_GPIO_REBOOT=${ADD_GPIO_REBOOT}
 
    configure_cmdline /boot
    configure_cmdline /boot/firmware
