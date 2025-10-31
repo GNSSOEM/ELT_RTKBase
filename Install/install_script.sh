@@ -1554,8 +1554,41 @@ start_rtkbase_services(){
      if [[ -n ${CHIP} ]]; then
         gpio4=$(gpioget gpiochip${CHIP} 4)
         if [[ "${gpio4}" == "0" ]]; then
+           GPSD_CONFIG=/etc/default/gpsd
+           CHRONY_CONFIG=/etc/chrony/chrony.conf
+           TEMPFILE=/run/gpsd.tmp
            #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
            systemctl enable --now "${RAW2NMEA_SERVICE}"
+           #echo source \<\( grep '^nmea_port=' "${SETTINGS_NOW}" \)
+           source <( grep '^nmea_port=' "${SETTINGS_NOW}" )
+           ExitCodeCheck $?
+           #echo sed -i \"s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/\" ${GPSD_CONFIG}
+           sed -i "s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/" ${GPSD_CONFIG}
+           ExitCodeCheck $?
+           #echo grep -v '^#DEVICES=' ${GPSD_CONFIG} \>${TEMPFILE}
+           grep -v '^#DEVICES=' ${GPSD_CONFIG} >${TEMPFILE}
+           ExitCodeCheck $?
+           #echo mv ${TEMPFILE} ${GPSD_CONFIG}
+           mv ${TEMPFILE} ${GPSD_CONFIG}
+           ExitCodeCheck $?
+           #echo systemctl restart gpsd.service
+           systemctl restart gpsd.service
+           ExitCodeCheck $?
+           #echo grep -v '^refclock' ${CHRONY_CONFIG} \>${TEMPFILE}
+           grep -v '^refclock' ${CHRONY_CONFIG} >${TEMPFILE}
+           ExitCodeCheck $?
+           #echo mv ${TEMPFILE} ${CHRONY_CONFIG}
+           mv ${TEMPFILE} ${CHRONY_CONFIG}
+           ExitCodeCheck $?
+           #echo echo 'refclock SHM 0 refid GPS precision 1e-1 offset 0 delay 0.2 noselect' \>\>${CHRONY_CONFIG}
+           echo 'refclock SHM 0 refid GPS precision 1e-1 offset 0 delay 0.2 noselect' >>${CHRONY_CONFIG}
+           ExitCodeCheck $?
+           #echo echo 'refclock PPS /dev/pps0 refid PPS lock GPS' \>\>${CHRONY_CONFIG}
+           echo 'refclock PPS /dev/pps0 refid PPS lock GPS' >>${CHRONY_CONFIG}
+           ExitCodeCheck $?
+           #echo systemctl restart chrony.service
+           systemctl restart chrony.service
+           ExitCodeCheck $?
         fi
      fi
   fi
