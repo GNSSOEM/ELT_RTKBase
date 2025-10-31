@@ -1352,7 +1352,7 @@ configure_settings(){
       ExitCodeCheck $?
 
       if [[ ${OLD_VERSION} < 172 ]]; then
-         source <( grep -v '^#' "${settings}" | grep 'rtcm_msg_a=' )
+         source <( grep -v '^#' "${SETTINGS_NOW}" | grep 'rtcm_msg_a=' )
          #echo rtcm_msg_a=${rtcm_msg_a}
          if [[ "${rtcm_msg_a}" == "${rtcm_msg}" ]]; then
             echo correct \"rtcm_msg_a\" field for version below 172
@@ -1500,7 +1500,7 @@ configure_gnss(){
       fi
 
       if [[ ${OLD_VERSION} < 193 ]] || ! have_full; then
-         source <( grep '^com_port=' "${rtkbase_path}"/settings.conf ) #import settings
+         source <( grep '^com_port=' "${SETTINGS_NOW}" ) #import settings
          if [[ "${com_port}" == "" ]]; then
             echo 'GNSS receiver is not specified. We can'\''t configure.'
             if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
