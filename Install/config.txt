@@ -78,6 +78,7 @@ disable_poe_fan=1
 [pi4]
 enable_uart=1
 dtoverlay=miniuart-bt
+dtoverlay=pps-gpio,gpiopin=18
 # Enable host mode on the 2711 built-in XHCI USB controller.
 # This line should be removed if the legacy DWC2 controller is required
 # (e.g. for USB device mode) or if USB support is not required.
