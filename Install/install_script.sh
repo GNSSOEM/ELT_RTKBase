@@ -355,11 +355,13 @@ check_boot_configiration(){
    echo '################################'
 
    ADD_GPIO_REBOOT=NO
-   [[ -c /dev/gpiochip0 ]] && CHIP=0
-   [[ -c /dev/gpiochip512 ]] && CHIP=512
-   if [[ -n ${CHIP} ]]; then
-      gpio4=$(gpioget gpiochip${CHIP} 4)
-      [[ "${gpio4}" == "0" ]] && ADD_GPIO_REBOOT=YES
+   if ! ischroot; then
+      [[ -c /dev/gpiochip0 ]] && CHIP=0
+      [[ -c /dev/gpiochip512 ]] && CHIP=512
+      if [[ -n ${CHIP} ]]; then
+         gpio4=$(gpioget gpiochip${CHIP} 4)
+         [[ "${gpio4}" == "0" ]] && ADD_GPIO_REBOOT=YES
+      fi
    fi
    #echo ADD_GPIO_REBOOT=${ADD_GPIO_REBOOT}
 
