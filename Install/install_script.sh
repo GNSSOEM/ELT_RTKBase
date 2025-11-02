@@ -64,6 +64,7 @@ STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
 RTKBASE_RAW2NMEA_PATCH=rtkbase_raw2nmea.patch
+RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
@@ -969,7 +970,7 @@ patch_one(){
    ExitCodeCheck $?
    if [[ -n "${3}" ]]; then
       chmod ${3} ${1}
-      ExitCodeCheck $?;
+      ExitCodeCheck $?
    fi
    rm -f ${BASEDIR}/${2}
    ExitCodeCheck $?
@@ -1009,6 +1010,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_WEB}/templates/base.html       ${BASE_PATCH}
    patch_one ${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf ${PPP_CONF_PATCH}
    patch_one ${RTKBASE_TOOLS}/gps/ubx.py              ${UBX_PY_PATCH}
+   patch_one ${RTKBASE_TOOLS}/raw2nmea/raw2nmea.sh    ${RAW2NMEA_SH_PATCH}
    patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
@@ -1450,43 +1452,34 @@ start_rtkbase_services(){
 
      [[ -c /dev/gpiochip0 ]] && CHIP=0
      [[ -c /dev/gpiochip512 ]] && CHIP=512
+     #echo CHIP=${CHIP}
      if [[ -n ${CHIP} ]]; then
         gpio4=$(gpioget gpiochip${CHIP} 4)
         if [[ "${gpio4}" == "0" ]]; then
+           #echo gpio4=${gpio4}
            GPSD_CONFIG=/etc/default/gpsd
            CHRONY_CONFIG=/etc/chrony/chrony.conf
            TEMPFILE=/run/gpsd.tmp
-           #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
-           systemctl enable --now "${RAW2NMEA_SERVICE}"
            #echo source \<\( grep '^nmea_port=' "${SETTINGS_NOW}" \)
            source <( grep '^nmea_port=' "${SETTINGS_NOW}" )
            ExitCodeCheck $?
            #echo sed -i \"s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/\" ${GPSD_CONFIG}
            sed -i "s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/" ${GPSD_CONFIG}
            ExitCodeCheck $?
-           #echo grep -v '^#DEVICES=' ${GPSD_CONFIG} \>${TEMPFILE}
-           grep -v '^#DEVICES=' ${GPSD_CONFIG} >${TEMPFILE}
-           ExitCodeCheck $?
-           #echo mv ${TEMPFILE} ${GPSD_CONFIG}
-           mv ${TEMPFILE} ${GPSD_CONFIG}
-           ExitCodeCheck $?
            #echo systemctl restart gpsd.service
            systemctl restart gpsd.service
            ExitCodeCheck $?
-           #echo grep -v '^refclock' ${CHRONY_CONFIG} \>${TEMPFILE}
-           grep -v '^refclock' ${CHRONY_CONFIG} >${TEMPFILE}
+           #echo sed -i \'s/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/\' ${CHRONY_CONFIG}
+           sed -i 's/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/' ${CHRONY_CONFIG}
            ExitCodeCheck $?
-           #echo mv ${TEMPFILE} ${CHRONY_CONFIG}
-           mv ${TEMPFILE} ${CHRONY_CONFIG}
-           ExitCodeCheck $?
-           #echo echo 'refclock SHM 0 refid GPS precision 1e-1 offset 0 delay 0.2 noselect' \>\>${CHRONY_CONFIG}
-           echo 'refclock SHM 0 refid GPS precision 1e-1 offset 0 delay 0.2 noselect' >>${CHRONY_CONFIG}
-           ExitCodeCheck $?
-           #echo echo 'refclock PPS /dev/pps0 refid PPS lock GPS' \>\>${CHRONY_CONFIG}
-           echo 'refclock PPS /dev/pps0 refid PPS lock GPS' >>${CHRONY_CONFIG}
+           #echo sed -i \'s/^.\\?refclock PPS .*/refclock PPS /dev/pps0 refid PPS lock GNSS\' ${CHRONY_CONFIG}
+           sed -i 's/^.\?refclock PPS .*/refclock PPS \/dev\/pps0 refid PPS lock GNSS/' ${CHRONY_CONFIG}
            ExitCodeCheck $?
            #echo systemctl restart chrony.service
            systemctl restart chrony.service
+           ExitCodeCheck $?
+           #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
+           systemctl enable --now "${RAW2NMEA_SERVICE}"
            ExitCodeCheck $?
         fi
      fi
@@ -1594,7 +1587,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
-              ${RTKBASE_RAW2NMEA_PATCH}"
+              ${RTKBASE_RAW2NMEA_PATCH} ${RAW2NMEA_SH_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

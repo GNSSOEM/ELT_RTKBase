@@ -1,7 +1,28 @@
 diff --git a/tools/install.sh b/tools/install.sh
-index a3972d5..d4ed85b 100755
+index a3972d5..4f0ed88 100755
 --- a/tools/install.sh
 +++ b/tools/install.sh
+@@ -121,9 +121,9 @@ install_gpsd_chrony() {
+       #Adding GPS as source for chrony
+       grep -q 'set larger delay to allow the GPS' /etc/chrony/chrony.conf || echo '# set larger delay to allow the GPS source to overlap with the other sources and avoid the falseticker status
+ ' >> /etc/chrony/chrony.conf
+-      grep -qxF 'refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2' /etc/chrony/chrony.conf || echo 'refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2' >> /etc/chrony/chrony.conf
++      grep -q '^refclock SHM' /etc/chrony/chrony.conf || echo 'refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2' >> /etc/chrony/chrony.conf
+       #Adding PPS as an optionnal source for chrony
+-      grep -q 'refclock PPS /dev/pps0 refid PPS lock GNSS' /etc/chrony/chrony.conf || echo '#refclock PPS /dev/pps0 refid PPS lock GNSS' >> /etc/chrony/chrony.conf
++      grep -q 'refclock PPS' /etc/chrony/chrony.conf || echo '#refclock PPS /dev/pps0 refid PPS lock GNSS' >> /etc/chrony/chrony.conf
+ 
+       #Overriding chrony.service with custom dependency
+       cp /lib/systemd/system/chrony.service /etc/systemd/system/chrony.service
+@@ -134,7 +134,7 @@ install_gpsd_chrony() {
+       #Setting correct input for gpsd
+       sed -i 's/^DEVICES=.*/DEVICES="tcp:\/\/localhost:5015"/' /etc/default/gpsd
+       #Adding example for using pps
+-      grep -qi 'DEVICES="tcp:/localhost:5015 /dev/pps0' /etc/default/gpsd || sed -i '/^DEVICES=.*/a #DEVICES="tcp:\/\/localhost:5015 \/dev\/pps0"' /etc/default/gpsd
++      grep -qi '/dev/pps0' /etc/default/gpsd || sed -i '/^DEVICES=.*/a #DEVICES="tcp:\/\/localhost:5015 \/dev\/pps0"' /etc/default/gpsd
+       #gpsd should always run, in read only mode
+       sed -i 's/^GPSD_OPTIONS=.*/GPSD_OPTIONS="-n -b"/' /etc/default/gpsd
+       #Overriding gpsd.service with custom dependency
 @@ -289,7 +289,7 @@ install_rtkbase_bundled() {
      ARCHIVE=$(awk '/^__ARCHIVE__/ {print NR + 1; exit 0; }' "${0}")
      # Check if there is some content after __ARCHIVE__ marker (more than 100 lines)
