@@ -59,6 +59,7 @@ SETTING_HTML_PATCH=settings_html.patch
 SETTINGS_CONF_PATCH=settings_conf_default.patch
 PPP_CONF_PATCH=ppp_conf.patch
 OPIZERO_TEMP_PATCH=opizero_temp_offset.patch
+OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
@@ -962,6 +963,18 @@ install_tune_power(){
   ExitCodeCheck $?
 }
 
+patch_one(){
+   #echo patch -f ${1} ${BASEDIR}/${2}
+   patch -f ${1} ${BASEDIR}/${2}
+   ExitCodeCheck $?
+   if [[ -n "${3}" ]]; then
+      chmod ${3} ${1}
+      ExitCodeCheck $?;
+   fi
+   rm -f ${BASEDIR}/${2}
+   ExitCodeCheck $?
+}
+
 patch_rtkbase(){
    echo '################################'
    echo 'PATCH RTKBASE'
@@ -977,153 +990,28 @@ patch_rtkbase(){
    mv ${BASEDIR}/${NTRIP_E} ${RTKBASE_UNIT}
    ExitCodeCheck $?
 
-   STR2STR_TCP=${RTKBASE_UNIT}/str2str_tcp.service
-   #echo STR2STR_TCP=${STR2STR_TCP}
-   patch -f ${STR2STR_TCP} ${BASEDIR}/${STR2STR_TCP_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${STR2STR_TCP_PATCH}
-   ExitCodeCheck $?
-
-   STR2STR_NTRIP_A=${RTKBASE_UNIT}/str2str_ntrip_A.service
-   #echo STR2STR_NTRIP_A=${STR2STR_NTRIP_A}
-   patch -f ${STR2STR_NTRIP_A} ${BASEDIR}/${STR2STR_NTRIP_A_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${STR2STR_NTRIP_A_PATCH}
-   ExitCodeCheck $?
-
-   STR2STR_RTCM_SVR=${RTKBASE_UNIT}/str2str_rtcm_svr.service
-   #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
-   patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${STR2STR_RTCM_SVR_PATCH}
-   ExitCodeCheck $?
-
-   STR2STR_RTCM_SVR=${RTKBASE_UNIT}/rtkbase_raw2nmea.service
-   #echo STR2STR_RTCM_SVR=${STR2STR_RTCM_SVR}
-   patch -f ${STR2STR_RTCM_SVR} ${BASEDIR}/${RTKBASE_RAW2NMEA_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RTKBASE_RAW2NMEA_PATCH}
-   ExitCodeCheck $?
-
-   for file in ${RTKBASE_UNIT}/str2str*
-   do
+   for file in ${RTKBASE_UNIT}/str2str*; do
       #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       ExitCodeCheck $?
    done
 
-   SERVER_PY=${RTKBASE_WEB}/server.py
-   #echo SERVER_PY=${SERVER_PY}
-   patch -f ${SERVER_PY} ${BASEDIR}/${SERVER_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SERVER_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SERVER_PATCH}
-   ExitCodeCheck $?
-
-   GNSS_RPROXY_PY=${RTKBASE_WEB}/gnss_rproxy_server.py
-   #echo GNSS_RPROXY_PY=${GNSS_RPROXY_PY}
-   patch -f ${GNSS_RPROXY_PY} ${BASEDIR}/${GNSS_RPROXY_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${GNSS_RPROXY_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${GNSS_RPROXY_PATCH}
-   ExitCodeCheck $?
-
-   RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_WEB}/RTKBaseConfigManager.py
-   #echo RTKBASE_CONFIG_MANAGER_PY=${RTKBASE_CONFIG_MANAGER_PY}
-   patch -f ${RTKBASE_CONFIG_MANAGER_PY} ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${RTKBASE_CONFIG_MANAGER_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RTKBASE_CONFIG_MANAGER_PATCH}
-   ExitCodeCheck $?
-
-   RTKCONTROLLER_PY=${RTKBASE_WEB}/RtkController.py
-   #echo RTKCONTROLLER_PY=${RTKCONTROLLER_PY}
-   patch -f ${RTKCONTROLLER_PY} ${BASEDIR}/${RTKCONTROLLER_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${RTKCONTROLLER_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RTKCONTROLLER_PATCH}
-   ExitCodeCheck $?
-
-   UBX_PY=${RTKBASE_TOOLS}/gps/ubx.py
-   #echo UBX_PY=${UBX_PY}
-   patch -f ${UBX_PY} ${BASEDIR}/${UBX_PY_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${UBX_PY}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${UBX_PY_PATCH}
-   ExitCodeCheck $?
-
-   STATUS_JS=${RTKBASE_WEB}/static/status.js
-   #echo STATUS_JS=${STATUS_JS}
-   patch -f ${STATUS_JS} ${BASEDIR}/${STATUS_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${STATUS_JS}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${STATUS_PATCH}
-   ExitCodeCheck $?
-
-   SETTING_JS=${RTKBASE_WEB}/static/settings.js
-   #echo SETTING_JS=${SETTING_JS}
-   patch -f ${SETTING_JS} ${BASEDIR}/${SETTING_JS_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTING_JS}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTING_JS_PATCH}
-   ExitCodeCheck $?
-
-   SETTING_HTML=${RTKBASE_WEB}/templates/settings.html
-   #echo SETTING_HTML=${SETTING_HTML}
-   patch -f ${SETTING_HTML} ${BASEDIR}/${SETTING_HTML_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTING_HTML}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTING_HTML_PATCH}
-   ExitCodeCheck $?
-
-   patch -f ${SETTINGS_DEFAULT} ${BASEDIR}/${SETTINGS_CONF_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${SETTINGS_DEFAULT}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${SETTINGS_CONF_PATCH}
-   ExitCodeCheck $?
-
-   BASE_HTML=${RTKBASE_WEB}/templates/base.html
-   #echo BASE_HTML=${BASE_HTML}
-   patch -f ${BASE_HTML} ${BASEDIR}/${BASE_PATCH}
-   ExitCodeCheck $?
-   chmod 644 ${BASE_HTML}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${BASE_PATCH}
-   ExitCodeCheck $?
-
-   RUNCAST_SH=${RTKBASE_GIT}/run_cast.sh
-   #echo RUNCAST_SH=${RUNCAST_SH}
-   patch -f ${RUNCAST_SH} ${BASEDIR}/${RUNCAST_PATCH}
-   ExitCodeCheck $?
-   chmod 755 ${RUNCAST_SH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${RUNCAST_PATCH}
-   ExitCodeCheck $?
-
-   PPP_CONF=${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf
-   #echo PPP_CONF=${PPP_CONF}
-   patch -f ${PPP_CONF} ${BASEDIR}/${PPP_CONF_PATCH}
-   ExitCodeCheck $?
-   chmod 755 ${PPP_CONF}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${PPP_CONF_PATCH}
-   ExitCodeCheck $?
-
-   OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
-   #echo OPIZERO_TEMP=${OPIZERO_TEMP}
-   patch -f ${OPIZERO_TEMP} ${BASEDIR}/${OPIZERO_TEMP_PATCH}
-   ExitCodeCheck $?
-   rm -f ${BASEDIR}/${OPIZERO_TEMP_PATCH}
-   ExitCodeCheck $?
+   patch_one ${RTKBASE_UNIT}/str2str_tcp.service      ${STR2STR_TCP_PATCH}
+   patch_one ${RTKBASE_UNIT}/str2str_ntrip_A.service  ${STR2STR_NTRIP_A_PATCH}
+   patch_one ${RTKBASE_UNIT}/str2str_rtcm_svr.service ${STR2STR_RTCM_SVR_PATCH}
+   patch_one ${RTKBASE_UNIT}/rtkbase_raw2nmea.service ${RTKBASE_RAW2NMEA_PATCH}
+   patch_one ${RTKBASE_WEB}/server.py                 ${SERVER_PATCH}
+   patch_one ${RTKBASE_WEB}/gnss_rproxy_server.py     ${GNSS_RPROXY_PATCH}
+   patch_one ${RTKBASE_WEB}/RTKBaseConfigManager.py   ${RTKBASE_CONFIG_MANAGER_PATCH}
+   patch_one ${RTKBASE_WEB}/RtkController.py          ${RTKCONTROLLER_PATCH}
+   patch_one ${RTKBASE_WEB}/static/status.js          ${STATUS_PATCH}
+   patch_one ${RTKBASE_WEB}/templates/settings.html   ${SETTING_HTML_PATCH}
+   patch_one ${RTKBASE_WEB}/templates/base.html       ${BASE_PATCH}
+   patch_one ${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf ${PPP_CONF_PATCH}
+   patch_one ${RTKBASE_TOOLS}/gps/ubx.py              ${UBX_PY_PATCH}
+   patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
+   patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
+   patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
 
    sync
    ExitCodeCheck $?
@@ -1487,8 +1375,8 @@ configure_gnss(){
    fi
 
    rtkbase_path=${RTKBASE_GIT}
-   #echo source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
-   source "${RTKBASE_TOOLS}/opizero_temp_offset.sh"
+   #echo source "${OPIZERO_TEMP}"
+   source "${OPIZERO_TEMP}"
    ExitCodeCheck $?
 
    HAVE_TTYUSB=`find /dev/ttyUSB* 2>/dev/null`
