@@ -1007,6 +1007,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_WEB}/RTKBaseConfigManager.py   ${RTKBASE_CONFIG_MANAGER_PATCH}
    patch_one ${RTKBASE_WEB}/RtkController.py          ${RTKCONTROLLER_PATCH}
    patch_one ${RTKBASE_WEB}/static/status.js          ${STATUS_PATCH}
+   patch_one ${RTKBASE_WEB}/static/settings.js        ${SETTING_PATCH}
    patch_one ${RTKBASE_WEB}/templates/settings.html   ${SETTING_HTML_PATCH}
    patch_one ${RTKBASE_WEB}/templates/base.html       ${BASE_PATCH}
    patch_one ${RTKBASE_WEB}/rtklib_configs/rtkbase_ppp-static_default.conf ${PPP_CONF_PATCH}
