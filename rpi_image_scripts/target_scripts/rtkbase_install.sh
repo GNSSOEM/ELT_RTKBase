@@ -27,69 +27,79 @@ cat <<"EOF" > /usr/local/rtkbase/setup_2nd_stage.sh
 #!/bin/sh
 
 HOME=/usr/local/rtkbase
+DATA=${HOME}/rtkbase/data
+LOG=${DATA}/install.log
+NEW_INSTALL=/boot/firmware/install.sh
+UPDATE_INSTALL=${HOME}/update/install.sh
+MAIN_INSTALL=${HOME}/install.sh
 export HOME
 
-if test -f /boot/firmware/install.sh
+if test ! -f ${DATA}
 then
-  mv /boot/firmware/install.sh ${HOME}/update 2>&1 | tee -a ${HOME}/install.log >/dev/null
-  LOG=Y
+  sudo -u rtkbase mkdir -p ${DATA}
 fi
 
-if test -f ${HOME}/update/install.sh
+if test -f ${NEW_INSTALL}
 then
-  chmod +x ${HOME}/update/install.sh 2>&1 | tee -a ${HOME}/install.log >/dev/null
-  LOG=Y
+  mv ${NEW_INSTALL} ${UPDATE_INSTALL} 2>&1 | tee -a ${LOG} >/dev/null
+  DOLOG=Y
 fi
 
-if test -x ${HOME}/update/install.sh
+if test -f ${UPDATE_INSTALL}
+then
+  chmod +x ${UPDATE_INSTALL} 2>&1 | tee -a ${LOG} >/dev/null
+  DOLOG=Y
+fi
+
+if test -x ${UPDATE_INSTALL}
 then
 
-  nm-online -s 2>&1 | tee -a ${HOME}/install.log >/dev/null
-  nm-online 2>&1 | tee -a ${HOME}/install.log >/dev/null
+  nm-online -s 2>&1 | tee -a ${LOG} >/dev/null
+  nm-online 2>&1 | tee -a ${LOG} >/dev/null
   for i in `seq 1 10`
   do
-     if sudo ntpdate -b -t 5 pool.ntp.org 2>&1 | tee -a ${HOME}/install.log >/dev/null
+     if sudo ntpdate -b -t 5 pool.ntp.org 2>&1 | tee -a ${LOG} >/dev/null
      then
         break
      fi
      sleep 3
   done
 
-  if test -x ${HOME}/install.sh
+  if test -x ${MAIN_INSTALL}
   then
-     ${HOME}/update/install.sh -1 2>&1 | tee -a ${HOME}/install.log >/dev/null
+     ${UPDATE_INSTALL} -1 2>&1 | tee -a ${LOG} >/dev/null
      status=$?
-     echo status of \"${HOME}/update/install.sh -1\" is ${status} >>${HOME}/install.log
+     echo status of \"${UPDATE_INSTALL} -1\" is ${status} >>${LOG}
      if test "${status}" = "0"
      then
-        mv ${HOME}/update/install.sh ${HOME}/install.sh 2>&1 | tee -a ${HOME}/install.log >/dev/null
+        mv ${UPDATE_INSTALL} ${MAIN_INSTALL} 2>&1 | tee -a ${LOG} >/dev/null
      else
         NOSECOND=Y
      fi
   else
-     ${HOME}/update/install.sh -u >>${HOME}/install.log 2>&1
+     ${UPDATE_INSTALL} -u >>${LOG} 2>&1
      status=$?
-     echo status of \"${HOME}/update/install.sh -u\" is ${status} >>${HOME}/install.log
+     echo status of \"${UPDATE_INSTALL} -u\" is ${status} >>${LOG}
   fi
 
-  LOG=Y
+  DOLOG=Y
 fi
 
-#echo NOSECOND=${NOSECOND} LOG=${LOG} >>${HOME}/install.log
+#echo NOSECOND=${NOSECOND} LOG=${LOG} >>${LOG}
 if test -z "${NOSECOND}"
 then
-   if test -x ${HOME}/install.sh
+   if test -x ${MAIN_INSTALL}
    then
-      ${HOME}/install.sh -2 2>&1 | tee -a ${HOME}/install.log >/dev/null
-      LOG=Y
+      ${MAIN_INSTALL} -2 2>&1 | tee -a ${LOG} >/dev/null
+      DOLOG=Y
    fi
 fi
 
 if test -x ${HOME}/tune_power.sh
 then
-  if test "${LOG}" = "Y"
+  if test "${DOLOG}" = "Y"
   then
-     ${HOME}/tune_power.sh 2>&1 | tee -a ${HOME}/install.log >/dev/null
+     ${HOME}/tune_power.sh 2>&1 | tee -a ${LOG} >/dev/null
   else
      ${HOME}/tune_power.sh
   fi
