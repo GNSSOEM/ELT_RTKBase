@@ -1,0 +1,2 @@
+setHttpsSettings, -HTTPS
+login, admin, admin,  RxAdmin, S3pt3ntr10

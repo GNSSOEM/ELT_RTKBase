@@ -1,5 +1,5 @@
 diff --git a/web_app/gnss_rproxy_server.py b/web_app/gnss_rproxy_server.py
-index 7c08a6e..ab58d45 100644
+index 7c08a6e..33cfa1b 100644
 --- a/web_app/gnss_rproxy_server.py
 +++ b/web_app/gnss_rproxy_server.py
 @@ -28,23 +28,17 @@ import gunicorn.app.base
@@ -54,7 +54,46 @@ index 7c08a6e..ab58d45 100644
          data            = request.get_data(),
          cookies         = request.cookies,
          allow_redirects = False,
-@@ -170,12 +175,39 @@ def arg_parse():
+@@ -121,11 +126,27 @@ def redirect_to_API_HOST(path):  #NOTE var :path will be unused as all path we n
+     ]
+     #endregion exlcude some keys in :res response
+ 
++    for k,v in res.raw.headers.items():
++        if k.lower() == 'location':
++            old_location = urllib.parse.urlparse(v)
++            if old_location.netloc != "":
++                #print("old headers",res.status_code, headers)
++                #print("locationt url split", old_location)
++                request_location = urllib.parse.urlparse(request.host_url)
++                new_location = urllib.parse.ParseResult(scheme=old_location.scheme, netloc=request_location.netloc, params=old_location.params,
++                                                        path=old_location.path, query=old_location.query,
++                                                        fragment=old_location.fragment)
++                #print("new locationt", new_location)
++                newurl = new_location.geturl()
++                #print("new url", new_location.geturl())
++                ind = headers.index((k,v))
++                headers[ind] = (k, newurl)
++                #print("new headers",res.status_code, headers)
++
+     response = Response(res.content, res.status_code, headers)
+     return response
+ 
+-
+-@app.route('/login', methods=['GET', 'POST'])
++@app.route('/syslogin', methods=['GET', 'POST'])
+ def login_page():
+     if current_user.is_authenticated:
+         return redirect(url_for('index'))
+@@ -146,7 +167,7 @@ def login_page():
+         
+     return render_template('proxy_login.html', title='Sign In', form=loginform)
+ 
+-@app.route('/logout')
++@app.route('/syslogout')
+ def logout():
+     logout_user()
+     return redirect(url_for('login_page'))
+@@ -170,12 +191,39 @@ def arg_parse():
          help="port used for the web server",
          default=None
      )
@@ -94,7 +133,7 @@ index 7c08a6e..ab58d45 100644
          #check if authentification is required
          if not rtkbaseconfig.get_web_authentification():
              app.config["LOGIN_DISABLED"] = True
-@@ -185,12 +217,17 @@ if __name__ == "__main__":
+@@ -185,12 +233,17 @@ if __name__ == "__main__":
          #wsgi.server(eventlet.listen(("0.0.0.0", int(rtkbaseconfig.get("main", "gnss_rcv_web_proxy_port", fallback=9090)))), app, log_output=False)
  
          gunicorn_options = {

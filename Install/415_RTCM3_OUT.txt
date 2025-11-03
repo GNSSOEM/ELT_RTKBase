@@ -1,0 +1,3 @@
+setRTCMv3Output, USB1, +RTCM1041
+setHttpsSettings, -HTTPS
+login, admin, admin,  RxAdmin, S3pt3ntr10

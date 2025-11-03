@@ -627,14 +627,8 @@ configure_septentrio() {
     [[ ${FORMAT} == "sbf" ]] && change_mode_to_NTRIPv1
 
     RECVTYPE=$(echo ${RECVNAME} | sed s/^mosaic-//)
-    RECVVER=$(echo ${FIRMWARE} | awk -F '.' '{print $1$2}')
-    [[ ${RECVVER} -gt 414 ]] && RECVVARIANT="_415"
-    RECVCONFNAME=${RECVTYPE}${RECVVARIANT}_${FORMAT^^}_OUT.txt
+    RECVCONFNAME=${RECVTYPE}_${FORMAT^^}_OUT.txt
     RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
-    if [[ -f "${RECVCONF}" ]]; then
-       RECVCONFNAME=${RECVTYPE}_${FORMAT^^}_OUT.txt
-       RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
-    fi
     #echo RECVCONF=${RECVCONF}
 
     if [[ -f "${RECVCONF}" ]]; then
@@ -676,6 +670,20 @@ configure_septentrio() {
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
        exitcode=$?
+
+       RECVVER=$(echo ${FIRMWARE} | awk -F '.' '{print $1$2}')
+       if [[ ${RECVVER} -gt 414 ]]; then
+          RECVCONFNAMEADD=${RECVVER}_${FORMAT^^}_OUT.txt
+          RECVCONFADD=${rtkbase_path}/receiver_cfg/${RECVCONFNAMEADD}
+          if [[ -f "${RECVCONFADD}" ]]; then
+             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG
+             ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG 2>&1
+             RECVCONFNAMEADDTEXT=" and ${RECVCONFNAMEADD}"
+          else
+             echo Additional confiuration file for ${RECVNAME} \(${RECVCONFNAMEADD}\) NOT FOUND.
+          fi
+       fi
+
        RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
        echo . >${RESET_INTERNET_LED_FLAG}
        #echo exitcode=${exitcode}
@@ -683,7 +691,7 @@ configure_septentrio() {
        then
           systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null
           systemctl enable --now rtkbase_gnss_web_proxy.service
-          echo Septentrio ${RECVNAME}\(${FIRMWARE}\) successfuly configured by ${RECVCONFNAME}
+          echo Septentrio ${RECVNAME}\(${FIRMWARE}\) successfuly configured by ${RECVCONFNAME}${RECVCONFNAMEADDTEXT}
        else
           echo Confiuration FAILED for ${RECVNAME} on ${RECVPORT} by ${RECVCONFNAME}
        fi
