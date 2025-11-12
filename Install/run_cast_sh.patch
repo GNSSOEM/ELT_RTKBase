@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..8ba8ae0 100755
+index db7a656..ca7a583 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,150 @@ BASEDIR="$(dirname "$0")"
@@ -196,6 +196,7 @@ index db7a656..8ba8ae0 100755
  
    case "$2" in
      out_tcp)
+-    #echo ${cast} -in ${!1} -out $out_tcp
 +    #echo receiver="${receiver}" position="${position}"
 +    #echo ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
 +    ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
@@ -207,11 +208,6 @@ index db7a656..8ba8ae0 100755
 +       echo run_cast exit with exitcode ${exitcode}
 +       exit ${exitcode}
 +    fi
-     #echo ${cast} -in ${!1} -out $out_tcp
-     # What is this ${!1} ? It's variable indirection
--    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
-+    [[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_msg="#rtcm3 -ub -msg 1019,1020,1041,1042,1044,1045,1046"
-+    ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log &
 +    RAW2NMEA_SERVICE=rtkbase_raw2nmea.service
 +    enabled=$(systemctl is-enabled ${RAW2NMEA_SERVICE})
 +    if [[ "${enabled}" == "enabled" ]]; then
@@ -219,6 +215,11 @@ index db7a656..8ba8ae0 100755
 +       #echo enabled=${enabled} active=${active}
 +       [[ "${active}" != "active" ]] && systemctl start ${RAW2NMEA_SERVICE}
 +    fi
++    [[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_msg="#rtcm3 -ub -msg 1019,1020,1041,1042,1044,1045,1046"
+     # What is this ${!1} ? It's variable indirection
+-    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
++    #echo ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log \&
++    ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log &
      ;;
  
    out_caster_A)
