@@ -28,7 +28,8 @@ cat <<"EOF" > /usr/local/rtkbase/setup_2nd_stage.sh
 
 HOME=/usr/local/rtkbase
 DATA=${HOME}/rtkbase/data
-LOG=${DATA}/install.log
+date=`date +%Y-%m-%d_%H-%M-%S`
+LOG="${DATA}/install_${date}.log"
 NEW_INSTALL=/boot/firmware/install.sh
 UPDATE_INSTALL=${HOME}/update/install.sh
 MAIN_INSTALL=${HOME}/install.sh
