@@ -198,8 +198,8 @@ index db7a656..ca7a583 100755
      out_tcp)
 -    #echo ${cast} -in ${!1} -out $out_tcp
 +    #echo receiver="${receiver}" position="${position}"
-+    #echo ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
-+    ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}"
++    #echo ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}" "${receiver_format}"
++    ${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}" "${receiver_format}"
 +    #${BASEDIR}/UnicoreSetBasePos.sh "${com_port}" "${com_port_settings%%:*}" "${position}" "${receiver}" "${antenna_info}">>${BASEDIR}/debug.log 2>&1
 +    exitcode=$?
 +    #echo UnicoreSetBasePos exitcode=${exitcode} >>${BASEDIR}/debug.log 2>&1

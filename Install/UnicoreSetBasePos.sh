@@ -11,7 +11,8 @@ com_speed="${2}"
 position="${3}"
 receiver="${4}"
 antenna_info="${5}"
-#echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver} antenna_info="${antenna_info}"
+receiver_format="${6}"
+#echo com_port="${com_port}" com_speed=${com_speed} position="${position}" receiver=${receiver} antenna_info="${antenna_info}" receiver_format="${receiver_format}"
 
 if [[ "${com_port}" == "" ]]; then
    echo com port is EMPTY!
@@ -532,6 +533,29 @@ then
    echo recv_position=\"${recv_position}\">>${OLDCONF}
    echo recv_ant=\"${recv_ant}\">>${OLDCONF}
    echo recv_com=${recv_com}>>${OLDCONF}
+fi
+
+if [[ "${receiver}" =~ Septentrio ]]; then
+   if [[ "${receiver_format}" == "sbf" ]]; then
+       receiver_protocol="SBF"
+   elif [[ "${receiver_format}" == "rtcm3" ]]; then
+       receiver_protocol="RTCMv3"
+   fi
+   if [[ -n "${receiver_protocol}"  ]]; then
+      for i in `seq 1 5`; do
+          #echo RESULT=\`${BASEDIR}/NmeaConf ${DEVICE} \"setDataInOut,USB1,CMD,${receiver_protocol}\" QUIET\`
+          RESULT=`${BASEDIR}/NmeaConf ${DEVICE} "setDataInOut,USB1,CMD,${receiver_protocol}" QUIET`
+          lastcode=$?
+          if [[ "${lastcode}" != "0" ]]; then
+             #echo ERROR $i:${RESULT}  >>${LOG}
+             echo setDataInOut,USB1,CMD,${receiver_protocol} ERROR $i:${RESULT}
+          else
+             #echo OK $i:${RESULT} >>${LOG}
+             break
+          fi
+      done
+      ExitCodeCheck ${lastcode}
+   fi
 fi
 
 #echo lastcode=${lastcode}

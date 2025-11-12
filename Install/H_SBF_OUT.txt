@@ -12,7 +12,7 @@ setPPSParameters, sec1, Low2High, , UTC, 60, 100
 setSBFOutput, Stream1, USB1, Measurements+RawNavBits+Rinex, sec1
 setSBFOutput, Stream1, , +PVTGeodetic+ChannelStatus+ReceiverStatus+SatVisibility+ReceiverTime
 setSBFOutput, Stream1, , +xPPSOffset+ExtEvent+ExtEventPVTGeodetic+Attitude
-setDataInOut, USB1, CMD, SBF+NMEA
+setDataInOut, USB1, CMD, SBF
 setDataInOut, USB2, CMD, NMEA
 setUSBInternetAccess, on
 setHealthMask, Tracking, on

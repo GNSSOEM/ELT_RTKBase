@@ -28,17 +28,6 @@ if [[ "$1" == "Septentrio04" ]]; then
           break
        fi
    done
-   for i in `seq 1 5`; do
-       #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setDataInOut,USB1,CMD,RTCMv3+SBF+NMEA\" QLONG\`  >>${LOG}
-       RESULT=`${NMEACONF} ${MOSAIC} "setDataInOut,USB1,CMD,RTCMv3+SBF+NMEA" QLONG`
-       if [[ "$?" != "0" ]]; then
-          #echo ERROR $i:${RESULT}  >>${LOG}
-          echo ERROR $i:${RESULT}
-       else
-          #echo OK $i:${RESULT} >>${LOG}
-          break
-       fi
-   done
 elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
    #echo CHIP=$2 >>${LOG}
    for i in `seq 0 2`; do
