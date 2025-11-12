@@ -4,9 +4,7 @@ exeCopyConfigFile, RxDefault, Current
 setSmoothingInterval, all, 60, 10
 setCN0Mask, all, 33
 setCN0Mask, GLOL1CA, 36
-setCN0Mask, GLOL2P, 36
 setCN0Mask, GLOL2CA, 36
-setCN0Mask, GLOL3, 36
 setNMEAOutput, Stream1, USB1, GGA, sec1
 setDataInOut, USB1,, +NMEA
 setElevationMask, Tracking, 12
