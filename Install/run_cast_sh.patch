@@ -1,14 +1,15 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..ca7a583 100755
+index db7a656..6920629 100755
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,150 @@ BASEDIR="$(dirname "$0")"
+@@ -8,18 +8,151 @@ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
  receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
 -in_serial="serial://${com_port}:${com_port_settings}#${receiver_format}"
 -in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format}"
-+in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s 60000 -d 100 -r 1000"
++[[ -z "${receiver_inactivity_timeout}" ]] && receiver_inactivity_timeout=60
++in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s ${receiver_inactivity_timeout}000 -d 100 -r 1000"
 +in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format} -s 0 -d 100 -r 1000"
 +in_tcp2="-R 300 -M 2 -H localhost -P ${tcp_port}"
  #in_ext_tcp is mainly for dev purpose to receive a raw stream from another base
@@ -161,7 +162,7 @@ index db7a656..ca7a583 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +160,18 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,15 +161,18 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -183,7 +184,7 @@ index db7a656..ca7a583 100755
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +187,56 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -52,22 +188,56 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -246,7 +247,7 @@ index db7a656..ca7a583 100755
      ;;
  
    out_local_caster)
-@@ -82,8 +251,8 @@ mkdir -p ${logdir}
+@@ -82,8 +252,8 @@ mkdir -p ${logdir}
    
    out_rtcm_client)
      #echo ${cast} -in ${!1} -out $out_rtcm_client
@@ -257,7 +258,7 @@ index db7a656..ca7a583 100755
  
    out_rtcm_udp_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_udp_svr
-@@ -105,5 +274,9 @@ mkdir -p ${logdir}
+@@ -105,5 +275,9 @@ mkdir -p ${logdir}
        ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;

@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index e806217..ea8e80e 100644
+index e806217..7b9e95e 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -19,7 +19,16 @@ index e806217..ea8e80e 100644
  #Web frontend port
  web_port=80
  #set true if you want to enter a password to open the web gui.
-@@ -54,6 +57,10 @@ ext_tcp_port=''
+@@ -42,6 +45,8 @@ receiver_format=''
+ receiver_firmware=''
+ #gnss receiver frequency available
+ receiver_carrier=''
++#gnss receiver inactivity timeout in seconds
++receiver_inactivity_timeout='60'
+ #Antenna info, id, serial number. Without space inside the strings
+ antenna_info='ADVNULLANTENNA'
+ #tcp port for RAW stream. If you change this value, edit gpsd conf file to reflect the port in DEVICES.
+@@ -54,6 +59,10 @@ ext_tcp_port=''
  gnss_rcv_web_ip=192.168.3.1
  #port number for the Flask proxy app used to display the Gnss receiver web service
  gnss_rcv_web_proxy_port=9090
@@ -30,7 +39,7 @@ index e806217..ea8e80e 100644
  #port number for the raw2nmea service
  nmea_port='5014'
  
-@@ -81,13 +88,17 @@ min_free_space='500'
+@@ -81,13 +90,17 @@ min_free_space='500'
  # NTRIP A caster options
  
  #ntrip A caster url
@@ -50,7 +59,7 @@ index e806217..ea8e80e 100644
  rtcm_msg_a='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
  #Receiver dependent options
  ntrip_a_receiver_options=''
-@@ -97,17 +108,81 @@ ntrip_a_receiver_options=''
+@@ -97,17 +110,81 @@ ntrip_a_receiver_options=''
  # NTRIP B caster options
  
  #ntrip B caster url

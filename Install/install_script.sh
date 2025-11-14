@@ -1340,6 +1340,14 @@ configure_settings(){
          ${sed} "/^gnss_rcv_web_proxy_port=/a #ip address of the integrated modem web service (ie on E3372-325)\nmobile_modem_web_ip=192.168.8.1\n#port number for the Flask proxy app used to display the modem web service\nmobile_modem_web_proxy_port=7070" "${SETTINGS_NOW}"
          ExitCodeCheck $?
       fi
+
+      #if ! grep -q "^receiver_inactivity_timeout=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^receiver_inactivity_timeout=" "${SETTINGS_NOW}"; then
+         echo insert receiver_inactivity_timeout into ${SETTINGS_NOW}
+         #echo ${sed} "/^gnss_rcv_web_proxy_port=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
+         ${sed} "/^receiver_carrier=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
+      fi
    else
       #echo cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}
       cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}
