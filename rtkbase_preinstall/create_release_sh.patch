@@ -1,5 +1,5 @@
 diff --git a/tools/create_release.sh b/tools/create_release.sh
-index c69e8c1..22d1b39 100755
+index c8e15f4..8c637fd 100755
 --- a/tools/create_release.sh
 +++ b/tools/create_release.sh
 @@ -24,6 +24,8 @@ tar --exclude-vcs \
@@ -11,7 +11,7 @@ index c69e8c1..22d1b39 100755
      --exclude='test.sh' \
      --exclude='test.conf' \
      --exclude='*.pyc' \
-@@ -36,9 +38,10 @@ echo '========================================================'
+@@ -39,9 +41,10 @@ echo '========================================================'
  
  if [[ ${BUNDLED} == '--bundled' ]]
  then

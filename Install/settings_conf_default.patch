@@ -1,11 +1,11 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index e806217..7b9e95e 100644
+index 99b709c..947039e 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
  [general]
  # Version
- version=2.6.2
+ version=2.6.3
 +# ELT Version
 +elt_version=
  # Rtkbase upgrade mandatory "checkpoint"

@@ -1,8 +1,8 @@
 diff --git a/tools/install.sh b/tools/install.sh
-index a3972d5..4f0ed88 100755
+index cf97628..12d4bee
 --- a/tools/install.sh
 +++ b/tools/install.sh
-@@ -121,9 +121,9 @@ install_gpsd_chrony() {
+@@ -125,9 +125,9 @@ install_gpsd_chrony() {
        #Adding GPS as source for chrony
        grep -q 'set larger delay to allow the GPS' /etc/chrony/chrony.conf || echo '# set larger delay to allow the GPS source to overlap with the other sources and avoid the falseticker status
  ' >> /etc/chrony/chrony.conf
@@ -14,7 +14,7 @@ index a3972d5..4f0ed88 100755
  
        #Overriding chrony.service with custom dependency
        cp /lib/systemd/system/chrony.service /etc/systemd/system/chrony.service
-@@ -134,7 +134,7 @@ install_gpsd_chrony() {
+@@ -138,7 +138,7 @@ install_gpsd_chrony() {
        #Setting correct input for gpsd
        sed -i 's/^DEVICES=.*/DEVICES="tcp:\/\/localhost:5015"/' /etc/default/gpsd
        #Adding example for using pps
@@ -23,16 +23,16 @@ index a3972d5..4f0ed88 100755
        #gpsd should always run, in read only mode
        sed -i 's/^GPSD_OPTIONS=.*/GPSD_OPTIONS="-n -b"/' /etc/default/gpsd
        #Overriding gpsd.service with custom dependency
-@@ -289,7 +289,7 @@ install_rtkbase_bundled() {
+@@ -293,7 +293,7 @@ install_rtkbase_bundled() {
      ARCHIVE=$(awk '/^__ARCHIVE__/ {print NR + 1; exit 0; }' "${0}")
      # Check if there is some content after __ARCHIVE__ marker (more than 100 lines)
-     [[ $(sed -n '/__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "RTKBASE isn't bundled inside install.sh. Please choose another source" && exit 1  
--    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | tar xpJv && \
+     [[ $(sed -n '/^__ARCHIVE__/,$p' "${0}" | wc -l) -lt 100 ]] && echo "RTKBASE isn't bundled inside install.sh. Please choose another source" && exit 1  
+-    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | sudo -u "${RTKBASE_USER}" tar xpJv && \
 +    sudo -u "${RTKBASE_USER}" tail -n+${ARCHIVE} "${0}" | sudo -u "${RTKBASE_USER}" tar xpJv >/dev/null && \
      _add_rtkbase_path_to_environment
  }
  
-@@ -337,7 +337,7 @@ rtkbase_requirements(){
+@@ -341,7 +341,7 @@ rtkbase_requirements(){
          cp "${rtkbase_path}/settings.conf.default" "${rtkbase_path}/settings.conf"
        fi
        #Then launch check cpu temp script for OPI zero LTS

@@ -1,16 +1,8 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index bb39670..e5cebfd 100755
+index 74b6b2a..fd6a884
 --- a/web_app/server.py
 +++ b/web_app/server.py
-@@ -39,6 +39,7 @@ import sys
- import requests
- import tempfile
- import argparse
-+import html
- 
- from threading import Thread
- from RTKLIB import RTKLIB
-@@ -95,9 +96,12 @@ rtk = RTKLIB(socketio,
+@@ -98,9 +98,12 @@ rtk = RTKLIB(socketio,
              log_path=app.config["DOWNLOAD_FOLDER"],
              )
  
@@ -26,7 +18,7 @@ index bb39670..e5cebfd 100755
                   {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
                   {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
                   {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
-@@ -105,12 +109,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -108,12 +111,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
                   {'service_unit' : 'rtkbase_archive.timer', "name" : "archive_timer"},
                   {'service_unit' : 'rtkbase_archive.service', "name" : "archive_service"},
                   {'service_unit' : 'rtkbase_raw2nmea.service', "name" : "raw2nmea"},
@@ -43,7 +35,7 @@ index bb39670..e5cebfd 100755
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
      def __init__(self, app, options=None):
-@@ -206,20 +212,33 @@ def repaint_services_button(services_list):
+@@ -216,20 +221,33 @@ def repaint_services_button(services_list):
          result = exit-code => red button (danger)
      """ 
      for service in services_list:
@@ -83,7 +75,7 @@ index bb39670..e5cebfd 100755
      return services_list
  
  def old_get_cpu_temp():
-@@ -382,12 +401,103 @@ def download_update(update_path):
+@@ -392,12 +410,103 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -187,7 +179,7 @@ index bb39670..e5cebfd 100755
      g.sbc_model = get_sbc_model()
  
  @login.user_loader
-@@ -416,7 +526,7 @@ def settings_page():
+@@ -426,7 +535,7 @@ def settings_page():
      if request.method == 'POST':
          uploaded_file = request.files['file']
          if uploaded_file.filename != '':
@@ -196,7 +188,7 @@ index bb39670..e5cebfd 100755
          else:
              print("wrong update file")
          return ('', 204)
-@@ -427,11 +537,20 @@ def settings_page():
+@@ -437,11 +546,20 @@ def settings_page():
                                              path=host_url.path,
                                              params=host_url.params, query=host_url.query,
                                              fragment=host_url.fragment)
@@ -217,7 +209,7 @@ index bb39670..e5cebfd 100755
      local_ntripc_settings = rtkbaseconfig.get_local_ntripc_settings()
      rtcm_svr_settings = rtkbaseconfig.get_rtcm_svr_settings()
      rtcm_client_settings = rtkbaseconfig.get_rtcm_client_settings()
-@@ -439,10 +558,24 @@ def settings_page():
+@@ -449,10 +567,24 @@ def settings_page():
      rtcm_udp_client_settings = rtkbaseconfig.get_rtcm_udp_client_settings()
      rtcm_serial_settings = rtkbaseconfig.get_rtcm_serial_settings()
      file_settings = rtkbaseconfig.get_file_settings()
@@ -242,7 +234,7 @@ index bb39670..e5cebfd 100755
                                              local_ntripc_settings = local_ntripc_settings,
                                              rtcm_svr_settings = rtcm_svr_settings,
                                              rtcm_client_settings = rtcm_client_settings,
-@@ -450,7 +583,8 @@ def settings_page():
+@@ -460,7 +592,8 @@ def settings_page():
                                              rtcm_udp_client_settings = rtcm_udp_client_settings,
                                              rtcm_serial_settings = rtcm_serial_settings,
                                              file_settings = file_settings,
@@ -252,7 +244,7 @@ index bb39670..e5cebfd 100755
  
  @app.route('/logs')
  @login_required
-@@ -503,20 +637,30 @@ def diagnostic():
+@@ -512,21 +645,37 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -274,20 +266,28 @@ index bb39670..e5cebfd 100755
                                  check=False)
 -        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit']], 
 +        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit'], '--reverse'],
-                                  stdout=subprocess.PIPE, 
+                                  stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
          
          #Replace carrier return to <br> for html view
--        sysctl_status = sysctl_status.stdout.replace('\n', '<br>') 
--        journalctl = journalctl.stdout.replace('\n', '<br>')
+-        sysctl_status = html.escape(sysctl_status.stdout.replace('\n', '<br>'))
+-        journalctl = html.escape(journalctl.stdout.replace('\n', '<br>'))
+-        active_state = "Active" if service.get('active') == True else "Inactive"
 +        sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
 +        journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
-+        service["active"] = ServiceController(service["service_unit"]).isActive()
-         active_state = "Active" if service.get('active') == True else "Inactive"
++        try:
++            if service.get('active') == None:
++               service["active"] = ServiceController(service["service_unit"]).isActive()
++            active_state = "Active" if service.get('active') == True else "Inactive"
++        except Exception:
++            active_state =  "Unknown"
++            print(service["service_unit"],"is",active_state)
++
          logs.append({'name' : service['service_unit'], 'active' : active_state, 'sysctl_status' : sysctl_status, 'journalctl' : journalctl})
          
-@@ -529,11 +673,12 @@ def diagnostic():
+     return render_template('diagnostic.html', logs = logs)
+@@ -550,11 +699,12 @@ def get_infos():
  def clientConnect():
      global connected_clients
      connected_clients += 1
@@ -303,7 +303,7 @@ index bb39670..e5cebfd 100755
      rtk.sendState()
  
  @socketio.on("disconnect", namespace="/test")
-@@ -572,6 +717,13 @@ def startBase():
+@@ -593,6 +743,13 @@ def startBase():
          result = {"result" : "failed"}
          socketio.emit("base starting", json.dumps(result), namespace="/test")
          return
@@ -317,7 +317,7 @@ index bb39670..e5cebfd 100755
      # We must start rtkcv before trying to modify an option
      rtk.startBase()
      saved_input_path = "localhost" + ":" + rtkbaseconfig.get("main", "tcp_port").strip("'")
-@@ -581,6 +733,9 @@ def startBase():
+@@ -602,6 +759,9 @@ def startBase():
      if rtk.get_rtkcv_option("inpstr1-format") != saved_input_type:
          rtk.set_rtkcv_option("inpstr1-format", saved_input_type)
          rtk.set_rtkcv_pending_refresh(True)
@@ -327,7 +327,7 @@ index bb39670..e5cebfd 100755
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -608,13 +763,13 @@ def deleteLog(json_msg):
+@@ -629,13 +789,14 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -337,35 +337,37 @@ index bb39670..e5cebfd 100755
          #print("DEBUG ok stdout: ", answer.stdout)
          try:
              device_info = next(x for x in answer.stdout.splitlines() if x.startswith('/dev/')).split(' - ')
--            port, gnss_type, speed = [x.strip() for x in device_info]
--            result = {"result" : "success", "port" : port, "gnss_type" : gnss_type, "port_speed" : speed}
-+            port, gnss_type, speed, recv_format = [x.strip() for x in device_info]
-+            result = {"result" : "success", "port" : port, "gnss_type" : gnss_type, "port_speed" : speed, "recv_format" : recv_format}
+-            port, gnss_type, speed, firmware = [x.strip() for x in device_info]
+-            result = {"result" : "success", "port" : port, "gnss_type" : gnss_type, "port_speed" : speed, "firmware" : firmware}
++            port, gnss_type, speed, recv_format, firmware = [x.strip() for x in device_info]
++            status = "success" if port != "/dev/" else "failed"
++            result = {"result" : status, "port" : port, "gnss_type" : gnss_type, "port_speed" : speed, "recv_format" : recv_format, "firmware" : firmware}
              result.update(json_msg)
          except Exception:
              result = {"result" : "failed"}
-@@ -626,6 +781,20 @@ def detect_receiver(json_msg):
-     #print('DEBUG result: ', result)
-     socketio.emit("gnss_detection_result", json.dumps(result), namespace="/test")
- 
-+@socketio.on("detection_apply", namespace="/test")
-+def detection_apply(json_msg):
-+    print("Detection applied")
-+    #print("DEBUG json_msg: ", json_msg)
-+    msg = json.loads(json_msg)
-+    port = os.path.basename(msg["port"])
-+
+@@ -651,10 +812,19 @@ def detect_receiver(json_msg):
+ def apply_receiver_settings(json_msg):
+     print("Applying gnss receiver new settings")
+     print(json_msg)
+-    rtkbaseconfig.update_setting("main", "com_port", json_msg.get("port").strip("/dev/"), write_file=False)
+-    rtkbaseconfig.update_setting("main", "com_port_settings", json_msg.get("port_speed") + ':8:n:1', write_file=False)
++    port = json_msg.get("port").strip("/dev/")
++    speed = json_msg.get("port_speed")
++    rtkbaseconfig.update_setting("main", "com_port", port, write_file=False)
++    rtkbaseconfig.update_setting("main", "com_port_settings", speed + ':8:n:1', write_file=False)
+     rtkbaseconfig.update_setting("main", "receiver", json_msg.get("gnss_type"), write_file=False)
++    rtkbaseconfig.update_setting("main", "receiver_format", json_msg.get("recv_format"), write_file=False)
+     rtkbaseconfig.update_setting("main", "receiver_firmware", json_msg.get("firmware"), write_file=True)
 +    receiver_conf = os.path.join(rtkbase_path, "receiver.conf")
 +    with open(receiver_conf, "w") as f:
 +        f.write("recv_port=" + port +"\n")
-+        f.write("recv_speed=" + msg["port_speed"] + "\n")
++        f.write("recv_speed=" + speed + "\n")
 +        f.write("recv_position=\n")
 +        f.close()
-+
- @socketio.on("configure_receiver", namespace="/test")
- def configure_receiver(brand="", model=""):
-     # only some receiver could be configured automaticaly
-@@ -640,7 +809,7 @@ def configure_receiver(brand="", model=""):
+ 
+     socketio.emit("gnss_settings_saved", json.dumps(json_msg), namespace="/test")
+ 
+@@ -672,7 +842,7 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -374,7 +376,7 @@ index bb39670..e5cebfd 100755
      #print("DEBUG - stdout: ", answer.stdout)
      #print("DEBUG - returncode: ", answer.returncode)
  
-@@ -758,6 +927,11 @@ def rebootRtkbase():
+@@ -792,6 +962,11 @@ def rebootRtkbase():
      rtk.shutdown()
      #socketio.stop() hang. I disabled it
      #socketio.stop()
@@ -386,7 +388,7 @@ index bb39670..e5cebfd 100755
      subprocess.check_output("reboot")
  
  @socketio.on("shutdown device", namespace="/test")
-@@ -768,6 +942,15 @@ def shutdownRtkbase():
+@@ -802,6 +977,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -402,9 +404,9 @@ index bb39670..e5cebfd 100755
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -824,6 +1007,13 @@ def restartServices(restart_services_list=None):
-                     time.sleep(1.5)
-                     service["unit"].start()
+@@ -860,6 +1044,13 @@ def restartServices(restart_services_list=None):
+                     rtk.stopBase()
+                     service["unit"].restart()
                  else:
 +                    if service.get("flag") == True:
 +                        path = os.path.join(rtkbase_path, service.get("name") + ".flg")
@@ -416,7 +418,7 @@ index bb39670..e5cebfd 100755
                      service["unit"].restart()
  
      #refresh service status
-@@ -846,7 +1036,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -883,7 +1074,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -430,17 +432,19 @@ index bb39670..e5cebfd 100755
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -855,7 +1050,8 @@ def getServicesStatus(emit_pingback=True):
+@@ -892,7 +1088,10 @@ def getServicesStatus(emit_pingback=True):
                  service["state_ok"] = None
  
          except Exception as e:
 -            print("Error getting service info for: {} - {}".format(service['name'], e))
 +            if rebooted_state != False:
 +                print("Error getting service info for: {} - {}".format(service['name'], e))
-             #TODO manage better the error with rtkbase_archive.service. See https://github.com/Stefal/rtkbase/issues/162
-             #and try to remove this "pass" without any notification (bad practive)
++            #TODO manage better the error with rtkbase_archive.service. See https://github.com/Stefal/rtkbase/issues/162
++            #and try to remove this "pass" without any notification (bad practive)
              pass
-@@ -924,11 +1120,17 @@ def update_settings(json_msg):
+ 
+     services_status = []
+@@ -959,11 +1158,17 @@ def update_settings(json_msg):
  
          #Restart service if needed
          if source_section == "main":
@@ -459,7 +463,7 @@ index bb39670..e5cebfd 100755
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -944,6 +1146,17 @@ def update_settings(json_msg):
+@@ -979,6 +1184,17 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  

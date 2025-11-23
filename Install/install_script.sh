@@ -64,7 +64,6 @@ OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
-RTKBASE_RAW2NMEA_PATCH=rtkbase_raw2nmea.patch
 RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
 SYSCONGIG=RtkbaseSystemConfigure.sh
 SYSSERVICE=RtkbaseSystemConfigure.service
@@ -1001,7 +1000,6 @@ patch_rtkbase(){
    patch_one ${RTKBASE_UNIT}/str2str_tcp.service      ${STR2STR_TCP_PATCH}
    patch_one ${RTKBASE_UNIT}/str2str_ntrip_A.service  ${STR2STR_NTRIP_A_PATCH}
    patch_one ${RTKBASE_UNIT}/str2str_rtcm_svr.service ${STR2STR_RTCM_SVR_PATCH}
-   patch_one ${RTKBASE_UNIT}/rtkbase_raw2nmea.service ${RTKBASE_RAW2NMEA_PATCH}
    patch_one ${RTKBASE_WEB}/server.py                 ${SERVER_PATCH}
    patch_one ${RTKBASE_WEB}/gnss_rproxy_server.py     ${GNSS_RPROXY_PATCH}
    patch_one ${RTKBASE_WEB}/RTKBaseConfigManager.py   ${RTKBASE_CONFIG_MANAGER_PATCH}
@@ -1598,7 +1596,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
-              ${RTKBASE_RAW2NMEA_PATCH} ${RAW2NMEA_SH_PATCH}"
+              ${RAW2NMEA_SH_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

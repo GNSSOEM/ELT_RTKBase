@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9f48006..2440dc0 100644
+index 9c33cb5..c8b2429 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -271,37 +271,54 @@ index 9f48006..2440dc0 100644
          }
          
          // event for switching on/off service on user mouse click
-@@ -334,6 +453,7 @@ $(document).ready(function () {
-         detectApplyBtnElt.innerText = "Apply";
-         detectApplyBtnElt.setAttribute('disabled', '');
-         detectApplyBtnElt.removeAttribute('data-dismiss');
-+        detectCancelBtnElt.hidden = false;
-         detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Detecting GNSS receiver...';
-         socket.emit("detect_receiver", {"then_configure" : false});
-         $('#detectModal').modal();
-@@ -347,8 +467,12 @@ $(document).ready(function () {
+@@ -343,8 +462,8 @@ $(document).ready(function () {
+     socket.on("gnss_detection_result", function(msg) {
+         // open modal box with detection result and asking for configuration if detection is a success
+         response = JSON.parse(msg);
+-        console.log(response);
+-        detectApplyBtnElt.setAttribute('data-dismiss', 'modal');
++        //console.log(response);
++        //detectApplyBtnElt.setAttribute('data-dismiss', 'modal');
          if (response['result'] === 'success') {
              detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
-+                socket.emit("detection_apply", msg);
-                 document.querySelector('#com_port').value = response['port'].replace(/^\/dev\//, '');
-                 document.querySelector('#com_port_settings').value = response['port_speed'] + ':8:n:1';
-+                document.querySelector('#receiver').value = response['gnss_type'];
-+                document.querySelector('#receiver_format').value = response['recv_format'];
-+                set_rtcm_mode();
-                 // NEW METHOD from https://stackoverflow.com/questions/35154348/trigger-form-submission-with-javascript
-                 document.getElementById("main").dispatchEvent(new SubmitEvent('submit', {cancelable: true}));
-                 if (response['then_configure']) {
-@@ -381,7 +505,7 @@ $(document).ready(function () {
-         detectApplyBtnElt.onclick = function (){}; //remove the previous attached event which launched the gnss configuration
+@@ -361,7 +480,7 @@ $(document).ready(function () {
+         response = JSON.parse(msg);
+         if (response['then_configure']) {
+             // asking for gnss receiver configuration
+-        document.querySelector('#configure_receiver_button').click();
++            document.querySelector('#configure_receiver_button').click();
+         } else {
+             // refreshing the page to display the new informations
+             location.href = document.URL.replace(/#$/, '');
+@@ -381,18 +500,18 @@ $(document).ready(function () {
+     })
+     socket.on("gnss_configuration_result", function(msg) {
+         response = JSON.parse(msg);
+-        console.log(response);
++        //console.log(response);
+         detectApplyBtnElt.removeAttribute('disabled');
+-        detectApplyBtnElt.setAttribute('data-dismiss', 'modal');
++        //detectApplyBtnElt.setAttribute('data-dismiss', 'modal');
++        detectApplyBtnElt.removeAttribute('data-dismiss');
          detectApplyBtnElt.innerText = "Close";
-         detectApplyBtnElt.setAttribute('disabled', '');
--        detectCancelBtnElt.remove();
-+        detectCancelBtnElt.hidden = true;
-         detectBodyElt.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Configuring GNSS receiver...';
-         socket.emit("configure_receiver");
-         $('#detectModal').modal();
-@@ -419,20 +543,24 @@ $(document).ready(function () {
++        detectApplyBtnElt.onclick = function() {
++            // window.location.reload();
++            // looks like this way works better :
++            location.href = document.URL.replace(/#$/, '');
++        }
+         if (response['result'] === 'success') {
+             detectBodyElt.innerHTML = "GNSS receiver successfully configured!";
+-            detectApplyBtnElt.removeAttribute('data-dismiss');
+-            detectApplyBtnElt.onclick = function() {
+-                // window.location.reload();
+-                // looks like this way works better :
+-                location.href = document.URL.replace(/#$/, '');
+-            }
+         } else {
+             detectBodyElt.innerHTML = "GNSS receiver configuration failed"
+         }
+@@ -412,20 +531,24 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -326,11 +343,23 @@ index 9f48006..2440dc0 100644
          }else if (response.new_release) {
              $("#updateModal .modal-title").text("Update available!");
 -            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
-+            $("#updateModal .modal-body").html('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
-             var newFeaturesArray = response['comment'].split('\r\n');
-             $("#updateModal .modal-body").append('<p><ul id="newFeatures">Content:</ul></p>');
-             $.each( newFeaturesArray, function( index, value ){
-@@ -460,14 +588,18 @@ $(document).ready(function () {
++            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
+             $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
+             var markdwnHtml = snarkdown(response['comment']);
+             //lower <Hx> title tags values
+@@ -433,7 +556,10 @@ $(document).ready(function () {
+                     const newHtag = Math.min(parseInt(p1) + 3, 6);
+                     return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
+                 });
+-            $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
++                if (!markdwnHtml.includes("</")) {
++                   markdwnHtml = markdwnHtml.replace(/\r\n/g, '<br>');
++                }
++            $("#newFeatures").append('<p>' + markdwnHtml + '</p>');
+             $("#start-update-button").removeAttr("disabled");
+             $("#updateModal").modal();
+         } else {
+@@ -456,14 +582,18 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data
                  });
@@ -351,7 +380,7 @@ index 9f48006..2440dc0 100644
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-@@ -477,11 +609,11 @@ $(document).ready(function () {
+@@ -473,11 +603,11 @@ $(document).ready(function () {
  
      socket.on("downloading_update", function(msg) {
          response = JSON.parse(msg);
@@ -365,7 +394,7 @@ index 9f48006..2440dc0 100644
              $("#start-update-button").html('Update...');
              $("#cancel-button").prop("disabled", false);
          }
-@@ -489,13 +621,13 @@ $(document).ready(function () {
+@@ -485,13 +615,13 @@ $(document).ready(function () {
  
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
@@ -383,7 +412,7 @@ index 9f48006..2440dc0 100644
          $("#start-update-button").prop("disabled", true);
          $("#cancel-button").prop("disabled", false);
      })
-@@ -505,16 +637,21 @@ $(document).ready(function () {
+@@ -501,16 +631,21 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -414,7 +443,7 @@ index 9f48006..2440dc0 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -531,14 +668,6 @@ $(document).ready(function () {
+@@ -527,14 +662,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -429,7 +458,7 @@ index 9f48006..2440dc0 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -703,6 +832,22 @@ $(document).ready(function () {
+@@ -723,6 +850,22 @@ $(document).ready(function () {
            };
        };
  
@@ -452,7 +481,7 @@ index 9f48006..2440dc0 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -714,16 +859,19 @@ $(document).ready(function () {
+@@ -734,16 +877,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -477,7 +506,7 @@ index 9f48006..2440dc0 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -735,5 +883,123 @@ $(document).ready(function () {
+@@ -755,5 +901,123 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
