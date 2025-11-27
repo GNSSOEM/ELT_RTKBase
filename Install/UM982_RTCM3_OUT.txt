@@ -9,6 +9,7 @@ rtcm1107 1
 rtcm1117 1
 rtcm1127 1
 rtcm1137 1
+rtcm1230 1
 rtcm1005 1
 rtcm1006 1
 rtcm1007 1
