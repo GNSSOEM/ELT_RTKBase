@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9c33cb5..c8b2429 100644
+index 9c33cb5..d44dd79 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -347,18 +347,16 @@ index 9c33cb5..c8b2429 100644
              $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
              var markdwnHtml = snarkdown(response['comment']);
              //lower <Hx> title tags values
-@@ -433,7 +556,10 @@ $(document).ready(function () {
+@@ -433,6 +556,9 @@ $(document).ready(function () {
                      const newHtag = Math.min(parseInt(p1) + 3, 6);
                      return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
                  });
--            $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
 +                if (!markdwnHtml.includes("</")) {
 +                   markdwnHtml = markdwnHtml.replace(/\r\n/g, '<br>');
 +                }
-+            $("#newFeatures").append('<p>' + markdwnHtml + '</p>');
+             $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
              $("#start-update-button").removeAttr("disabled");
              $("#updateModal").modal();
-         } else {
 @@ -456,14 +582,18 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data

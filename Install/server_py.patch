@@ -1,5 +1,5 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index 74b6b2a..fd6a884
+index 2504977..fd6a884
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -98,9 +98,12 @@ rtk = RTKLIB(socketio,
@@ -244,7 +244,7 @@ index 74b6b2a..fd6a884
  
  @app.route('/logs')
  @login_required
-@@ -512,21 +645,37 @@ def diagnostic():
+@@ -512,13 +645,22 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -269,13 +269,11 @@ index 74b6b2a..fd6a884
                                   stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
-         
+@@ -526,7 +668,14 @@ def diagnostic():
          #Replace carrier return to <br> for html view
--        sysctl_status = html.escape(sysctl_status.stdout.replace('\n', '<br>'))
--        journalctl = html.escape(journalctl.stdout.replace('\n', '<br>'))
+         sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
+         journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
 -        active_state = "Active" if service.get('active') == True else "Inactive"
-+        sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
-+        journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
 +        try:
 +            if service.get('active') == None:
 +               service["active"] = ServiceController(service["service_unit"]).isActive()
