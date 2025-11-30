@@ -1,5 +1,5 @@
 {
   "version": "198",
   "new_release": "v1.9.8",
-  "comment": "NTRIP v2 HTTP\r\nNTRIP v2 RSTP\r\nNTRIP v2 UDP\r\n5 NTRIP servers\r\nUblox ZED-X20P support\r\nNTRIP v1 RTCM3 filter\r\nMosaic SBF support\r\nMosaic-T support\r\nMosaic-H support\r\nMosaic 4.15 support\r\nELT07x5 support\r\nused rtkbase 2.6.3"
+  "comment": "NTRIP v2 HTTP\r\nNTRIP v2 RSTP\r\nNTRIP v2 UDP\r\n5 NTRIP servers\r\nUblox ZED-X20P support\r\nNTRIP v1 RTCM3 filter\r\nMosaic SBF support\r\nMosaic-T support\r\nMosaic-H support\r\nMosaic 4.15 support\r\nELT07x5 support\r\nused rtkbase 2.6.4"
 }
