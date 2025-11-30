@@ -313,6 +313,14 @@ detect_uart() {
       fi
 }
 
+SetConf() {
+  #echo grep -q "^${1}=\'$2\'" "${rtkbase_path}"/settings.conf
+  if ! grep -q ^${1}=\'${2}\' "${rtkbase_path}"/settings.conf; then
+     #echo sudo -u "${RTKBASE_USER}" sed -i \"s/^${1}=.*/${1}=\'$2\'/\" "${rtkbase_path}"/settings.conf
+     sudo -u "${RTKBASE_USER}" sed -i "s/^${1}=.*/${1}=\'$2\'/" "${rtkbase_path}"/settings.conf
+  fi
+}
+
 detect_configure() {
       # Test if speed is in detected_gnss array. If not, add the default value.
       [[ ${#detected_gnss[*]} -eq 2 ]] && detected_gnss[2]='115200'
@@ -332,11 +340,11 @@ detect_configure() {
           if [[ -f "${rtkbase_path}/settings.conf" ]]  && grep -qE "^com_port=.*" "${rtkbase_path}"/settings.conf #check if settings.conf exists
           then
             #change the com port value/settings inside settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i "s/^com_port=.*/com_port=\'${detected_gnss[0]}\'/" "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver=.*/receiver=\'${detected_gnss[1]}\'/" "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i "s/^com_port_settings=.*/com_port_settings=\'${detected_gnss[2]}:8:n:1\'/" "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_format=.*/receiver_format=\'${detected_gnss[3]}\'/" "${rtkbase_path}"/settings.conf
-            sudo -u "${RTKBASE_USER}" sed -i s/^receiver_firmware=.*/receiver_firmware=\'"${detected_gnss[4]}"\'/ "${rtkbase_path}"/settings.conf            
+            SetConf "com_port" "${detected_gnss[0]}"
+            SetConf "receiver" "${detected_gnss[1]}"
+            SetConf "com_port_settings" "${detected_gnss[2]}:8:n:1"
+            SetConf "receiver_format" "${detected_gnss[3]}"
+            SetConf "receiver_firmware" "${detected_gnss[4]}"
 
             RECEIVER_CONF=${rtkbase_path}/receiver.conf
             echo recv_port=${detected_gnss[0]}>${RECEIVER_CONF}
@@ -434,53 +442,58 @@ detect_gnss() {
     exit ${lastcode}
 }
 
+SetOneMode() {
+  if grep -q ^${1}=\'2\' "${rtkbase_path}"/settings.conf; then
+     #echo sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'2\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+     sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'2\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+  fi
+  if grep -q ^${1}=\'3\' "${rtkbase_path}"/settings.conf; then
+     #echo sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'3\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+     sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'3\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+  fi
+  if grep -q ^${1}=\'4\' "${rtkbase_path}"/settings.conf; then
+     #echo sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'4\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+     sudo -u "${RTKBASE_USER}" sed -i s/^${1}=\'4\'/${1}=\'0\'/ "${rtkbase_path}"/settings.conf
+  fi
+}
+
 change_mode_to_NTRIPv1() {
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'2\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'2\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'2\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'2\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'2\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'3\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'3\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'3\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'3\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'3\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_a=\'4\'/svr_mode_a=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_b=\'4\'/svr_mode_b=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_c=\'4\'/svr_mode_c=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_d=\'4\'/svr_mode_d=\'0\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^svr_mode_e=\'4\'/svr_mode_e=\'0\'/ "${rtkbase_path}"/settings.conf
+    SetOneMode svr_mode_a
+    SetOneMode svr_mode_b
+    SetOneMode svr_mode_c
+    SetOneMode svr_mode_d
+    SetOneMode svr_mode_e
 }
 
 add_TADJ() {
-    #add option -TADJ=1 on rtcm/ntrip_a/ntrip_b/serial outputs
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_a_receiver_options=.*/ntrip_a_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_b_receiver_options=.*/ntrip_b_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_c_receiver_options=.*/ntrip_c_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_d_receiver_options=.*/ntrip_d_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_e_receiver_options=.*/ntrip_e_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^local_ntripc_receiver_options=.*/local_ntripc_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_receiver_options=.*/rtcm_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_client_receiver_options=.*/rtcm_client_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_udp_svr_receiver_options=.*/rtcm_udp_svr_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_udp_client_receiver_options=.*/rtcm_udp_client_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_serial_receiver_options=.*/rtcm_serial_receiver_options=\'-TADJ=1\'/ "${rtkbase_path}"/settings.conf
+    #clear option -TADJ=1 on rtcm/ntrip_a/ntrip_b/serial outputs
+    SetConf "ntrip_a_receiver_options"         "-TADJ=1"
+    SetConf "ntrip_b_receiver_options"         "-TADJ=1"
+    SetConf "ntrip_c_receiver_options"         "-TADJ=1"
+    SetConf "ntrip_d_receiver_options"         "-TADJ=1"
+    SetConf "ntrip_e_receiver_options"         "-TADJ=1"
+    SetConf "local_ntripc_receiver_options"    "-TADJ=1"
+    SetConf "rtcm_receiver_options"            "-TADJ=1"
+    SetConf "rtcm_client_receiver_options"     "-TADJ=1"
+    SetConf "rtcm_udp_svr_receiver_options"    "-TADJ=1"
+    SetConf "rtcm_udp_client_receiver_options" "-TADJ=1"
+    SetConf "rtcm_serial_receiver_options"     "-TADJ=1"
 }
 
 
 clear_TADJ() {
     #add option -TADJ=1 on rtcm/ntrip_a/ntrip_b/serial outputs
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_a_receiver_options=.*/ntrip_a_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_b_receiver_options=.*/ntrip_b_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_c_receiver_options=.*/ntrip_c_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_d_receiver_options=.*/ntrip_d_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^ntrip_e_receiver_options=.*/ntrip_e_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^local_ntripc_receiver_options=.*/local_ntripc_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_receiver_options=.*/rtcm_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_client_receiver_options=.*/rtcm_client_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_udp_svr_receiver_options=.*/rtcm_udp_svr_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_udp_client_receiver_options=.*/rtcm_udp_client_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^rtcm_serial_receiver_options=.*/rtcm_serial_receiver_options=\'\'/ "${rtkbase_path}"/settings.conf
+    SetConf "ntrip_a_receiver_options"         ""
+    SetConf "ntrip_b_receiver_options"         ""
+    SetConf "ntrip_c_receiver_options"         ""
+    SetConf "ntrip_d_receiver_options"         ""
+    SetConf "ntrip_e_receiver_options"         ""
+    SetConf "local_ntripc_receiver_options"    ""
+    SetConf "rtcm_receiver_options"            ""
+    SetConf "rtcm_client_receiver_options"     ""
+    SetConf "rtcm_udp_svr_receiver_options"    ""
+    SetConf "rtcm_udp_client_receiver_options" ""
+    SetConf "rtcm_serial_receiver_options"     ""
 }
 
 configure_unicore(){
@@ -511,21 +524,20 @@ configure_unicore(){
     RECVCONF=${rtkbase_path}/receiver_cfg/${RECVNAME}_RTCM3_OUT.txt
     #echo RECVCONF=${RECVCONF}
 
-    #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
-    clear_TADJ
+    SetConf "receiver_firmware" "${FIRMWARE}"
 
-    if [[ -f "${RECVCONF}" ]]
-    then
+    if [[ -f "${RECVCONF}" ]]; then
        #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
        recv_com=`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} COM | tee /dev/stderr | grep "^COM.$"`
        exitcode=$?
        #echo recv_com=${recv_com}
        #echo exitcode=${exitcode}
-       if [[ ${exitcode} != 0 ]]
-       then
+       if [[ ${exitcode} != 0 ]]; then
           echo Confiuration FAILED for ${RECVNAME} on ${RECVPORT}
+       else
+          #now that the receiver is configured, we can set the right values inside settings.conf
+          SetConf "com_port_settings" "${SPEED}:8:n:1"
+          clear_TADJ
        fi
        RECEIVER_CONF=${rtkbase_path}/receiver.conf
        echo recv_port=${com_port}>${RECEIVER_CONF}
@@ -584,10 +596,7 @@ configure_bynav(){
     RECVCONF=${rtkbase_path}/receiver_cfg/Bynav_RTCM3_OUT.txt
     #echo RECVCONF=${RECVCONF} RECVPORT=${RECVPORT} RECVSPEED=${RECVSPEED}
 
-    #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
-    clear_TADJ
+    SetConf "receiver_firmware" "${FIRMWARE}"
 
     if [[ -f "${RECVCONF}" ]]
     then
@@ -605,9 +614,12 @@ configure_bynav(){
        ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET 2>&1
        exitcode=$?
        #echo exitcode=${exitcode}
-       if [[ ${exitcode} != 0 ]]
-       then
+       if [[ ${exitcode} != 0 ]]; then
           echo Confiuration FAILED for ${RECVNAME} on ${RECVPORT}
+       else
+          #now that the receiver is configured, we can set the right values inside settings.conf
+          SetConf "com_port_settings" "${SPEED}:8:n:1"
+          clear_TADJ
        fi
        RECEIVER_CONF=${rtkbase_path}/receiver.conf
        echo recv_port=${com_port}>${RECEIVER_CONF}
@@ -653,11 +665,7 @@ configure_septentrio() {
     [[ "${oldReceiver}" == "Septentrio_mosaic-H1" ]] && [[ "${RECVNAME}" == "mosaic-H" ]] && RECVNAME="mosaic-H1"
 
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
-    #now that the receiver is configured, we can set the right values inside settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
-    clear_TADJ
-    [[ ${FORMAT} == "sbf" ]] && change_mode_to_NTRIPv1
+    SetConf "receiver_firmware" "${FIRMWARE}"
 
     RECVTYPE=$(echo ${RECVNAME} | sed s/^mosaic-//)
     RECVCONFNAME=${RECVTYPE}_${FORMAT^^}_OUT.txt
@@ -720,8 +728,11 @@ configure_septentrio() {
        RESET_INTERNET_LED_FLAG=${rtkbase_path}/../reset_intenet_led.flg
        echo . >${RESET_INTERNET_LED_FLAG}
        #echo exitcode=${exitcode}
-       if [[ ${exitcode} == 0 ]]
-       then
+       if [[ ${exitcode} == 0 ]]; then
+          #now that the receiver is configured, we can set the right values inside settings.conf
+          SetConf "com_port_settings" "${SPEED}:8:n:1"
+          clear_TADJ
+          [[ ${FORMAT} == "sbf" ]] && change_mode_to_NTRIPv1
           systemctl list-unit-files rtkbase_gnss_web_proxy.service &>/dev/null
           systemctl enable --now rtkbase_gnss_web_proxy.service
           echo Septentrio ${RECVNAME}\(${FIRMWARE}\) successfuly configured by ${RECVCONFNAME}${RECVCONFNAMEADDTEXT}
@@ -755,17 +766,13 @@ configure_ublox(){
        return 1
     fi
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
-    #echo sudo -u "${RTKBASE_USER}" \"sed -i \"s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/\" "${rtkbase_path}"/settings.conf
-    sudo -u "${RTKBASE_USER}" sed -i "s/^receiver_firmware=.*/receiver_firmware=\'${FIRMWARE}\'/" "${rtkbase_path}"/settings.conf
+    SetConf "receiver_firmware" "${FIRMWARE}"
 
     SHORTNAME=$(echo ${RECVNAME} | sed s/^.*-//)
     if [[ ${FORMAT} == "rtcm3" ]]; then
        CONFNAME="${SHORTNAME}_RTCM3_OUT.txt"
-       clear_TADJ
     elif [[ ${FORMAT} == "ubx" ]]; then
        CONFNAME="${SHORTNAME}_UBX_OUT.txt"
-       add_TADJ
-       change_mode_to_NTRIPv1
     fi
 
     RECVCONF="${rtkbase_path}"/receiver_cfg/${CONFNAME}
@@ -782,7 +789,13 @@ configure_ublox(){
        return 1
     fi
 
-    sudo -u "${RTKBASE_USER}" sed -i s/^com_port_settings=.*/com_port_settings=\'${SPEED}:8:n:1\'/ "${rtkbase_path}"/settings.conf
+    SetConf "com_port_settings" "${SPEED}:8:n:1"
+    if [[ ${FORMAT} == "rtcm3" ]]; then
+       clear_TADJ
+    elif [[ ${FORMAT} == "ubx" ]]; then
+       add_TADJ
+       change_mode_to_NTRIPv1
+    fi
     echo Ublox ${RECVNAME}\(${FIRMWARE}\) successfuly configured as ${FORMAT}
 
     RECEIVER_CONF=${rtkbase_path}/receiver.conf
