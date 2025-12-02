@@ -1407,6 +1407,7 @@ configure_gnss(){
                ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
                ExitCodeCheck $?
                if [[ $lastcode == 0 ]]; then
+                  GNSS_CONFIGURED=YES
                   break;
                fi
             done
@@ -1421,6 +1422,22 @@ start_rtkbase_services(){
   #echo ${RTKBASE_TOOLS}/insall.sh -u ${RTKBASE_USER} -s
   ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -s 2>&1
   ExitCodeCheck $?
+
+  service_active=$(systemctl is-active str2str_tcp.service)
+  if [[ "${service_active}" != "active" ]] && [[ "${GNSS_CONFIGURED}" != "YES" ]] ; then
+     #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+     ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
+     ExitCodeCheck $?
+     #echo systemctl enable --now str2str_tcp.service
+     systemctl enable --now str2str_tcp.service
+     ExitCodeCheck $?
+     #echo systemctl restart gpsd.service
+     systemctl restart gpsd.service
+     ExitCodeCheck $?
+     #echo systemctl restart chrony.service
+     systemctl restart chrony.service
+     ExitCodeCheck $?
+  fi
 
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
   ExitCodeCheck $?
