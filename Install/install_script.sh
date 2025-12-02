@@ -1242,7 +1242,8 @@ configure_settings(){
 
    rtcm_msg="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)"
    rtcm_msg_onocoy="1005(30),1033(30),1077,1087,1097,1107,1117,1127,1137,1230(30)"
-   rtcm_msg_full="1005,1006,1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)"
+   rtcm_msg_rtkgo="1005(10),1077,1087,1097,1107,1117,1127,1137,1230(30)"
+
    sed="sudo -u ${RTKBASE_USER} sed -i"
    #echo sed=${sed}
 
@@ -1330,7 +1331,7 @@ configure_settings(){
       #echo if ! grep -q \"^\[ntrip_C\]=\" \"${SETTINGS_NOW}\"\; then
       if ! grep -q "^\[ntrip_C\]" "${SETTINGS_NOW}"; then
          echo insert [ntrip_C] into ${SETTINGS_NOW}
-         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'rtk2go\.com\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'2\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'\'\nrtcm_msg_c=\'${rtcm_msg}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'rtk2go\.com\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'2\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'\'\nrtcm_msg_c=\'${rtcm_msg_rtkgo}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
       fi
 
       #echo if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then
@@ -1356,24 +1357,6 @@ configure_settings(){
       #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
       chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
       ExitCodeCheck $?
-
-      ${sed} s/^position=.*/position=\'0\.00\ 0\.00\ 0\.00\'/ "${SETTINGS_NOW}"
-      ${sed} s/^com_port=.*/com_port=\'\'/ "${SETTINGS_NOW}"
-      ${sed} s/^com_port_settings=.*/com_port_settings=\'115200:8:n:1\'/ "${SETTINGS_NOW}"
-      ${sed} s/^receiver=.*/receiver=\'\'/ "${SETTINGS_NOW}"
-      ${sed} s/^receiver_format=.*/receiver_format=\'rtcm3\'/ "${SETTINGS_NOW}"
-      ${sed} s/^antenna_info=.*/antenna_info=\'ELT0123\'/ "${SETTINGS_NOW}"
-
-      ${sed} s/^svr_addr_a=.*/svr_addr_a=\'servers.onocoy.com\'/ "${SETTINGS_NOW}"
-      ${sed} s/^svr_addr_b=.*/svr_addr_b=\'ntrip.rtkdirect.com\'/ "${SETTINGS_NOW}"
-
-      ${sed} s/^rtcm_msg_a=.*/rtcm_msg_a=\'${rtcm_msg_onocoy}\'/ "${SETTINGS_NOW}"
-      ${sed} s/^rtcm_msg_b=.*/rtcm_msg_b=\'${rtcm_msg}\'/ "${SETTINGS_NOW}"
-      ${sed} s/^local_ntripc_msg=.*/local_ntripc_msg=\'${rtcm_msg}\'/ "${SETTINGS_NOW}"
-      ${sed} s/^rtcm_svr_msg=.*/rtcm_svr_msg=\'${rtcm_msg_full}\'/ "${SETTINGS_NOW}"
-      ${sed} s/^rtcm_serial_msg=.*/rtcm_serial_msg=\'${rtcm_msg_full}\'/ "${SETTINGS_NOW}"
-
-      ${sed} s/^archive_rotate=.*/archive_rotate=\'20\'/ "${SETTINGS_NOW}"
    fi
 }
 

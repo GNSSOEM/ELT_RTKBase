@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index 007a130..a7c1054 100644
+index 007a130..a4e8873 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -19,15 +19,35 @@ index 007a130..a7c1054 100644
  #Web frontend port
  web_port=80
  #set true if you want to enter a password to open the web gui.
-@@ -42,6 +45,8 @@ receiver_format=''
+@@ -29,21 +32,23 @@ cpu_temp_offset=0
+ 
+ [main]
+ #base coordinates: lat long height
+-position='47.0983869 -1.2655108 36.40'
++position='0.00 0.00 0.00'
+ #gnss receiver com port
+ com_port=''
+ #gnss receiver com port settings
+-com_port_settings='38400:8:n:1'
++com_port_settings='115200:8:n:1'
+ #receiver model
+-receiver='unknown'
++receiver=''
+ #gnss receiver format
+-receiver_format=''
++receiver_format='rtcm3'
+ #gnss receiver firmware release
  receiver_firmware=''
  #gnss receiver frequency available
  receiver_carrier=''
 +#gnss receiver inactivity timeout in seconds
 +receiver_inactivity_timeout='60'
  #Antenna info, id, serial number. Without space inside the strings
- antenna_info='ADVNULLANTENNA'
+-antenna_info='ADVNULLANTENNA'
++antenna_info='ELT0123'
  #tcp port for RAW stream. If you change this value, edit gpsd conf file to reflect the port in DEVICES.
+ tcp_port='5015'
+ #ext_tcp_source is mainly for dev purpose to receive a raw stream from another base
 @@ -54,6 +59,10 @@ ext_tcp_port=''
  gnss_rcv_web_ip=192.168.3.1
  #port number for the Flask proxy app used to display the Gnss receiver web service
@@ -39,7 +59,16 @@ index 007a130..a7c1054 100644
  #port number for the raw2nmea service
  nmea_port='5014'
  
-@@ -81,13 +90,17 @@ min_free_space='500'
+@@ -72,7 +81,7 @@ file_overlap_time='0'
+ #name for the compressed archive
+ archive_name=$(date -d "-1 days" +"%Y-%m-%d_%S").zip
+ #archives older than this value (in days) will be deleted by archive_and_clean.sh
+-archive_rotate='60'
++archive_rotate='20'
+ #minum free space on device (in MB) before oldest archives are deleted
+ min_free_space='500'
+ 
+@@ -81,14 +90,18 @@ min_free_space='500'
  # NTRIP A caster options
  
  #ntrip A caster url
@@ -55,10 +84,12 @@ index 007a130..a7c1054 100644
  svr_pwd_a=''
  #Mount name
 -mnt_name_a='Your_mount_name'
+-rtcm_msg_a='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
 +mnt_name_a=''
- rtcm_msg_a='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_msg_a='1005(30),1033(30),1077,1087,1097,1107,1117,1127,1137,1230(30)'
  #Receiver dependent options
  ntrip_a_receiver_options=''
+ 
 @@ -97,17 +110,81 @@ ntrip_a_receiver_options=''
  # NTRIP B caster options
  
@@ -75,8 +106,9 @@ index 007a130..a7c1054 100644
  svr_pwd_b=''
  #Mount name
 -mnt_name_b='Your_mount_name'
+-rtcm_msg_b='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
 +mnt_name_b=''
- rtcm_msg_b='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_msg_b='1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)'
  #Receiver dependent options
  ntrip_b_receiver_options=''
  
@@ -96,7 +128,7 @@ index 007a130..a7c1054 100644
 +svr_pwd_c=''
 +#Mount name
 +mnt_name_c=''
-+rtcm_msg_c='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_msg_c='1005(10),1077,1087,1097,1107,1117,1127,1137,1230(30)'
 +#Receiver dependent options
 +ntrip_c_receiver_options=''
 +
@@ -116,7 +148,7 @@ index 007a130..a7c1054 100644
 +svr_pwd_d=''
 +#Mount name
 +mnt_name_d=''
-+rtcm_msg_d='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_msg_d='1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)'
 +#Receiver dependent options
 +ntrip_d_receiver_options=''
 +
@@ -136,10 +168,64 @@ index 007a130..a7c1054 100644
 +svr_pwd_e='centipede'
 +#Mount name
 +mnt_name_e=''
-+rtcm_msg_e='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_msg_e='1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)'
 +#Receiver dependent options
 +ntrip_e_receiver_options=''
 +
  [local_ntrip_caster]
  
  # local NTRIP caster options
+@@ -120,7 +197,7 @@ local_ntripc_pwd=''
+ local_ntripc_port='2101'
+ #mount point name for this local ntrip caster
+ local_ntripc_mnt_name=''
+-local_ntripc_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++local_ntripc_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ local_ntripc_receiver_options=''
+ 
+@@ -131,7 +208,7 @@ local_ntripc_receiver_options=''
+ #port for rtcm local use
+ rtcm_svr_port='5016'
+ #messages for rtcm local use
+-rtcm_svr_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_svr_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ rtcm_receiver_options=''
+ 
+@@ -146,7 +223,7 @@ rtcm_client_port='80'
+ rtcm_client_user=''
+ rtcm_client_pwd=''
+ #messages for rtcm client use
+-rtcm_client_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_client_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ rtcm_client_receiver_options=''
+ 
+@@ -157,7 +234,7 @@ rtcm_client_receiver_options=''
+ #port for rtcm UDP use
+ rtcm_udp_svr_port=''
+ #messages for rtcm udp use
+-rtcm_udp_svr_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_udp_svr_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ rtcm_udp_svr_receiver_options=''
+ 
+@@ -170,7 +247,7 @@ rtcm_udp_client_addr=''
+ #port for rtcm UDP use
+ rtcm_udp_client_port=''
+ #messages for rtcm udp use
+-rtcm_udp_client_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_udp_client_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ rtcm_udp_client_receiver_options=''
+ 
+@@ -183,7 +260,7 @@ out_com_port=''
+ #serial output settings
+ out_com_port_settings='115200:8:n:1'
+ #messages for rtcm local use
+-rtcm_serial_msg='1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230'
++rtcm_serial_msg='1005,1006(30),1007,1013,1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)'
+ #Receiver dependent options
+ rtcm_serial_receiver_options=''
+ 
