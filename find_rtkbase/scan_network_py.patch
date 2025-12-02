@@ -1,0 +1,32 @@
+diff --git a/tools/find_rtkbase/scan_network.py b/tools/find_rtkbase/scan_network.py
+index 3978ce5..88b1b67 100644
+--- a/tools/find_rtkbase/scan_network.py
++++ b/tools/find_rtkbase/scan_network.py
+@@ -31,11 +31,12 @@ def zeroconf_scan(name, prot_type, timeout=5):
+     browser = ServiceBrowser(zeroconf, prot_type, listener)
+     time.sleep(timeout)
+     for service in listener.services:
+-        if name.lower() in service.name.lower():
+-            service_list.append({'NAME' : service.name,
+-                                'PORTS' : [service.port],
+-                                'SERVER' : service.server.rstrip('.'),
+-                                'IP' : '.'.join(str(byte) for byte in service.addresses[0])})
++        if not (service is None):
++            if name.lower() in service.name.lower():
++                service_list.append({'NAME' : service.name,
++                                    'PORTS' : [service.port],
++                                    'SERVER' : service.server.rstrip('.'),
++                                    'IP' : '.'.join(str(byte) for byte in service.addresses[0])})
+     log.debug(f"filtered list for {name}")
+     log.debug(service_list)
+     return service_list
+@@ -53,6 +54,9 @@ def arp_scan(ip, interface=conf.iface):
+     except (PermissionError) as e:
+         log.debug(f"{interface} - {ip} : {e}")
+         pass
++    except (RuntimeError) as e:
++        log.debug(f"{interface} - {ip} : {e}")
++        pass
+     results = []
+ 
+     for element in answered_list:

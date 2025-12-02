@@ -1,5 +1,5 @@
 diff --git a/tools/install.sh b/tools/install.sh
-index cf97628..12d4bee
+index cf97628..089f65d
 --- a/tools/install.sh
 +++ b/tools/install.sh
 @@ -125,9 +125,9 @@ install_gpsd_chrony() {
@@ -41,3 +41,12 @@ index cf97628..12d4bee
        #venv module installation
        sudo -u "${RTKBASE_USER}" "${python_venv}" -m pip install --upgrade pip setuptools wheel  --extra-index-url https://www.piwheels.org/simple
        # install prebuilt wheel for cryptography because it is unavailable on piwheels (2023/01)
+@@ -687,7 +687,7 @@ install_zeroconf_service() {
+   if systemctl is-active --quiet avahi-daemon.service && [[ -d /etc/avahi/services ]]
+   then
+     web_port=$(grep "^web_port=.*" "${rtkbase_path}"/settings.conf | cut -d "=" -f2)
+-    sed -e 's|{port}|'$web_port'|' "${rtkbase_path}"/tools/zeroconf/rtkbase_web.service >> /etc/avahi/services/rtkbase_web.service
++    sed -e 's|{port}|'$web_port'|' "${rtkbase_path}"/tools/zeroconf/rtkbase_web.service > /etc/avahi/services/rtkbase_web.service
+   else
+     echo 'Can'\''t install avahi definition service, missing avahi service or /etc/avahi/services directory'
+   fi

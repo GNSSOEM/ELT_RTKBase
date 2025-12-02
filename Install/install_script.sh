@@ -1420,7 +1420,7 @@ configure_gnss(){
 
 start_rtkbase_services(){
   #echo ${RTKBASE_TOOLS}/insall.sh -u ${RTKBASE_USER} -s
-  ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -s 2>&1
+  ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -z -s 2>&1
   ExitCodeCheck $?
 
   service_active=$(systemctl is-active str2str_tcp.service)
