@@ -786,7 +786,7 @@ install_rtklib() {
     echo '################################'
     platform=$(uname -m)
     RTKLIB_DIR=${BASEDIR}/${RTKLIB}/${platform}
-    if [[ -d ${RTKLIB_DIR} ]] && lsb_release -c | grep -q 'bookworm'; then
+    if [[ -d ${RTKLIB_DIR} ]] && lsb_release -c | grep -q 'bookworm\|trixie'; then
        echo RtkLib copyed from ${RTKLIB_DIR}
        LOCAL_BIN=/usr/local/bin/
        #echo chmod 711 ${RTKLIB_DIR}/*
