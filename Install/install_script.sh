@@ -801,7 +801,7 @@ install_rtklib() {
        ExitCodeCheck $?
        #Install Rtklib app
        RTKLIB_CURDIR=`pwd`
-       RTKLIB_GIT=${RTKLIB_CURDIR}/RTKLIB-b34j
+       RTKLIB_GIT=${RTKLIB_CURDIR}/RTKLIB-b34L
        RTKLIB_PATCH=${BASEDIR}/${RTKLIB}
        doPatch ${RTKLIB_GIT}/src/stream.c ${RTKLIB_PATCH}/stream.patch
        doPatch ${RTKLIB_GIT}/src/streamsvr.c ${RTKLIB_PATCH}/streamsvr.patch
