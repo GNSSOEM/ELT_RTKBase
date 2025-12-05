@@ -1,5 +1,5 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index 2504977..5337c3b
+index 2504977..3400aa6
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -98,9 +98,12 @@ rtk = RTKLIB(socketio,
@@ -265,7 +265,7 @@ index 2504977..5337c3b
                                  universal_newlines=True,
                                  check=False)
 -        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit']], 
-+        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit'], '--reverse'],
++        journalctl = subprocess.run(['journalctl', '--since', '7 days ago', '-u', service['service_unit'], '--reverse', '--no-hostname'],
                                   stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
