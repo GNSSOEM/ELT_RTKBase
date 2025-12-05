@@ -117,19 +117,25 @@ detect_speed_Ublox() {
     done
 }
 
+is_ELT07x5(){
+   [[ -c /dev/gpiochip0 ]] && CHIP=0
+   [[ -c /dev/gpiochip512 ]] && CHIP=512
+   if [[ -n ${CHIP} ]]; then
+      if gpioget -v | grep gpioget | grep -q v1; then
+         gpio4=$(gpioget gpiochip${CHIP} 4)
+      else
+         gpio4=$(gpioget -c gpiochip${CHIP} --numeric 4)
+      fi
+      [[ "${gpio4}" == "0" ]] && return 0
+   fi
+   return 1
+}
+
 set_septetrio_format() {
-    detected_gnss[3]=rtcm3
-    if [[ -c /dev/gpiochip0 ]]; then
-       CHIP=0
-    elif [[ -c /dev/gpiochip512 ]]; then
-       CHIP=512
-    else
-       echo Raspberry gpiochip NOT found!
-       return
-    fi
-    gpio4=$(gpioget gpiochip${CHIP} 4)
-    if [[ "${gpio4}" == "0" ]]; then
+    if is_ELT07x5; then
        detected_gnss[3]=sbf
+    else
+       detected_gnss[3]=rtcm3
     fi
     #echo gpio4=${gpio4} detected_gnss[3]=${detected_gnss[3]}
 }

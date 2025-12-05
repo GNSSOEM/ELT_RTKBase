@@ -360,6 +360,25 @@ set_permanenet_journals(){
   fi
 }
 
+is_ELT07x5(){
+   if ! ischroot; then
+      [[ -c /dev/gpiochip0 ]] && CHIP=0
+      [[ -c /dev/gpiochip512 ]] && CHIP=512
+      if [[ -n ${CHIP} ]]; then
+         if gpioget -v | grep gpioget | grep -q v1; then
+            #echo gpio4=\$\(gpioget gpiochip${CHIP} 4\)
+            gpio4=$(gpioget gpiochip${CHIP} 4)
+         else
+            #echo gpio4=\$\(gpioget -c gpiochip${CHIP} --numeric 4\)
+            gpio4=$(gpioget -c gpiochip${CHIP} --numeric 4)
+         fi
+         #echo gpio4=${gpio4}
+         [[ "${gpio4}" == "0" ]] && return 0
+      fi
+   fi
+   return 1
+}
+
 check_boot_configiration(){
    echo '################################'
    if have_full; then
@@ -370,14 +389,7 @@ check_boot_configiration(){
    echo '################################'
 
    ADD_GPIO_REBOOT=NO
-   if ! ischroot; then
-      [[ -c /dev/gpiochip0 ]] && CHIP=0
-      [[ -c /dev/gpiochip512 ]] && CHIP=512
-      if [[ -n ${CHIP} ]]; then
-         gpio4=$(gpioget gpiochip${CHIP} 4)
-         [[ "${gpio4}" == "0" ]] && ADD_GPIO_REBOOT=YES
-      fi
-   fi
+   is_ELT07x5 && ADD_GPIO_REBOOT=YES
    #echo ADD_GPIO_REBOOT=${ADD_GPIO_REBOOT}
 
    configure_cmdline /boot
@@ -1474,38 +1486,31 @@ start_rtkbase_services(){
      systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
 
-     [[ -c /dev/gpiochip0 ]] && CHIP=0
-     [[ -c /dev/gpiochip512 ]] && CHIP=512
-     #echo CHIP=${CHIP}
-     if [[ -n ${CHIP} ]]; then
-        gpio4=$(gpioget gpiochip${CHIP} 4)
-        if [[ "${gpio4}" == "0" ]]; then
-           #echo gpio4=${gpio4}
-           GPSD_CONFIG=/etc/default/gpsd
-           CHRONY_CONFIG=/etc/chrony/chrony.conf
-           TEMPFILE=/run/gpsd.tmp
-           #echo source \<\( grep '^nmea_port=' "${SETTINGS_NOW}" \)
-           source <( grep '^nmea_port=' "${SETTINGS_NOW}" )
-           ExitCodeCheck $?
-           #echo sed -i \"s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/\" ${GPSD_CONFIG}
-           sed -i "s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/" ${GPSD_CONFIG}
-           ExitCodeCheck $?
-           #echo systemctl restart gpsd.service
-           systemctl restart gpsd.service
-           ExitCodeCheck $?
-           #echo sed -i \'s/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/\' ${CHRONY_CONFIG}
-           sed -i 's/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/' ${CHRONY_CONFIG}
-           ExitCodeCheck $?
-           #echo sed -i \'s/^.\\?refclock PPS .*/refclock PPS /dev/pps0 refid PPS lock GNSS\' ${CHRONY_CONFIG}
-           sed -i 's/^.\?refclock PPS .*/refclock PPS \/dev\/pps0 refid PPS lock GNSS/' ${CHRONY_CONFIG}
-           ExitCodeCheck $?
-           #echo systemctl restart chrony.service
-           systemctl restart chrony.service
-           ExitCodeCheck $?
-           #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
-           systemctl enable --now "${RAW2NMEA_SERVICE}"
-           ExitCodeCheck $?
-        fi
+     if is_ELT07x5; then
+        GPSD_CONFIG=/etc/default/gpsd
+        CHRONY_CONFIG=/etc/chrony/chrony.conf
+        TEMPFILE=/run/gpsd.tmp
+        echo source \<\( grep '^nmea_port=' "${SETTINGS_NOW}" \)
+        source <( grep '^nmea_port=' "${SETTINGS_NOW}" )
+        ExitCodeCheck $?
+        #echo sed -i \"s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/\" ${GPSD_CONFIG}
+        sed -i "s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/" ${GPSD_CONFIG}
+        ExitCodeCheck $?
+        #echo systemctl restart gpsd.service
+        systemctl restart gpsd.service
+        ExitCodeCheck $?
+        #echo sed -i \'s/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/\' ${CHRONY_CONFIG}
+        sed -i 's/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/' ${CHRONY_CONFIG}
+        ExitCodeCheck $?
+        #echo sed -i \'s/^.\\?refclock PPS .*/refclock PPS /dev/pps0 refid PPS lock GNSS\' ${CHRONY_CONFIG}
+        sed -i 's/^.\?refclock PPS .*/refclock PPS \/dev\/pps0 refid PPS lock GNSS/' ${CHRONY_CONFIG}
+        ExitCodeCheck $?
+        #echo systemctl restart chrony.service
+        systemctl restart chrony.service
+        ExitCodeCheck $?
+        #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
+        systemctl enable --now "${RAW2NMEA_SERVICE}"
+        ExitCodeCheck $?
      fi
   fi
 
