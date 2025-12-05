@@ -348,6 +348,18 @@ add_pps_module(){
   fi
 }
 
+set_permanenet_journals(){
+  JOURLAND_CONF=/etc/systemd/journald.conf
+  if [[ -f ${JOURLAND_CONF} ]]; then
+     if grep -q "^Storage=volatile" ${JOURLAND_CONF}; then
+        #echo sed -i "s/^Storage=volatile/\#Storage=volatile/" ${JOURLAND_CONF}
+        sed -i "s/^Storage=volatile/\#Storage=volatile/" ${JOURLAND_CONF}
+        echo Set permanent journals to ${JOURLAND_CONF}
+        NEEDREBOOT=Y
+     fi
+  fi
+}
+
 check_boot_configiration(){
    echo '################################'
    if have_full; then
@@ -379,6 +391,7 @@ check_boot_configiration(){
       replace_config /boot/firmware
    fi
    add_pps_module
+   set_permanenet_journals
    #hciuart_enabled=$(systemctl is-enabled hciuart.service)
    #[[ "${hciuart_enabled}" != "disabled" ]] && [[ "${hciuart_enabled}" != "masked" ]] && systemctl disable hciuart
 }
