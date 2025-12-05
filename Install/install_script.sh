@@ -316,7 +316,7 @@ check_version(){
      then
         echo Already installed version'('${OLD_VERSION}')' is newer, than install.sh version'('${NEW_VERSION}')'. Exiting
         delete_all_extracted
-        exit
+        exit 0
      else
         echo Update from version ${OLD_VERSION} to version ${NEW_VERSION}
         if [ -f ${SETTINGS_NOW} ]
@@ -745,7 +745,7 @@ add_rtkbase_user(){
    then
       echo Failed to create ${RTKBASE_USER} user
       delete_all_extracted
-      exit
+      exit 1
    fi
 
    usermod -a -G plugdev,dialout,gpio ${RTKBASE_USER}
