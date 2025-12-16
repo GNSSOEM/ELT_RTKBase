@@ -1,15 +1,15 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index 007a130..a4e8873 100644
+index 318184c..ba7e906 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
  [general]
  # Version
- version=2.6.4
+ version=2.7.0
 +# ELT Version
 +elt_version=
  # Rtkbase upgrade mandatory "checkpoint"
- checkpoint_version=2.7.0
+ checkpoint_version=2.8.0
  # User who runs str2str_file service
 @@ -11,6 +13,7 @@ user=
  BASEDIR=$(dirname "$0")
@@ -19,7 +19,7 @@ index 007a130..a4e8873 100644
  #Web frontend port
  web_port=80
  #set true if you want to enter a password to open the web gui.
-@@ -29,21 +32,23 @@ cpu_temp_offset=0
+@@ -29,23 +32,25 @@ cpu_temp_offset=0
  
  [main]
  #base coordinates: lat long height
@@ -45,10 +45,13 @@ index 007a130..a4e8873 100644
  #Antenna info, id, serial number. Without space inside the strings
 -antenna_info='ADVNULLANTENNA'
 +antenna_info='ELT0123'
+ #Tcp host address to bind the tcp stream
+-tcp_host_addr='127.0.0.1'
++tcp_host_addr='localhost'
  #tcp port for RAW stream. If you change this value, edit gpsd conf file to reflect the port in DEVICES.
  tcp_port='5015'
  #ext_tcp_source is mainly for dev purpose to receive a raw stream from another base
-@@ -54,6 +59,10 @@ ext_tcp_port=''
+@@ -56,6 +61,10 @@ ext_tcp_port=''
  gnss_rcv_web_ip=192.168.3.1
  #port number for the Flask proxy app used to display the Gnss receiver web service
  gnss_rcv_web_proxy_port=9090
@@ -59,7 +62,7 @@ index 007a130..a4e8873 100644
  #port number for the raw2nmea service
  nmea_port='5014'
  
-@@ -72,7 +81,7 @@ file_overlap_time='0'
+@@ -74,7 +83,7 @@ file_overlap_time='0'
  #name for the compressed archive
  archive_name=$(date -d "-1 days" +"%Y-%m-%d_%S").zip
  #archives older than this value (in days) will be deleted by archive_and_clean.sh
@@ -68,7 +71,7 @@ index 007a130..a4e8873 100644
  #minum free space on device (in MB) before oldest archives are deleted
  min_free_space='500'
  
-@@ -81,14 +90,18 @@ min_free_space='500'
+@@ -83,14 +92,18 @@ min_free_space='500'
  # NTRIP A caster options
  
  #ntrip A caster url
@@ -90,7 +93,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  ntrip_a_receiver_options=''
  
-@@ -97,17 +110,81 @@ ntrip_a_receiver_options=''
+@@ -99,17 +112,81 @@ ntrip_a_receiver_options=''
  # NTRIP B caster options
  
  #ntrip B caster url
@@ -175,7 +178,7 @@ index 007a130..a4e8873 100644
  [local_ntrip_caster]
  
  # local NTRIP caster options
-@@ -120,7 +197,7 @@ local_ntripc_pwd=''
+@@ -122,7 +199,7 @@ local_ntripc_pwd=''
  local_ntripc_port='2101'
  #mount point name for this local ntrip caster
  local_ntripc_mnt_name=''
@@ -184,7 +187,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  local_ntripc_receiver_options=''
  
-@@ -131,7 +208,7 @@ local_ntripc_receiver_options=''
+@@ -133,7 +210,7 @@ local_ntripc_receiver_options=''
  #port for rtcm local use
  rtcm_svr_port='5016'
  #messages for rtcm local use
@@ -193,7 +196,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  rtcm_receiver_options=''
  
-@@ -146,7 +223,7 @@ rtcm_client_port='80'
+@@ -148,7 +225,7 @@ rtcm_client_port='80'
  rtcm_client_user=''
  rtcm_client_pwd=''
  #messages for rtcm client use
@@ -202,7 +205,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  rtcm_client_receiver_options=''
  
-@@ -157,7 +234,7 @@ rtcm_client_receiver_options=''
+@@ -159,7 +236,7 @@ rtcm_client_receiver_options=''
  #port for rtcm UDP use
  rtcm_udp_svr_port=''
  #messages for rtcm udp use
@@ -211,7 +214,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  rtcm_udp_svr_receiver_options=''
  
-@@ -170,7 +247,7 @@ rtcm_udp_client_addr=''
+@@ -172,7 +249,7 @@ rtcm_udp_client_addr=''
  #port for rtcm UDP use
  rtcm_udp_client_port=''
  #messages for rtcm udp use
@@ -220,7 +223,7 @@ index 007a130..a4e8873 100644
  #Receiver dependent options
  rtcm_udp_client_receiver_options=''
  
-@@ -183,7 +260,7 @@ out_com_port=''
+@@ -185,7 +262,7 @@ out_com_port=''
  #serial output settings
  out_com_port_settings='115200:8:n:1'
  #messages for rtcm local use

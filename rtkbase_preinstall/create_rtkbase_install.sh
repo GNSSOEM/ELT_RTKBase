@@ -35,7 +35,7 @@ cd ${1}
 ExitCodeCheck $?
 doPatch tools/install.sh  rtkbase_install_sh.patch 
 doPatch tools/create_release.sh  create_release_sh.patch
-doPatch web_app/requirements.txt  requirements_txt.patch
+#doPatch web_app/requirements.txt  requirements_txt.patch
 
 cd tools
 ./create_release.sh --bundled

@@ -1,5 +1,5 @@
 diff --git a/web_app/gnss_rproxy_server.py b/web_app/gnss_rproxy_server.py
-index 7c08a6e..33cfa1b 100644
+index 14b658b..cfb8dc3 100644
 --- a/web_app/gnss_rproxy_server.py
 +++ b/web_app/gnss_rproxy_server.py
 @@ -28,23 +28,17 @@ import gunicorn.app.base
@@ -54,7 +54,7 @@ index 7c08a6e..33cfa1b 100644
          data            = request.get_data(),
          cookies         = request.cookies,
          allow_redirects = False,
-@@ -121,11 +126,27 @@ def redirect_to_API_HOST(path):  #NOTE var :path will be unused as all path we n
+@@ -121,10 +126,26 @@ def redirect_to_API_HOST(path):  #NOTE var :path will be unused as all path we n
      ]
      #endregion exlcude some keys in :res response
  
@@ -79,20 +79,9 @@ index 7c08a6e..33cfa1b 100644
      return response
  
 -
--@app.route('/login', methods=['GET', 'POST'])
-+@app.route('/syslogin', methods=['GET', 'POST'])
+ @app.route('/gnsslogin', methods=['GET', 'POST'])
  def login_page():
      if current_user.is_authenticated:
-         return redirect(url_for('index'))
-@@ -146,7 +167,7 @@ def login_page():
-         
-     return render_template('proxy_login.html', title='Sign In', form=loginform)
- 
--@app.route('/logout')
-+@app.route('/syslogout')
- def logout():
-     logout_user()
-     return redirect(url_for('login_page'))
 @@ -170,12 +191,39 @@ def arg_parse():
          help="port used for the web server",
          default=None

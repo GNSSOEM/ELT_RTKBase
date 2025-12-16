@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index db7a656..fb500dc 100755
+index e8f6f2d..c444673
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,160 @@ BASEDIR="$(dirname "$0")"
@@ -15,7 +15,7 @@ index db7a656..fb500dc 100755
  #in_ext_tcp is mainly for dev purpose to receive a raw stream from another base
  in_ext_tcp="tcpcli://${ext_tcp_source}:${ext_tcp_port}#${receiver_format}"
  
--out_caster_A="ntrips://:${svr_pwd_a}@${svr_addr_a}:${svr_port_a}/${mnt_name_a}#rtcm3 -msg ${rtcm_msg_a} -p ${position}"
+-out_caster_A="-msg ${rtcm_msg_a} -out ntrips://:${svr_pwd_a}@${svr_addr_a}:${svr_port_a}/${mnt_name_a}#rtcm3 -p ${position}"
 -#add receiver options if it exists
 -[[ ! -z "${ntrip_a_receiver_options}" ]] && out_caster_A=""${out_caster_A}" -opt "${ntrip_a_receiver_options}""
 +is_ELT07x5(){
@@ -32,7 +32,7 @@ index db7a656..fb500dc 100755
 +   return 1
 +}
  
--out_caster_B="ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -msg ${rtcm_msg_b} -p ${position}"
+-out_caster_B="-msg ${rtcm_msg_b} -out ntrips://:${svr_pwd_b}@${svr_addr_b}:${svr_port_b}/${mnt_name_b}#rtcm3 -p ${position}"
 -#add receiver options if it exists
 -[[ ! -z "${ntrip_b_receiver_options}" ]] && out_caster_B=""${out_caster_B}" -opt "${ntrip_b_receiver_options}""
 +PrepareNtripServer(){
@@ -105,7 +105,7 @@ index db7a656..fb500dc 100755
 +
 +  case "${svr_mode}" in
 +    1)
-+       out_caster="tcpcli://${svr_addr}:${svr_port}#rtcm3"
++       out_caster="-msg ${rtcm_msg} -out tcpcli://${svr_addr}:${svr_port}#rtcm3 -p ${position}"
 +       ;;
 +    2)
 +       if [[ "${mnt_name}" == TCP ]] && [[ "${svr_pwd}" == TCP ]]; then
@@ -126,9 +126,9 @@ index db7a656..fb500dc 100755
 +       ;;
 +    *)
 +       if [[ "${mnt_name}" == TCP ]] && [[ "${svr_pwd}" == TCP ]]; then
-+          out_caster="tcpcli://${svr_addr}:${svr_port}#rtcm3"
++          out_caster="-msg ${rtcm_msg} -out tcpcli://${svr_addr}:${svr_port}#rtcm3 -p ${position}"
 +       else
-+          out_caster="ntrips://:${svr_pwd}@${svr_addr}:${svr_port}/${mnt_name}#rtcm3"
++          out_caster="-msg ${rtcm_msg} -out ntrips://:${svr_pwd}@${svr_addr}:${svr_port}/${mnt_name}#rtcm3 -p ${position}"
 +       fi
 +       ;;
 +  esac
@@ -152,11 +152,11 @@ index db7a656..fb500dc 100755
 +  ntrip_flag="${BASEDIR}/tools/ntrip_led.sh ${3}"
 +  if [[ "${svr_mode}" < 2 ]]; then
 +     if [[ "$3" == "A" ]]; then
-+        #echo ${cast} -in ${!1} -out \"${out_caster}\" -msg \"${rtcm_msg}\" -p ${position} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags}  -fe \"${ntrip_flag}"\ \&
-+        ${cast} -in ${!1} -out "${out_caster}" -msg "${rtcm_msg}" -p ${position} -i "${receiver_info}" -a "${antenna_info}" ${flags} -fe "${ntrip_flag}" &
++        #echo ${cast} -in ${!1} \"${out_caster}\" -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags}  -fe \"${ntrip_flag}"\ \&
++        ${cast} -in ${!1} -out "${out_caster}" -i "${receiver_info}" -a "${antenna_info}" ${flags} -fe "${ntrip_flag}" &
 +     else
-+        #echo ${cast} -in ${!1} -out \"${out_caster}\" -msg \"${rtcm_msg}\" -p ${position} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags} \&
-+        ${cast} -in ${!1} -out "${out_caster}" -msg "${rtcm_msg}" -p ${position} -i "${receiver_info}" -a "${antenna_info}" ${flags} &
++        #echo ${cast} -in ${!1} \"${out_caster}\" -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags} \&
++        ${cast} -in ${!1} -out "${out_caster}" -i "${receiver_info}" -a "${antenna_info}" ${flags} &
 +     fi
 +  else
 +     if [[ "$3" == "A" ]]; then
@@ -171,29 +171,31 @@ index db7a656..fb500dc 100755
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,15 +170,18 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,16 +170,19 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
 -out_local_caster_source_table="${local_ntripc_mnt_name};rtcm3;${local_ntripc_msg};${receiver_frequency_count};GPS+GLO+GAL+BDS+QZS;NONE;NONE;${array_pos[0]};${array_pos[1]};0;0;RTKBase_${receiver},${version};NONE;${local_ntripc_auth};N;;"
 +out_local_caster_source_table="${local_ntripc_mnt_name};rtcm3;${local_ntripc_msg};${receiver_frequency_count};GPS+GLO+GAL+BDS+QZS+SBAS+IRN;NONE;NONE;${array_pos[0]};${array_pos[1]};0;0;RTKBase_${receiver},${version};NONE;${local_ntripc_auth};N;;"
- out_local_caster="ntripc://${local_ntripc_user}:${local_ntripc_pwd}@:${local_ntripc_port}/${local_ntripc_mnt_name}:${out_local_caster_source_table}#rtcm3 -msg ${local_ntripc_msg} -p ${position}"
+ out_local_caster="-msg ${local_ntripc_msg} -out ntripc://${local_ntripc_user}:${local_ntripc_pwd}@:${local_ntripc_port}/${local_ntripc_mnt_name}:${out_local_caster_source_table}#rtcm3 -p ${position}"
  #add receiver options if it exists
  [[ ! -z "${local_ntripc_receiver_options}" ]] && out_local_caster="${out_local_caster} -opt ${local_ntripc_receiver_options}"
--out_tcp="tcpsvr://:${tcp_port}"
-+out_tcp="tcpsvr://localhost:${tcp_port}"
-+
+-
+-out_tcp="tcpsvr://${tcp_host_addr}:${tcp_port}"
++[[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_msg="-msg 1019,1020,1041,1042,1044,1045,1046"
++[[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_format="#rtcm3 -ub"
++out_tcp="${out_tcp_msg} -out tcpsvr://${tcp_host_addr}:${tcp_port}${out_tcp_format}"
  
  out_file="file://${datadir}/${file_name}.${receiver_format}::T::S=${file_rotate_time} -f ${file_overlap_time}"
  
--out_rtcm_svr="tcpsvr://:${rtcm_svr_port}#rtcm3 -msg ${rtcm_svr_msg} -p ${position}"
+-out_rtcm_svr="-msg ${rtcm_svr_msg} -out tcpsvr://:${rtcm_svr_port}#rtcm3 -p ${position}"
 +[[ "${receiver_format}" != "rtcm3" ]] && rtcm_out_format="#rtcm3"
 +[[ "${receiver_format}" == "ubx" ]] && rtcm_out_ub="-ub"
-+out_rtcm_svr="tcpsvr://:${rtcm_svr_port}${rtcm_out_format} ${rtcm_out_ub} -b 1 -msg ${rtcm_svr_msg} -p ${position}"
++out_rtcm_svr="-msg ${rtcm_svr_msg} -out tcpsvr://:${rtcm_svr_port}${rtcm_out_format} ${rtcm_out_ub} -b 1 -p ${position}"
  #add receiver options if it exists
  [[ ! -z "${rtcm_receiver_options}" ]] && out_rtcm_svr=""${out_rtcm_svr}" -opt "${rtcm_receiver_options}""
  
-@@ -52,22 +197,56 @@ out_rtcm_serial="serial://${out_com_port}:${out_com_port_settings}#rtcm3 -msg ${
+@@ -53,47 +198,80 @@ out_rtcm_serial="-msg ${rtcm_serial_msg} -out serial://${out_com_port}:${out_com
  #add receiver options if it exists
  [[ ! -z "${rtcm_serial_receiver_options}" ]] && out_rtcm_serial=""${out_rtcm_serial}" -opt "${rtcm_serial_receiver_options}""
  
@@ -225,21 +227,20 @@ index db7a656..fb500dc 100755
 +       #echo enabled=${enabled} active=${active}
 +       [[ "${active}" != "active" ]] && systemctl start ${RAW2NMEA_SERVICE}
 +    fi
-+    [[ "${receiver_format}" == "rtcm3" ]] && [[ "${receiver}" =~ u-blox ]] && out_tcp_msg="#rtcm3 -ub -msg 1019,1020,1041,1042,1044,1045,1046"
      # What is this ${!1} ? It's variable indirection
--    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp.log &
-+    #echo ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log \&
-+    ${cast} -in ${!1} -out ${out_tcp}${out_tcp_msg} -b 1  -t ${level} -fl ${logdir}/str2str_tcp.log &
+-    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp_$(date "+%F-%T").log
++    #echo ${cast} -in ${!1} ${out_tcp} -b 1  -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log \&
++    ${cast} -in ${!1} ${out_tcp} -b 1 -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log &
      ;;
  
    out_caster_A)
 -    #echo ${cast} -in ${!1} -out $out_caster
--    ${cast} -in ${!1} -out ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log &
+-    ${cast} -in ${!1} ${out_caster_A} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_A.log
 +    StartNtripServer ${1} a A
      ;;
  
    out_caster_B)
--    ${cast} -in ${!1} -out ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log &
+-    ${cast} -in ${!1} ${out_caster_B} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip_B.log
 +    StartNtripServer ${1} b B
 +    ;;
 +
@@ -256,19 +257,42 @@ index db7a656..fb500dc 100755
      ;;
  
    out_local_caster)
-@@ -82,8 +261,8 @@ mkdir -p ${logdir}
+     #echo ${cast} -in ${!1} -out "${out_local_caster}"
+-    ${cast} -in ${!1} ${out_local_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip.log
++    ${cast} -in ${!1} ${out_local_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip.log &
+     ;;
+ 
+   out_rtcm_svr)
+     #echo ${cast} -in ${!1} -out $out_rtcm_svr
+-    ${cast} -in ${!1} ${out_rtcm_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_svr.log
++    ${cast} -in ${!1} ${out_rtcm_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_svr.log &
+     ;;
    
    out_rtcm_client)
      #echo ${cast} -in ${!1} -out $out_rtcm_client
--  ${cast} -in ${!1} -out ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log &
--  ;;
-+    ${cast} -in ${!1} -out ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log &
-+    ;;
+-    ${cast} -in ${!1} ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log
++    ${cast} -in ${!1} ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log &
+   ;;
  
    out_rtcm_udp_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_udp_svr
-@@ -105,5 +284,9 @@ mkdir -p ${logdir}
-       ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
+-    ${cast} -in ${!1} ${out_rtcm_udp_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_udp_svr.log
++    ${cast} -in ${!1} ${out_rtcm_udp_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_udp_svr.log &
+     ;;
+   
+   out_rtcm_serial)
+     #echo ${cast} -in ${!1} -out $out_rtcm_serial
+-    ${cast} -in ${!1} ${out_rtcm_serial} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_serial.log
++    ${cast} -in ${!1} ${out_rtcm_serial} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_serial.log &
+     ;;
+ 
+   out_file)
+@@ -103,8 +281,12 @@ mkdir -p ${logdir}
+     if [ ${ret} -eq 0 ]
+     then
+       mkdir -p ${datadir}
+-      ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log
++      ${cast} -in ${!1} -out ${out_file} -t ${level} -fl ${logdir}/str2str_file.log &
      fi
      ;;
 -    

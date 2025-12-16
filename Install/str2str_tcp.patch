@@ -1,9 +1,9 @@
 diff --git a/unit/str2str_tcp.service b/unit/str2str_tcp.service
-index 5879fb0..82e2e27 100644
+index d586de7..31ddd21 100644
 --- a/unit/str2str_tcp.service
 +++ b/unit/str2str_tcp.service
-@@ -8,6 +8,7 @@ Description=RTKBase Tcp
- Type=forking
+@@ -9,6 +9,7 @@ Type=simple
+ SyslogIdentifier=str2str_tcp
  User={user}
  ExecStart={script_path}/run_cast.sh in_serial out_tcp
 +TimeoutStartSec=180

@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 9c33cb5..d44dd79 100644
+index 5b64baa..15076de 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -280,7 +280,7 @@ index 9c33cb5..d44dd79 100644
 +        //console.log(response);
 +        //detectApplyBtnElt.setAttribute('data-dismiss', 'modal');
          if (response['result'] === 'success') {
-             detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
+             detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + ' ' + response['model'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
 @@ -361,7 +480,7 @@ $(document).ready(function () {
          response = JSON.parse(msg);
@@ -456,7 +456,7 @@ index 9c33cb5..d44dd79 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -723,6 +850,22 @@ $(document).ready(function () {
+@@ -726,6 +853,22 @@ $(document).ready(function () {
            };
        };
  
@@ -479,7 +479,7 @@ index 9c33cb5..d44dd79 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -734,16 +877,19 @@ $(document).ready(function () {
+@@ -737,16 +880,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -504,7 +504,7 @@ index 9c33cb5..d44dd79 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -755,5 +901,123 @@ $(document).ready(function () {
+@@ -758,5 +904,123 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

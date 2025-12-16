@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 3226d8d..507e982 100644
+index 9690796..e918fb8 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -35,7 +35,7 @@ index 3226d8d..507e982 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -103,7 +113,7 @@
+@@ -113,7 +123,7 @@
  
      </div>
            <div class="clearfix">
@@ -44,7 +44,7 @@ index 3226d8d..507e982 100644
            </div>
        </form>
  
-@@ -119,13 +129,28 @@
+@@ -129,13 +139,28 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -74,7 +74,7 @@ index 3226d8d..507e982 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -136,11 +161,18 @@
+@@ -146,11 +171,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -95,7 +95,7 @@ index 3226d8d..507e982 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -154,24 +186,24 @@
+@@ -164,24 +196,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -126,7 +126,7 @@ index 3226d8d..507e982 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -193,13 +225,28 @@
+@@ -203,13 +235,28 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -156,7 +156,7 @@ index 3226d8d..507e982 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -210,11 +257,18 @@
+@@ -220,11 +267,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -177,7 +177,7 @@ index 3226d8d..507e982 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -228,24 +282,24 @@
+@@ -238,24 +292,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -208,7 +208,7 @@ index 3226d8d..507e982 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -255,6 +309,294 @@
+@@ -265,6 +319,294 @@
          </div>
      </form>
  
@@ -503,7 +503,7 @@ index 3226d8d..507e982 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -281,7 +623,7 @@
+@@ -291,7 +633,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -512,7 +512,7 @@ index 3226d8d..507e982 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -351,7 +693,7 @@
+@@ -361,7 +703,7 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -521,7 +521,7 @@ index 3226d8d..507e982 100644
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -479,7 +821,7 @@
+@@ -489,7 +831,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -530,7 +530,7 @@ index 3226d8d..507e982 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -501,17 +843,24 @@
+@@ -511,17 +853,24 @@
              </div>
            </div>
            -->      
@@ -557,16 +557,16 @@ index 3226d8d..507e982 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -529,7 +878,7 @@
+@@ -539,7 +888,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
--         - <a href="{{ main_settings[10] }}"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
+-         - <a href="{{ main_settings[11] }}"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
 +         - <a href="{{ main_settings[13] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
          {% endif %}
        </span>
      </div>
-@@ -611,11 +960,32 @@
+@@ -621,11 +970,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -600,7 +600,7 @@ index 3226d8d..507e982 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -623,6 +993,7 @@
+@@ -633,6 +1003,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -608,7 +608,7 @@ index 3226d8d..507e982 100644
        </div>
    </div>
      
-@@ -784,6 +1155,27 @@
+@@ -794,6 +1165,27 @@
    </div>
  </div>
  
