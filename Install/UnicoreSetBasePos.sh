@@ -40,6 +40,9 @@ if [[ ${com_speed} -lt 115200 ]]; then
    fi
 fi
 
+#echo udevadm settle
+udevadm settle
+
 if [[ ${receiver} =~ "Septentrio" ]] &&  [[ ${com_port} == "ttyGNSS" ]]; then
    HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
    FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
