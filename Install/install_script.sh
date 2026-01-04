@@ -689,11 +689,11 @@ stop_rtkbase_services(){
                   modem_check.timer \
                   rtkbase_gnss_web_proxy.service \
                   ${MODEM_WEB_PROXY_SERVICE} \
-                  ${SYSSERVICE} \
                   ${CHECK_INTERNET_SERVICE} \
                   ${CHECK_SATELITES_SERVICE} \
                   ${SEPTENTRIO_NAT_SERVICE} \
                   ${DHCP_SERVICE}"
+     #${SYSSERVICE} excluded, it's not need be restarted
      if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
         serviceList="${serviceList} rtkbase_web.service"
      fi
@@ -1448,25 +1448,35 @@ configure_gnss(){
    restart_rtkbase_if_started
 }
 
-start_rtkbase_services(){
-  #echo ${RTKBASE_TOOLS}/insall.sh -u ${RTKBASE_USER} -s
-  ${RTKBASE_TOOLS}/install.sh -u ${RTKBASE_USER} -z -s 2>&1
-  ExitCodeCheck $?
+delete_from_service_list(){
+  serviceStartList=${serviceStartList// $1 / }
+  serviceStartList=${serviceStartList/#$1 /}
+  serviceStartList=${serviceStartList/% $1/}
+}
 
-  service_active=$(systemctl is-active str2str_tcp.service)
-  if [[ "${service_active}" != "active" ]] && [[ "${GNSS_CONFIGURED}" != "YES" ]] ; then
-     #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-     ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
+start_rtkbase_services(){
+  echo '################################'
+  echo 'STARTING SERVICES'
+  echo '################################'
+
+  #echo systemctl daemon-reload
+  systemctl daemon-reload
+  ExitCodeCheck $?
+  #echo systemctl enable --now rtkbase_web.service
+  systemctl enable --now rtkbase_web.service
+  ExitCodeCheck $?
+  delete_from_service_list rtkbase_web.service
+
+  #echo systemctl enable --now rtkbase_archive.timer
+  systemctl enable --now rtkbase_archive.timer
+  ExitCodeCheck $?
+  delete_from_service_list rtkbase_archive.timer
+
+  if grep -qE "^modem_at_port='/[[:alnum:]]+.*'" "${SETTINGS_NOW}"; then
+     #echo systemctl enable --now modem_check.timer
+     systemctl enable --now modem_check.timer
      ExitCodeCheck $?
-     #echo systemctl enable --now str2str_tcp.service
-     systemctl enable --now str2str_tcp.service
-     ExitCodeCheck $?
-     #echo systemctl restart gpsd.service
-     systemctl restart gpsd.service
-     ExitCodeCheck $?
-     #echo systemctl restart chrony.service
-     systemctl restart chrony.service
-     ExitCodeCheck $?
+     delete_from_service_list modem_check.timer
   fi
 
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
@@ -1482,14 +1492,17 @@ start_rtkbase_services(){
      #echo systemctl start "${DHCP_SERVICE}"
      systemctl start "${DHCP_SERVICE}"
      ExitCodeCheck $?
+     delete_from_service_list ${DHCP_SERVICE}
 
      #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      ExitCodeCheck $?
+     delete_from_service_list ${SEPTENTRIO_NAT_SERVICE}
 
      #echo systemctl enable --now "${GNSS_WEB_PROXY}"
      systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
+     delete_from_service_list ${GNSS_WEB_PROXY}
 
      if is_ELT07x5; then
         GPSD_CONFIG=/etc/default/gpsd
@@ -1501,21 +1514,45 @@ start_rtkbase_services(){
         #echo sed -i \"s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/\" ${GPSD_CONFIG}
         sed -i "s/^DEVICES=.*/DEVICES=\"tcp:\/\/localhost:${nmea_port} \/dev\/pps0\"/" ${GPSD_CONFIG}
         ExitCodeCheck $?
-        #echo systemctl restart gpsd.service
-        systemctl restart gpsd.service
-        ExitCodeCheck $?
         #echo sed -i \'s/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/\' ${CHRONY_CONFIG}
         sed -i 's/^refclock SHM .*/refclock SHM 0 refid GNSS precision 1e-1 offset 0 delay 0.2 noselect/' ${CHRONY_CONFIG}
         ExitCodeCheck $?
         #echo sed -i \'s/^.\\?refclock PPS .*/refclock PPS /dev/pps0 refid PPS lock GNSS\' ${CHRONY_CONFIG}
         sed -i 's/^.\?refclock PPS .*/refclock PPS \/dev\/pps0 refid PPS lock GNSS/' ${CHRONY_CONFIG}
         ExitCodeCheck $?
-        #echo systemctl restart chrony.service
-        systemctl restart chrony.service
-        ExitCodeCheck $?
         #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
         systemctl enable --now "${RAW2NMEA_SERVICE}"
         ExitCodeCheck $?
+        delete_from_service_list ${RAW2NMEA_SERVICE}
+     fi
+  fi
+
+  #echo systemctl enable --now str2str_tcp.service
+  systemctl enable --now str2str_tcp.service
+  ExitCodeCheck $?
+  delete_from_service_list str2str_tcp.service
+  if [[ "${lastcode}" != "0" ]] ; then
+     if [[ "${GNSS_CONFIGURED}" != "YES" ]] ; then
+        #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
+        ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
+        ExitCodeCheck $?
+        #echo lastcode=$lastcode
+     fi
+     if [[ "${lastcode}" == "0" ]] ; then
+        #echo systemctl enable --now str2str_tcp.service
+        systemctl enable --now str2str_tcp.service
+        ExitCodeCheck $?
+        #echo lastcode=$lastcode
+        if [[ "${lastcode}" == "0" ]] ; then
+           #echo systemctl restart gpsd.service
+           systemctl restart gpsd.service
+           ExitCodeCheck $?
+           delete_from_service_list gpsd.service
+           #echo systemctl restart chrony.service
+           systemctl restart chrony.service
+           ExitCodeCheck $?
+           delete_from_service_list chrony.service
+        fi
      fi
   fi
 
@@ -1524,27 +1561,33 @@ start_rtkbase_services(){
      #echo systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
      systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
      ExitCodeCheck $?
+     delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
   fi
 
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
   ExitCodeCheck $?
+  delete_from_service_list ${CHECK_INTERNET_SERVICE}
+
   HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
   if [[ "${HAVE_ELT0x33}" != "" ]]; then
      #echo systemctl start "${CHECK_SATELITES_SERVICE}"
      systemctl start "${CHECK_SATELITES_SERVICE}"
      ExitCodeCheck $?
+     delete_from_service_list ${CHECK_SATELITES_SERVICE}
   fi
 
-  #echo serviceStartList=${serviceStartList}
-  for service_name in ${serviceStartList}; do
-      service_active=$(systemctl is-active "${service_name}")
-      if [ "${service_active}" != "active" ]; then
-         #echo ${service_name} is ${service_active}
-         #echo systemctl start "${service_name}"
-         systemctl start "${service_name}"
-      fi
-  done
+  if [[ -n "${serviceStartList}" ]]; then
+     #echo serviceStartList=${serviceStartList}
+     for service_name in ${serviceStartList}; do
+         service_active=$(systemctl is-active "${service_name}")
+         if [[ "${service_active}" != "active" ]] && [[ "${service_active}" != "activating" ]]; then
+            #echo ${service_name} is ${service_active}
+            #echo systemctl start "${service_name}"
+            systemctl start "${service_name}"
+         fi
+     done
+  fi
 }
 
 delete_garbage(){
