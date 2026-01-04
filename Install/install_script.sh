@@ -100,6 +100,7 @@ PBC=PBC.sh
 SEPTENTRIO_LINK=70-usb-net-septentrio.link
 MOBILE_LINK=70-usb-net-mobile.link
 SEPTENTRIO_MODEM=77-mm-septentio-port-types.rules
+CYPRESS_MODEM=77-mm-cypress-port-types.rules
 AUTOCONNECT_CONF=autoconnect-retries-forever.conf
 LINK_RULES=/usr/lib/systemd/network
 MODEM_RULES=/lib/udev/rules.d
@@ -1243,6 +1244,7 @@ configure_for_unicore(){
    copy_root "${SEPTENTRIO_LINK}" "${LINK_RULES}"
    copy_root "${MOBILE_LINK}" "${LINK_RULES}"
    copy_root "${SEPTENTRIO_MODEM}" "${MODEM_RULES}"
+   copy_root "${CYPRESS_MODEM}" "${MODEM_RULES}"
 
    #echo mkdir -p ${NETWORK_CONF}
    mkdir -p ${NETWORK_CONF}
@@ -1619,7 +1621,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
-              ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH}"
+              ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

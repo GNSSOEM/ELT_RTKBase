@@ -1,0 +1,13 @@
+ACTION!="add|change|move|bind", GOTO="mm_cypress_port_types_end"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="04b4", GOTO="mm_cypress_port_types"
+GOTO="mm_cypress_port_types_end"
+
+
+LABEL="mm_cypress_port_types"
+
+SUBSYSTEMS=="usb", ATTRS{bInterfaceNumber}=="?*", ENV{.MM_USBIFNUM}="$attr{bInterfaceNumber}"
+
+# Fully ignore cypress GNSS devices
+ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="0005", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+LABEL="mm_cypress_port_types_end"

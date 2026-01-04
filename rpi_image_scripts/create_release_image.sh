@@ -19,8 +19,10 @@ LOOPDEV=/dev/loop1
 RESIZETOSIZE=3961MB
 APPENDSIZEMB=1200
 
-SOURCE_IMAGE=2025-05-13-raspios-bookworm-arm64-lite.img.xz
-DESTINATION_IMAGE="2025-05-13-raspios-bookworm-arm64-lite-eltehs-rtkbase-${VERSION}.img.xz"
+#SOURCE_IMAGE=2025-05-13-raspios-bookworm-arm64-lite.img.xz
+#DESTINATION_IMAGE="2025-05-13-raspios-bookworm-arm64-lite-eltehs-rtkbase-${VERSION}.img.xz"
+SOURCE_IMAGE=2025-12-04-raspios-trixie-arm64-lite.img.xz
+DESTINATION_IMAGE="2025-12-04-raspios-trixie-arm64-lite-eltehs-rtkbase-${VERSION}.img.xz"
 
 if test -z "${SOURCE_IMAGE}"
 then
