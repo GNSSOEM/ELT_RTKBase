@@ -8,6 +8,7 @@ After=rtkbase_setup.service
 ExecStart=/usr/local/rtkbase/RtkbaseSystemConfigure.sh
 RemainAfterExit=true
 Type=oneshot
+SyslogIdentifier=rtkbase_system_configure
 
 [Install]
 WantedBy=multi-user.target

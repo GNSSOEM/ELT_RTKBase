@@ -4,6 +4,8 @@ Description=RTKBase Reverse Proxy for Mobile Modem Web Server
 #Wants=network-online.target
 
 [Service]
+Type=simple
+SyslogIdentifier=rtkbase_DHCP
 User=rtkbase
 ExecStart=/usr/local/rtkbase/rtkbase/venv/bin/python /usr/local/rtkbase/rtkbase/web_app/gnss_rproxy_server.py -m
 Restart=on-failure

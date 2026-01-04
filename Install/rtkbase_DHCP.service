@@ -5,6 +5,7 @@ Wants=local-fs.target network.target
 
 [Service]
 Type=simple
+SyslogIdentifier=rtkbase_septentrio_NAT
 ExecStart=busybox udhcpd -f /usr/local/rtkbase/rtkbase_DHCP.conf
 Restart=on-failure
 RestartSec=10

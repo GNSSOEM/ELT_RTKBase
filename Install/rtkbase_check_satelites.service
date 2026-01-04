@@ -5,6 +5,7 @@ Wants=local-fs.target network.target
 
 [Service]
 Type=forking
+SyslogIdentifier=rtkbase_check_satelites
 ExecStart=/usr/local/rtkbase/rtkbase_check_satelites.sh
 ExecStopPost=/usr/local/rtkbase/rtkbase/tools/onoffELT0x33.sh SETTINGS OFF 2
 Restart=on-failure
