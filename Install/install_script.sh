@@ -1021,6 +1021,9 @@ patch_rtkbase(){
       #echo sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       sudo -u "${RTKBASE_USER}" sed -i s/^LogRateLimitBurst=.*/LogRateLimitBurst=100/ "${file}"
       ExitCodeCheck $?
+      #echo sudo -u "${RTKBASE_USER}" sed -i s/^Type=simple.*/Type=forking/ "${file}"
+      sudo -u "${RTKBASE_USER}" sed -i s/^Type=simple.*/Type=forking/ "${file}"
+      ExitCodeCheck $?
    done
 
    patch_one ${RTKBASE_UNIT}/str2str_tcp.service      ${STR2STR_TCP_PATCH}
