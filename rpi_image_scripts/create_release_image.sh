@@ -54,7 +54,7 @@ unshare -m -i ./mount_and_run_scripts.sh \
    COPY WinRtkBaseConfigure.exe \
    COPY WinRtkBaseUtils.exe \
    COPY find_rtkbase.exe \
-   COPY ELT_RTKBase_v1.9.6_EN.pdf \
+   COPY ELT_RTKBase_v1.9.8_EN.pdf \
    RUN \
       target_scripts/set_hostname.sh \
       target_scripts/update_upgrade.sh \
