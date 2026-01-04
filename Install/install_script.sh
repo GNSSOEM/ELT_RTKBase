@@ -1063,11 +1063,11 @@ rtkbase_install(){
    patch_rtkbase
 
    #echo ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g
-   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g 2>&1
+   ${RTKBASE_PATH}/${RTKBASE_INSTALL} -u ${RTKBASE_USER} -t -g -z 2>&1
    ExitCodeCheck $?
    if [ $lastcode != 0 ]
    then
-      echo BUG: ${RTKBASE_INSTALL} -t -g finished with exitcode = $lastcode
+      echo BUG: ${RTKBASE_INSTALL} -t -g -z finished with exitcode = $lastcode
       #ls -la ${RTKBASE_PATH}/${RTKBASE_INSTALL}
    fi
 
