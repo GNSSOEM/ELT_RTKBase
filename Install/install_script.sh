@@ -141,7 +141,7 @@ configure_cmdline(){
            ExitCodeCheck $?
            #cat ${CMDLINE}
            #echo
-           echo Cnahged ${CMDLINE}
+           echo Changed ${CMDLINE}
            NEEDREBOOT=Y
         fi
      fi
