@@ -1,5 +1,5 @@
 diff --git a/web_app/server.py b/web_app/server.py
-index e36bbc4..48722a4
+index e36bbc4..e013430
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -99,9 +99,12 @@ rtk = RTKLIB(socketio,
@@ -82,7 +82,7 @@ index e36bbc4..48722a4
  
      return services_list
  
-@@ -407,6 +427,96 @@ def download_update(update_path):
+@@ -407,13 +427,104 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -179,10 +179,11 @@ index e36bbc4..48722a4
  @app.before_request
  def inject_global_infos():
      """
-@@ -414,6 +524,7 @@ def inject_global_infos():
+         Insert various informations as global variables for Flask/Jinja
      """
      g.version = rtkbaseconfig.get("general", "version")
-     g.station_name = rtkbaseconfig.get_ntrip_A_settings()[4]['mnt_name_A']
+-    g.station_name = rtkbaseconfig.get_ntrip_A_settings()[4]['mnt_name_A']
++    g.station_name = rtkbaseconfig.get_ntrip_A_settings()[6]['mnt_name_A']
 +    g.elt_version = rtkbaseconfig.get("general", "elt_version")
      g.sbc_model = get_sbc_model()
  
