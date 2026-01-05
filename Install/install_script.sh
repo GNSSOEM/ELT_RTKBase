@@ -1080,9 +1080,15 @@ rtkbase_install(){
 
 restart_rtkbase_if_started(){
    if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
-      if ! ischroot
-      then
-         systemctl is-active --quiet rtkbase_web.service && sudo systemctl restart rtkbase_web.service
+      if ! ischroot; then
+         if systemctl is-active --quiet rtkbase_web.service; then
+            #echo systemctl daemon-reload
+            systemctl daemon-reload
+            ExitCodeCheck $?
+            #echo sudo systemctl restart rtkbase_web.service
+            sudo systemctl restart rtkbase_web.service
+            ExitCodeCheck $?
+         fi
       fi
    fi
 }
@@ -1459,9 +1465,13 @@ start_rtkbase_services(){
   echo 'STARTING SERVICES'
   echo '################################'
 
+  #echo sync
+  sync
+  ExitCodeCheck $?
   #echo systemctl daemon-reload
   systemctl daemon-reload
   ExitCodeCheck $?
+
   #echo systemctl enable --now rtkbase_web.service
   systemctl enable --now rtkbase_web.service
   ExitCodeCheck $?
