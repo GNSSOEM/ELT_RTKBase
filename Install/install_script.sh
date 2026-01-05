@@ -478,7 +478,6 @@ install_additional_utilies(){
    install_packet_if_not_installed uhubctl
    install_packet_if_not_installed ntpdate
    install_packet_if_not_installed gpiod
-   install_packet_if_not_installed raspi-utils-core
    install_packet_if_not_installed chrony
    install_packet_if_not_installed gpsd
    install_packet_if_not_installed git
@@ -510,19 +509,28 @@ install_additional_utilies(){
    install_packet_if_not_installed libjs-sphinxdoc
    install_packet_if_not_installed libjs-underscore
    install_packet_if_not_installed libpython3-dev
-   install_packet_if_not_installed libpython3.11-dev
-   install_packet_if_not_installed python3.11-dev
    install_packet_if_not_installed zlib1g-dev
    install_packet_if_not_installed libssl-dev
-   install_packet_if_not_installed libssl3
    install_packet_if_not_installed openssl
+   if lsb_release -c | grep -q 'bullseye'; then
+      install_packet_if_not_installed raspi-utils
+      install_packet_if_not_installed libpython3.8-dev
+      install_packet_if_not_installed python3.8-dev
+   else
+      install_packet_if_not_installed raspi-utils-core
+      install_packet_if_not_installed libpython3.11-dev
+      install_packet_if_not_installed python3.11-dev
+      install_packet_if_not_installed libssl3
+   fi
+
    if [[ $platform =~ 'aarch64' ]] || [[ $platform =~ 'x86_64' ]]; then
-       # More dependencies needed for aarch64 as there is no prebuilt wheel on piwheels.org
+      # More dependencies needed for aarch64 as there is no prebuilt wheel on piwheels.org
       install_packet_if_not_installed libssl-dev
       install_packet_if_not_installed libffi-dev
    fi
    #echo NEED_INSTALL=${NEED_INSTALL}
    if [[ "${NEED_INSTALL}" != "" ]]; then
+      #echo apt-get install -q -y ${NEED_INSTALL}
       apt-get install -q -y ${NEED_INSTALL}
       ExitCodeCheck $?
       NEED_INSTALL=
