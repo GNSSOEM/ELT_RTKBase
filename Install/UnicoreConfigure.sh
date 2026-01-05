@@ -39,10 +39,11 @@ detect_Unicore() {
           #echo FIRMWARE=${FIRMWARE}
           #echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${1} ${2}
           detected_gnss[0]=${1}
-          detected_gnss[1]=Unicore_${RECVNAME}
+          detected_gnss[1]=Unicore
           detected_gnss[2]=${port_speed}
           detected_gnss[3]=rtcm3
           detected_gnss[4]=${FIRMWARE}
+          detected_gnss[5]=${RECVNAME}
        fi
     fi
 }
@@ -77,10 +78,11 @@ detect_Bynav() {
           #echo FIRMWARE=${FIRMWARE}
           #echo Receiver ${RECVNAME}(${FIRMWARE}) found on ${1} ${2}
           detected_gnss[0]=${1}
-          detected_gnss[1]=Bynav_${RECVNAME}
+          detected_gnss[1]=Bynav
           detected_gnss[2]=${2}
           detected_gnss[3]=rtcm3
           detected_gnss[4]=${FIRMWARE}
+          detected_gnss[5]=${RECVNAME}
        fi
     fi
 }
@@ -103,10 +105,11 @@ detect_Ublox() {
        RECVNAME=$(echo ${RECVINFO} | awk -F ',' '{print $1}')
        #echo Receiver ${ubxName} found on ${1} ${port_speed}
        detected_gnss[0]=${1}
-       detected_gnss[1]=u-blox_${RECVNAME}
+       detected_gnss[1]=u-blox
        detected_gnss[2]=${2}
        detected_gnss[3]=rtcm3
        detected_gnss[4]=${FIRMWARE}
+       detected_gnss[5]=${RECVNAME}
     fi
 }
 
@@ -163,9 +166,10 @@ detect_Septentrio() {
     if [[ ${RECVNAME} != "" ]]; then
        #echo Receiver ${RECVNAME}(${FIRMWARE}) found on ${1} ${2}
        detected_gnss[0]=${1}
-       detected_gnss[1]=Septentrio_${RECVNAME}
+       detected_gnss[1]=Septentrio
        detected_gnss[2]=${2}
        detected_gnss[4]=${FIRMWARE}
+       detected_gnss[5]=${RECVNAME}
        set_septetrio_format
     fi
 }
@@ -247,9 +251,10 @@ detect_usb() {
                    detect_Septentrio ttyGNSS_CTRL 115200
                    detected_gnss[0]=ttyGNSS
                    [[ ${#detected_gnss[*]} -ge 5 ]] && break
-                   detected_gnss[1]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_/Septentrio_/`
+                   detected_gnss[1]=Septentrio
                    detected_gnss[2]=115200
                    detected_gnss[4]=unknown
+                   detected_gnss[5]=`echo  $ID_SERIAL | sed s/^Septentrio_Septentrio_//`
                    set_septetrio_format
                    break
                 fi
@@ -328,26 +333,27 @@ SetConf() {
 }
 
 detect_configure() {
-      # Test if speed is in detected_gnss array. If not, add the default value.
-      [[ ${#detected_gnss[*]} -eq 2 ]] && detected_gnss[2]='115200'
       # If /dev/ttyGNSS is a symlink of the detected serial port, switch to ttyGNSS
       [[ '/dev/ttyGNSS' -ef '/dev/'"${detected_gnss[0]}" ]] && detected_gnss[0]='ttyGNSS'
-      [[ ${#detected_gnss[*]} -eq 3 ]] && detected_gnss[3]='rtcm3'
-      [[ ${#detected_gnss[*]} -eq 4 ]] && detected_gnss[4]='unknown'
+      # Test if speed is in detected_gnss array. If not, add the default value.
+      [[ ${#detected_gnss[*]} -le 2 ]] && detected_gnss[2]='115200'
+      [[ ${#detected_gnss[*]} -le 3 ]] && detected_gnss[3]='rtcm3'
+      [[ ${#detected_gnss[*]} -le 4 ]] && detected_gnss[4]='unknown'
+      [[ ${#detected_gnss[*]} -le 5 ]] && detected_gnss[5]='?'
       # "send" result
-      echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}" ' - ' "${detected_gnss[4]}"
+      echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}" ' - ' "${detected_gnss[4]}" ' - ' "${detected_gnss[5]}"
 
       #Write Gnss receiver settings inside settings.conf
       #Optional argument --no-write-port (here as variable $1) will prevent settings.conf modifications. It will be just a detection without any modification. 
-      if [[ ${#detected_gnss[*]} -eq 5 ]] && [[ "${1}" -eq 0 ]]
+      if [[ ${#detected_gnss[*]} -eq 6 ]] && [[ "${1}" -eq 0 ]]
         then
-          echo 'GNSS RECEIVER DETECTED: /dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}" ' - ' "${detected_gnss[4]}"
+          echo 'GNSS RECEIVER DETECTED: /dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}" ' - ' "${detected_gnss[4]}" ' - ' "${detected_gnss[5]}"
 
           if [[ -f "${rtkbase_path}/settings.conf" ]]  && grep -qE "^com_port=.*" "${rtkbase_path}"/settings.conf #check if settings.conf exists
           then
             #change the com port value/settings inside settings.conf
             SetConf "com_port" "${detected_gnss[0]}"
-            SetConf "receiver" "${detected_gnss[1]}"
+            SetConf "receiver" "${detected_gnss[1]}_${detected_gnss[5]}"
             SetConf "com_port_settings" "${detected_gnss[2]}:8:n:1"
             SetConf "receiver_format" "${detected_gnss[3]}"
             SetConf "receiver_firmware" "${detected_gnss[4]}"
@@ -362,7 +368,7 @@ detect_configure() {
             echo 'settings.conf is missing'
             return 1
           fi
-      elif [[ ${#detected_gnss[*]} -ne 5 ]]; then
+      elif [[ ${#detected_gnss[*]} -ne 6 ]]; then
           return 1
       fi
       return 0
