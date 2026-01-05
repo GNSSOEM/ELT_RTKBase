@@ -1104,11 +1104,13 @@ restart_rtkbase_if_started(){
 rename_net_device(){
    OLD_DEVICE_ETH="${1}"
    NEW_DEVICE_ETH="${2}"
-   UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_DEVICE_ETH}" | awk -F ' ' '{print $1}'`
-   if [[ "${UUID}" != "" ]]; then
-      #echo nmcli connection delete uuid "${UUID}"
-      nmcli connection delete uuid "${UUID}"
-      ExitCodeCheck $?
+   if systemctl is-enabled NetworkManager.service; then
+      UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_DEVICE_ETH}" | awk -F ' ' '{print $1}'`
+      if [[ "${UUID}" != "" ]]; then
+         #echo nmcli connection delete uuid "${UUID}"
+         nmcli connection delete uuid "${UUID}"
+         ExitCodeCheck $?
+      fi
    fi
    #echo ip link set ${OLD_DEVICE_ETH} down
    ip link set ${OLD_DEVICE_ETH} down
@@ -1119,9 +1121,11 @@ rename_net_device(){
    #echo ip link set ${NEW_DEVICE_ETH} up
    ip link set ${NEW_DEVICE_ETH} up
    ExitCodeCheck $?
-   #echo nmcli device up ${NEW_DEVICE_ETH}
-   nmcli device up ${NEW_DEVICE_ETH}
-   ExitCodeCheck $?
+   if systemctl is-enabled NetworkManager.service; then
+      #echo nmcli device up ${NEW_DEVICE_ETH}
+      nmcli device up ${NEW_DEVICE_ETH}
+      ExitCodeCheck $?
+   fi
    #echo exitcode=$exitcode
 }
 
@@ -1154,7 +1158,7 @@ configure_for_mobile(){
              break
           fi
       done
-      echo OLD_MOBILE_ETH=${OLD_MOBILE_ETH} NEW_MOBILE_ETH=${NEW_MOBILE_ETH}
+      #echo OLD_MOBILE_ETH=${OLD_MOBILE_ETH} NEW_MOBILE_ETH=${NEW_MOBILE_ETH}
       if [[ "${OLD_MOBILE_ETH}" != "" ]] && [[ "${OLD_MOBILE_ETH}" != "${NEW_MOBILE_ETH}" ]]; then
          echo '################################'
          echo 'CONFIGURE USB-ETH FOR MOBILE'
@@ -1265,9 +1269,11 @@ configure_for_unicore(){
    ExitCodeCheck $?
    copy_root "${AUTOCONNECT_CONF}" "${NETWORK_CONF}"
    if ! ischroot; then
-      #echo nmcli general reload
-      nmcli general reload
-      ExitCodeCheck $?
+      if systemctl is-enabled NetworkManager.service; then
+         #echo nmcli general reload
+         nmcli general reload
+         ExitCodeCheck $?
+      fi
    fi
 
    restart_rtkbase_if_started
