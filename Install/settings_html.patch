@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..e918fb8 100644
+index 9690796..cd228eb 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -27,7 +27,7 @@ index 9690796..e918fb8 100644
 +
 +        <label for="receiver" class="col-sm-3 col-form-label">Receiver inactivity timeout: </label>
 +        <div class="col-sm-9">
-+            <input id="receiver_inactivity_timeout" type="text" name="receiver_inactivity_timeout" class="form-control" aria-describedby="receiver_inactivity_timeoutHelp" placeholder="Receiver inactivity timeout in secconds" value="{{ main_settings[12].receiver_inactivity_timeout }}" title="Gnss Receiver inactivity timeout" pattern="[0-9]*" required >
++            <input id="receiver_inactivity_timeout" type="text" name="receiver_inactivity_timeout" class="form-control" aria-describedby="receiver_inactivity_timeoutHelp" placeholder="Receiver inactivity timeout in secconds" value="{{ main_settings[13].receiver_inactivity_timeout }}" title="Gnss Receiver inactivity timeout" pattern="[0-9]*" required >
 +            <small class="form-text text-muted" id="receiver_inactivity_timeoutHelp">Gnss receiver inactivity timeout in seconds</small>
 +
 +        </div>
@@ -562,7 +562,7 @@ index 9690796..e918fb8 100644
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
 -         - <a href="{{ main_settings[11] }}"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
-+         - <a href="{{ main_settings[13] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
++         - <a href="{{ main_settings[14] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
          {% endif %}
        </span>
      </div>
@@ -592,7 +592,7 @@ index 9690796..e918fb8 100644
 +        <span class="col-sm-3">Mobile modem:</span>
 +      </div>
 +      <div class="col-sm-8">
-+          <a href="{{ main_settings[14] }}" target="_blank"><button id="modem_web_site" class="btn btn-secondary" type="button">Modem Web server</button></a>
++          <a href="{{ main_settings[15] }}" target="_blank"><button id="modem_web_site" class="btn btn-secondary" type="button">Modem Web server</button></a>
 +      </div>
 +    </div>
 +  {% endif %}
