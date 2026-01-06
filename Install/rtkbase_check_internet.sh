@@ -121,6 +121,7 @@ while : ; do
    if [[ -f ${FLAG} ]]; then
       cat ${FLAG}
       rm -f ${FLAG}
+      state=
    fi
 
    if [[ -f ${RESET_INTERNET_LED_FLAG} ]]; then
@@ -139,6 +140,7 @@ while : ; do
    elif [[ "${wasWPS}" != "" ]]; then
       echo WPS finished
       wasWPS=
+      state=
    else
 
       #echo ping -4 -c 1 -W 1 -q 8.8.8.8 \>/dev/null 2\>\&1
