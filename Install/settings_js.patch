@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..15076de 100644
+index 5b64baa..661b045 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -504,7 +504,7 @@ index 5b64baa..15076de 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +904,123 @@ $(document).ready(function () {
+@@ -758,5 +904,130 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -540,6 +540,7 @@ index 5b64baa..15076de 100644
 +        svr_login = $("#svr_login_" + letter + "_group");
 +        svr_input = $("#svr_login_" + letter);
 +        svr_pwd = $("#svr_pwd_" + letter + "_group");
++        pwd_input = $("#svr_pwd_" + letter);
 +        mnt_name = $("#mnt_name_" + letter + "_group");
 +        mnt_input = $("#mnt_name_" + letter);
 +        rtcm_msg = $("#rtcm_msg_" + letter + "_group");
@@ -550,6 +551,7 @@ index 5b64baa..15076de 100644
 +           case 4: // NTRIP v2 UDP
 +                   svr_login.prop("hidden", false);
 +                   svr_pwd.prop("hidden", false);
++                   pwd_input.prop("required", true);
 +                   mnt_name.prop("hidden", false);
 +                   if ((svr_addr.value === "servers.onocoy.com") && (index === 2)) {
 +                      //console.log("Onocoy v2 mode");
@@ -563,7 +565,9 @@ index 5b64baa..15076de 100644
 +                   receiver_options.prop("hidden", true);
 +                   break;
 +           case 1: // TCP
++                   svr_input.prop("required", false);
 +                   svr_login.prop("hidden", true);
++                   pwd_input.prop("required", false);
 +                   svr_pwd.prop("hidden", true);
 +                   mnt_input.prop("required", false);
 +                   mnt_name.prop("hidden", true);
@@ -575,14 +579,17 @@ index 5b64baa..15076de 100644
 +                   if (svr_addr.value === "servers.onocoy.com") {
 +                      //console.log("Onocoy v1 mode");
 +                      svr_login.prop("hidden", false);
++                      svr_input.prop("required", true);
 +                      mnt_input.prop("required", false);
 +                      mnt_name.prop("hidden", true);
 +                   } else {
++                      svr_input.prop("required", false);
 +                      svr_login.prop("hidden", true);
 +                      mnt_name.prop("hidden", false);
 +                      mnt_input.prop("required", true);
 +                   }
 +                   svr_pwd.prop("hidden", false);
++                   pwd_input.prop("required", true);
 +                   rtcm_msg.prop("hidden", false);
 +                   receiver_options.prop("hidden", false);
 +        }
