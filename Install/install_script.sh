@@ -474,9 +474,7 @@ install_additional_utilies(){
    install_packet_if_not_installed avahi-utils
    install_packet_if_not_installed avahi-daemon
    install_packet_if_not_installed uuid
-   install_packet_if_not_installed cpufrequtils
    install_packet_if_not_installed uhubctl
-   install_packet_if_not_installed ntpdate
    install_packet_if_not_installed gpiod
    install_packet_if_not_installed chrony
    install_packet_if_not_installed gpsd
@@ -513,14 +511,25 @@ install_additional_utilies(){
    install_packet_if_not_installed libssl-dev
    install_packet_if_not_installed openssl
    if lsb_release -c | grep -q 'bullseye'; then
+      install_packet_if_not_installed cpufrequtils
       install_packet_if_not_installed raspi-utils
       install_packet_if_not_installed libpython3.8-dev
       install_packet_if_not_installed python3.8-dev
-   else
+      install_packet_if_not_installed ntpdate
+   elif lsb_release -c | grep -q 'bookworm'; then
+      install_packet_if_not_installed cpufrequtils
       install_packet_if_not_installed raspi-utils-core
       install_packet_if_not_installed libpython3.11-dev
       install_packet_if_not_installed python3.11-dev
       install_packet_if_not_installed libssl3
+      install_packet_if_not_installed ntpdate
+   elif lsb_release -c | grep -q 'trixie'; then
+      install_packet_if_not_installed linux-cpupower
+      install_packet_if_not_installed raspi-utils-core
+      install_packet_if_not_installed libpython3.13-dev
+      install_packet_if_not_installed python3.13-dev
+      install_packet_if_not_installed libssl3t64
+      install_packet_if_not_installed ntpsec-ntpdate
    fi
 
    if [[ $platform =~ 'aarch64' ]] || [[ $platform =~ 'x86_64' ]]; then
