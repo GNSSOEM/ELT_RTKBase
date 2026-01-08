@@ -30,6 +30,7 @@ WPS() {
      echo Start WPS PBC
      trap Ciao EXIT HUP INT QUIT ABRT KILL TERM
      echo Start WPS PBC >${WPS_FLAG}
+     nmcli radio wifi on
      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
      rm -f ${WPS_FLAG}
   fi
@@ -94,6 +95,7 @@ then
    fi
    #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
    nm-online -s >/dev/null
+   nmcli radio wifi on
 
    if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
       if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
@@ -329,6 +331,7 @@ if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
    ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}" "Wired connection 1"
 fi
 if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
+   nmcli radio wifi on
    ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
 fi
 
