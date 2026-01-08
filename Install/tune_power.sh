@@ -1,6 +1,10 @@
 #!/bin/bash
 
-sudo cpufreq-set -g powersave
+if lsb_release -c | grep -q 'trixie'; then
+   sudo cpupower frequency-set -g powersave
+else
+   sudo cpufreq-set -g powersave
+fi
 #MODEL=`cat /proc/cpuinfo | grep Model`
 #echo MODEL=${MODEL}
 #PI4=`echo ${MODEL} | grep "Pi 4"`
