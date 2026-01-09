@@ -352,9 +352,9 @@ add_pps_module(){
 set_permanenet_journals(){
   JOURLAND_CONF=/etc/systemd/journald.conf
   if [[ -f ${JOURLAND_CONF} ]]; then
-     if grep -q "^Storage=volatile" ${JOURLAND_CONF}; then
+     if ! grep -q "^Storage=persistent" ${JOURLAND_CONF}; then
         #echo sed -i "s/^Storage=volatile/\#Storage=volatile/" ${JOURLAND_CONF}
-        sed -i "s/^Storage=volatile/\#Storage=volatile/" ${JOURLAND_CONF}
+        sed -i "s/^\#*Storage=.*/Storage=persistent/" ${JOURLAND_CONF}
         echo Set permanent journals to ${JOURLAND_CONF}
         NEEDREBOOT=Y
      fi
