@@ -173,10 +173,10 @@ configure_config(){
         START_LINE=0
         while : ; do
            PI4_SECTION=`tail -n+${START_LINE} ${BOOTCONFIG} | awk '/^\[pi4\]/ {print NR+1; exit 0; }'`
-           #echo before PI4_SECTION=${PI4_SECTION}
+           #echo before START_LINE=${START_LINE} PI4_SECTION=${PI4_SECTION}
            if [[ ${PI4_SECTION} != "" ]]; then
               if [[ ${START_LINE} != 0 ]]; then
-                 let "PI4_SECTION=${PI4_SECTION}+${START_LINE}+1"
+                 let "PI4_SECTION=${PI4_SECTION}+${START_LINE}-1"
                  #echo after PI4_SECTION=${PI4_SECTION} START_LINE=${START_LINE}
               fi
               NEXT_SECTION=`tail -n+${PI4_SECTION} ${BOOTCONFIG} | awk '/^\[/ {print NR; exit 0; }'`
@@ -195,7 +195,7 @@ configure_config(){
               if [[ ${HAVE_OTG} != "" ]]; then
                  break
               fi
-              let "START_LINE=${PI4_SECTION}-1"
+              let "START_LINE=${PI4_SECTION}+${NEXT_SECTION}"
            else
               break
            fi
