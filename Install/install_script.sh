@@ -1141,7 +1141,7 @@ restart_rtkbase_if_started(){
 rename_net_device(){
    OLD_DEVICE_ETH="${1}"
    NEW_DEVICE_ETH="${2}"
-   if systemctl is-enabled --quiet NetworkManager.service; then
+   if systemctl is-enabled --quiet NetworkManager.service 2>/dev/null; then
       UUID=`nmcli --fields UUID,DEVICE con show | grep "${OLD_DEVICE_ETH}" | awk -F ' ' '{print $1}'`
       if [[ "${UUID}" != "" ]]; then
          #echo nmcli connection delete uuid "${UUID}"
@@ -1158,7 +1158,7 @@ rename_net_device(){
    #echo ip link set ${NEW_DEVICE_ETH} up
    ip link set ${NEW_DEVICE_ETH} up
    ExitCodeCheck $?
-   if systemctl is-enabled --quiet NetworkManager.service; then
+   if systemctl is-enabled --quiet NetworkManager.service 2>/dev/null; then
       #echo nmcli device up ${NEW_DEVICE_ETH}
       nmcli device up ${NEW_DEVICE_ETH}
       ExitCodeCheck $?
@@ -1306,7 +1306,7 @@ configure_for_unicore(){
    ExitCodeCheck $?
    copy_root "${AUTOCONNECT_CONF}" "${NETWORK_CONF}"
    if ! ischroot; then
-      if systemctl is-enabled --quiet NetworkManager.service; then
+      if systemctl is-enabled --quiet NetworkManager.service 2>/dev/null; then
          #echo nmcli general reload
          nmcli general reload
          ExitCodeCheck $?
