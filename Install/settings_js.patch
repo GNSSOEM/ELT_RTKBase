@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..661b045 100644
+index 5b64baa..e94c81a 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -318,14 +318,16 @@ index 5b64baa..661b045 100644
          } else {
              detectBodyElt.innerHTML = "GNSS receiver configuration failed"
          }
-@@ -412,20 +531,24 @@ $(document).ready(function () {
+@@ -412,20 +531,26 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
 -        socket.emit("check update");
 +        $("#start-update-button").html('Update');
 +        $("#start-update-button").prop("disabled", true);
-+        $("#cancel-button").prop("disabled", false);
++        $("#update-cancel-button").html('Cancel');
++        $("#update-cancel-button").on("click", null);
++        $("#update-cancel-button").prop("disabled", false);
 +        $("#updateModal .modal-body").text('');
 +        socket.emit("check update ELT");
      });
@@ -347,7 +349,7 @@ index 5b64baa..661b045 100644
              $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
              var markdwnHtml = snarkdown(response['comment']);
              //lower <Hx> title tags values
-@@ -433,6 +556,9 @@ $(document).ready(function () {
+@@ -433,6 +558,9 @@ $(document).ready(function () {
                      const newHtag = Math.min(parseInt(p1) + 3, 6);
                      return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
                  });
@@ -357,7 +359,7 @@ index 5b64baa..661b045 100644
              $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
              $("#start-update-button").removeAttr("disabled");
              $("#updateModal").modal();
-@@ -456,14 +582,18 @@ $(document).ready(function () {
+@@ -456,44 +584,48 @@ $(document).ready(function () {
                      // body: new URLSearchParams(new FormData(form)) // for application/x-www-form-urlencoded
                      body: new FormData(upd_formElt) // for multipart/form-data
                  });
@@ -366,7 +368,7 @@ index 5b64baa..661b045 100644
 +                $("#updateModal .modal-body").text("Please wait...Downloading update from file...");
 +                $("#start-update-button").prop("disabled", true);
 +                $("#start-update-button").html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-+                $("#cancel-button").prop("disabled", true);
++                $("#update-cancel-button").prop("disabled", true);
              };
          }
      });
@@ -378,7 +380,10 @@ index 5b64baa..661b045 100644
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-@@ -473,11 +603,11 @@ $(document).ready(function () {
+-        $("#cancel-button").prop("disabled", true);
++        $("#update-cancel-button").prop("disabled", true);
+         //now, we waiting for a download result message from the server
+     })
  
      socket.on("downloading_update", function(msg) {
          response = JSON.parse(msg);
@@ -390,9 +395,10 @@ index 5b64baa..661b045 100644
 -            $("#updateModal .modal-body").text("Download failure");
 +            $("#updateModal .modal-body").text(response['error']);
              $("#start-update-button").html('Update...');
-             $("#cancel-button").prop("disabled", false);
+-            $("#cancel-button").prop("disabled", false);
++            $("#update-cancel-button").prop("disabled", false);
          }
-@@ -485,13 +615,13 @@ $(document).ready(function () {
+     })
  
      socket.on("updating_rtkbase_stopped", function(msg) {
          response = JSON.parse(msg);
@@ -408,9 +414,12 @@ index 5b64baa..661b045 100644
 -        $("#start-update-button").html('Update');
 +        $("#start-update-button").html('Update...');
          $("#start-update-button").prop("disabled", true);
-         $("#cancel-button").prop("disabled", false);
+-        $("#cancel-button").prop("disabled", false);
++        $("#update-cancel-button").prop("disabled", false);
      })
-@@ -501,16 +631,21 @@ $(document).ready(function () {
+ 
+     socket.on("updating_rtkbase", function() {
+@@ -501,16 +633,40 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -419,29 +428,44 @@ index 5b64baa..661b045 100644
 +    socket.on("update_successful", function(msg) {
 +        response = JSON.parse(msg);
 +        console.log("update finished: " + JSON.stringify(response));
-+        if (response['result'] === 'true') {
-             $("#updateModal .modal-body").text("Update Successful!");
--            $("#start-update-button").html('Refresh');
--            $("#start-update-button").prop("disabled", false);
--            $("#start-update-button").off("click");
--            $("#start-update-button").on("click", function() {
--                location.reload();
--            });
--            $("#updateModal").modal();
-+        } else {
-+            $("#updateModal .modal-body").text("Update Error! See update.log in Logs page");
-+        }
++        console.log("result=" + response['result']);
 +        $("#start-update-button").html('Refresh');
-+        $("#start-update-button").prop("disabled", false);
 +        $("#start-update-button").off("click");
 +        $("#start-update-button").on("click", function() {
 +            location.reload();
 +        });
++        if (response['result'] === 'true')
+             $("#updateModal .modal-body").text("Update Successful!");
+-            $("#start-update-button").html('Refresh');
+-            $("#start-update-button").prop("disabled", false);
++        else if (response['result'] === 'false')
++            $("#updateModal .modal-body").text("Update Error! See update.log in Logs page");
++        else if (response['result'] === 'reboot') {
++            $("#updateModal .modal-body").text("Update Successful, please REBOOT!");
+             $("#start-update-button").off("click");
+             $("#start-update-button").on("click", function() {
++               $('#updateModal').modal("hide");
++               $("#rebootModal").modal();
++               $("#confirm-reboot-button").click();
++            });
++            $("#start-update-button").html('Reboot');
++            $("#update-cancel-button").html('Refresh');
++            $("#update-cancel-button").on("click", function() {
+                 location.reload();
+             });
+-            $("#updateModal").modal();
++        } else {
++            $("#updateModal .modal-body").html('Update Error! See ' + 
++                                              '<a href="/logs/download/' + response['result'] + '" target="_blank">' +
++                                               response['result'] + '</a> in Logs page');
++        }
++        $("#start-update-button").prop("disabled", false);
++        $("#update-cancel-button").prop("disabled", false);
 +        $("#updateModal").modal();
      });
  
      function update_countdown(remaining, count) {
-@@ -527,14 +662,6 @@ $(document).ready(function () {
+@@ -527,14 +683,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -456,7 +480,7 @@ index 5b64baa..661b045 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -726,6 +853,22 @@ $(document).ready(function () {
+@@ -726,6 +877,22 @@ $(document).ready(function () {
            };
        };
  
@@ -479,7 +503,7 @@ index 5b64baa..661b045 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +880,19 @@ $(document).ready(function () {
+@@ -737,16 +904,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -504,7 +528,7 @@ index 5b64baa..661b045 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +904,130 @@ $(document).ready(function () {
+@@ -758,5 +928,130 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

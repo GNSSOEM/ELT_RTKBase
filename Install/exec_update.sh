@@ -19,7 +19,8 @@ fi
 
 cd ${update_path}
 date=`date +%Y-%m-%d_%H-%M-%S`
-update_log="${data_path}/${date}_UPDATE.log"
+update_log_name="${date}_update.log"
+update_log="${data_path}/${update_log_name}"
 
 #WHOAMI=`whoami`
 #echo ${WHOAMI} >${update_log}
@@ -29,9 +30,13 @@ lastcode=$?
 #lastcode=0
 
 if [[ ${lastcode} == 0 ]]; then
-   result=true
+   if grep -q "Please REBOOT" ${update_log}; then
+      result=reboot
+   else
+      result=true
+   fi
 else
-   result=false
+   result="${update_log_name}"
 fi
 
 SETTINGS=${rtkbase_path}/settings.conf

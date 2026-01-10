@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..cd228eb 100644
+index 9690796..d9e4fad 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -608,6 +608,15 @@ index 9690796..cd228eb 100644
        </div>
    </div>
      
+@@ -675,7 +1046,7 @@
+         <!-- Modal footer -->
+         <div class="modal-footer mx-auto">
+           <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
+-          <button id="cancel-button" type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>         
++          <button id="update-cancel-button" type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>         
+         </div>      
+       </div>
+     </div>
 @@ -794,6 +1165,27 @@
    </div>
  </div>
