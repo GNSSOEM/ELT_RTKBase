@@ -1800,10 +1800,9 @@ have_receiver && start_rtkbase_services
 cd ${BASEDIR}
 delete_garbage
 cd ${ORIGDIR}
-have_full || info_reboot
+info_reboot
 have_receiver && info_open
 have_receiver || info_bug
-can_reboot || do_reboot END
 sync
 ExitCodeCheck $?
 #echo exit $exitcode
