@@ -1,8 +1,16 @@
 diff --git a/web_app/RTKBaseConfigManager.py b/web_app/RTKBaseConfigManager.py
-index cf1c729..e7e0e7a 100644
+index cf1c729..c8ddec0 100644
 --- a/web_app/RTKBaseConfigManager.py
 +++ b/web_app/RTKBaseConfigManager.py
-@@ -110,7 +110,7 @@ class RTKBaseConfigManager:
+@@ -48,6 +48,7 @@ class RTKBaseConfigManager:
+         restore_config = ConfigParser(interpolation=None)
+         restore_config.read(to_restore)
+         restore_config.remove_option("general", "version")
++        restore_config.remove_option("general", "elt_version")
+         restore_config.remove_option("general", "checkpoint_version")
+         #we don't know if the actual user is the same as the one in the config file
+         restore_config.remove_option("general", "user")
+@@ -110,7 +111,7 @@ class RTKBaseConfigManager:
              and remove the single quotes.      
          """
          ordered_main = [{"source_section" : "main"}]
@@ -11,7 +19,7 @@ index cf1c729..e7e0e7a 100644
              ordered_main.append({key : self.config.get('main', key).strip("'")})
          return ordered_main
  
-@@ -120,7 +120,7 @@ class RTKBaseConfigManager:
+@@ -120,7 +121,7 @@ class RTKBaseConfigManager:
              and remove the single quotes.    
          """
          ordered_ntrip = [{"source_section" : "ntrip_A"}]
@@ -20,7 +28,7 @@ index cf1c729..e7e0e7a 100644
              ordered_ntrip.append({key : self.config.get('ntrip_A', key).strip("'")})
          return ordered_ntrip
      
-@@ -131,10 +131,43 @@ class RTKBaseConfigManager:
+@@ -131,10 +132,43 @@ class RTKBaseConfigManager:
          """
          #TODO need refactoring with get_ntrip_A_settings
          ordered_ntrip = [{"source_section" : "ntrip_B"}]
@@ -65,7 +73,7 @@ index cf1c729..e7e0e7a 100644
      def get_local_ntripc_settings(self):
          """
              Get a subset of the settings from the local ntrip section in an ordered object
-@@ -214,6 +247,9 @@ class RTKBaseConfigManager:
+@@ -214,6 +248,9 @@ class RTKBaseConfigManager:
          ordered_settings['main'] = self.get_main_settings()
          ordered_settings['ntrip_A'] = self.get_ntrip_A_settings()
          ordered_settings['ntrip_B'] = self.get_ntrip_B_settings()
