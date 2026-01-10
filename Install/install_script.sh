@@ -1472,8 +1472,8 @@ configure_gnss(){
    else
       if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
          for i in `seq 1 3`; do
-            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e
-            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e 2>&1
+            #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e -s
+            ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e -s 2>&1
             ExitCodeCheck $?
             if [[ $lastcode == 0 ]]; then
                break;
@@ -1490,8 +1490,8 @@ configure_gnss(){
             fi
          else
             for i in `seq 1 3`; do
-               #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
+               #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c -s
+               ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c -s 2>&1
                ExitCodeCheck $?
                if [[ $lastcode == 0 ]]; then
                   GNSS_CONFIGURED=YES
@@ -1594,8 +1594,8 @@ start_rtkbase_services(){
   delete_from_service_list str2str_tcp.service
   if [[ "${lastcode}" != "0" ]] ; then
      if [[ "${GNSS_CONFIGURED}" != "YES" ]] ; then
-        #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c
-        ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c 2>&1
+        #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c -s
+        ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -c -s 2>&1
         ExitCodeCheck $?
         #echo lastcode=$lastcode
      fi

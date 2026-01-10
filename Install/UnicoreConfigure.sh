@@ -375,6 +375,7 @@ detect_configure() {
 }
 
 stoping_services() {
+     [[ -n "${ARG_NO_START_SERVICES}" ]] && return
      serviceList="str2str_ntrip_A.service \
                   str2str_ntrip_B.service \
                   str2str_ntrip_C.service \
@@ -419,6 +420,7 @@ stoping_services() {
 }
 
 restart_services() {
+  [[ -n "${ARG_NO_START_SERVICES}" ]] && return
   #echo serviceStartList=${serviceStartList}
   for service_name in ${serviceStartList}; do
       service_active=$(systemctl is-active "${service_name}")
@@ -904,11 +906,11 @@ main() {
   ARG_NO_WRITE_PORT=0
   ARG_CONFIGURE_GNSS=0
 
-  PARSED_ARGUMENTS=$(getopt --name install --options u:enc --longoptions user:,detect-gnss,no-write-port,configure-gnss -- "$@")
+  PARSED_ARGUMENTS=$(getopt --name UnicoreConfigure --options u:encs --longoptions user:,detect-gnss,no-write-port,configure-gnss,--no-start-services -- "$@")
   VALID_ARGUMENTS=$?
   if [ "$VALID_ARGUMENTS" != "0" ]; then
     #man_help
-    echo 'Try '\''install.sh --help'\'' for more information'
+    #echo 'Try '\''install.sh --help'\'' for more information'
     exit 1
   fi
 
@@ -921,6 +923,7 @@ main() {
         -e | --detect-gnss) ARG_DETECT_GNSS=1  ; shift   ;;
         -n | --no-write-port) ARG_NO_WRITE_PORT=1      ; shift   ;;
         -c | --configure-gnss) ARG_CONFIGURE_GNSS=1    ; shift   ;;
+        -s | --no-start-services) ARG_NO_START_SERVICES=1 ; shift   ;;
         # -- means the end of the arguments; drop this, and break out of the while loop
         --) shift; break ;;
         # If invalid options were passed, then getopt should have reported an error,
