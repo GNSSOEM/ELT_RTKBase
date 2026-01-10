@@ -480,6 +480,18 @@ index 5b64baa..e94c81a 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
+@@ -598,7 +746,10 @@ $(document).ready(function () {
+         }
+ 
+         var networkElt = document.getElementById("network_infos");
+-        networkElt.innerHTML = createNetworkInterfacesList(sysInfos["network_infos"]);
++        if (sysInfos["network_infos"] != null)
++           networkElt.innerHTML = createNetworkInterfacesList(sysInfos["network_infos"]);
++        else
++           networkElt.innerHTML = '';
+     })
+ 
+     function createNetworkInterfacesList(interfaces) {
 @@ -726,6 +877,22 @@ $(document).ready(function () {
            };
        };
