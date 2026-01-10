@@ -325,8 +325,8 @@ detect_uart() {
 }
 
 SetConf() {
-  #echo grep -q "^${1}=\'$2\'" "${rtkbase_path}"/settings.conf
-  if ! grep -q ^${1}=\'${2}\' "${rtkbase_path}"/settings.conf; then
+  #echo grep -q \"^${1}=\'$2\'\" "${rtkbase_path}"/settings.conf
+  if ! grep -q "^${1}='${2}'" "${rtkbase_path}"/settings.conf; then
      #echo sudo -u "${RTKBASE_USER}" sed -i \"s/^${1}=.*/${1}=\'$2\'/\" "${rtkbase_path}"/settings.conf
      sudo -u "${RTKBASE_USER}" sed -i "s/^${1}=.*/${1}=\'$2\'/" "${rtkbase_path}"/settings.conf
   fi
