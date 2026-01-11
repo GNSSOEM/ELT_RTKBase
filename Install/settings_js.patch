@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..76c23bb 100644
+index 5b64baa..4627b75 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -318,7 +318,7 @@ index 5b64baa..76c23bb 100644
          } else {
              detectBodyElt.innerHTML = "GNSS receiver configuration failed"
          }
-@@ -412,20 +531,26 @@ $(document).ready(function () {
+@@ -412,20 +531,30 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -329,7 +329,11 @@ index 5b64baa..76c23bb 100644
 +        $("#update-cancel-button").on("click", null);
 +        $("#update-cancel-button").prop("disabled", false);
 +        $("#updateModal .modal-body").text('');
-+        socket.emit("check update ELT");
++        const urlParams = new URLSearchParams(window.location.search);
++        update = urlParams.get('update');
++        if (update === 'manual') update = null;
++        console.log("check update ELT. branch=" + update);
++        socket.emit("check update ELT", {"branch" : update});
      });
  
      socket.on("new release", function(msg) {
@@ -349,7 +353,7 @@ index 5b64baa..76c23bb 100644
              $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
              var markdwnHtml = snarkdown(response['comment']);
              //lower <Hx> title tags values
-@@ -433,6 +558,9 @@ $(document).ready(function () {
+@@ -433,6 +562,9 @@ $(document).ready(function () {
                      const newHtag = Math.min(parseInt(p1) + 3, 6);
                      return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
                  });
@@ -359,7 +363,7 @@ index 5b64baa..76c23bb 100644
              $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
              $("#start-update-button").removeAttr("disabled");
              $("#updateModal").modal();
-@@ -445,55 +573,62 @@ $(document).ready(function () {
+@@ -445,55 +577,66 @@ $(document).ready(function () {
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
          if (urlParams.get('update') === 'manual' ) {
@@ -392,7 +396,11 @@ index 5b64baa..76c23bb 100644
      $("#start-update-button").on("click", function () {
          //$("#updateModal .modal-title").text(("Installing update"));
 -        socket.emit("update rtkbase");
-+        socket.emit("update rtkbase ELT");
++        const urlParams = new URLSearchParams(window.location.search);
++        update = urlParams.get('update');
++        if (update === 'manual') update = null;
++        console.log("update rtkbase ELT. branch=" + update);
++        socket.emit("update rtkbase ELT", {"branch" : "main"});
          $("#updateModal .modal-body").text("Please wait...Downloading update...");
          $(this).prop("disabled", true);
          $(this).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
@@ -435,7 +443,7 @@ index 5b64baa..76c23bb 100644
      })
  
      socket.on("updating_rtkbase", function() {
-@@ -501,16 +636,40 @@ $(document).ready(function () {
+@@ -501,16 +644,40 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -481,7 +489,7 @@ index 5b64baa..76c23bb 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -527,14 +686,6 @@ $(document).ready(function () {
+@@ -527,14 +694,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -496,7 +504,7 @@ index 5b64baa..76c23bb 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -598,7 +749,10 @@ $(document).ready(function () {
+@@ -598,7 +757,10 @@ $(document).ready(function () {
          }
  
          var networkElt = document.getElementById("network_infos");
@@ -508,7 +516,7 @@ index 5b64baa..76c23bb 100644
      })
  
      function createNetworkInterfacesList(interfaces) {
-@@ -726,6 +880,22 @@ $(document).ready(function () {
+@@ -726,6 +888,22 @@ $(document).ready(function () {
            };
        };
  
@@ -531,7 +539,7 @@ index 5b64baa..76c23bb 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +907,19 @@ $(document).ready(function () {
+@@ -737,16 +915,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -556,7 +564,7 @@ index 5b64baa..76c23bb 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +931,130 @@ $(document).ready(function () {
+@@ -758,5 +939,130 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
