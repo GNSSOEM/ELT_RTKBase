@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..4627b75 100644
+index 5b64baa..f86c6ca 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -318,7 +318,7 @@ index 5b64baa..4627b75 100644
          } else {
              detectBodyElt.innerHTML = "GNSS receiver configuration failed"
          }
-@@ -412,20 +531,30 @@ $(document).ready(function () {
+@@ -412,28 +531,47 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -349,21 +349,35 @@ index 5b64baa..4627b75 100644
          }else if (response.new_release) {
              $("#updateModal .modal-title").text("Update available!");
 -            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
+-            $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
 +            $("#updateModal .modal-body").append('<p class="text-center">Do you want to install ELT RTKBase <b>' + response['new_release'] +'</b>? <br>It will take a few minutes.</p>');                    
-             $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
              var markdwnHtml = snarkdown(response['comment']);
-             //lower <Hx> title tags values
-@@ -433,6 +562,9 @@ $(document).ready(function () {
-                     const newHtag = Math.min(parseInt(p1) + 3, 6);
-                     return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
-                 });
-+                if (!markdwnHtml.includes("</")) {
-+                   markdwnHtml = markdwnHtml.replace(/\r\n/g, '<br>');
-+                }
-             $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
+-            //lower <Hx> title tags values
+-                markdwnHtml= markdwnHtml.replace(/<h([1-4])(.*?)>(.*?)<\/h\1>/gi, (match, p1, p2, p3) => {
+-                    const newHtag = Math.min(parseInt(p1) + 3, 6);
+-                    return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
+-                });
+-            $("#newFeatures").append('<p>' + markdwnHtml + '</p>');     
++            if (!markdwnHtml.includes("<li>")) {
++               markdwnHtml = markdwnHtml.replace(/\r\n/g, '<br>');
++               var newFeaturesArray = response['comment'].split('\r\n');
++               $("#updateModal .modal-body").append('<p><ul id="newFeatures"><strong>New features</strong>:</ul></p><br>');
++               $.each( newFeaturesArray, function( index, value ){
++                   $("#newFeatures").append("<li>" + value.replace(/^\+ /g, "") + "</li>");
++               });
++            } else {
++               //lower <Hx> title tags values
++               markdwnHtml= markdwnHtml.replace(/<h([1-4])(.*?)>(.*?)<\/h\1>/gi, (match, p1, p2, p3) => {
++                   const newHtag = Math.min(parseInt(p1) + 3, 6);
++                   return `<h${newHtag}${p2}>${p3}</h${newHtag}>`;
++               });
++               $("#updateModal .modal-body").append('<p id="newFeatures"></p>');
++               $("#newFeatures").append('<p>' + markdwnHtml + '</p>');
++            }
              $("#start-update-button").removeAttr("disabled");
              $("#updateModal").modal();
-@@ -445,55 +577,66 @@ $(document).ready(function () {
+         } else {
+@@ -445,55 +583,66 @@ $(document).ready(function () {
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
          if (urlParams.get('update') === 'manual' ) {
@@ -443,7 +457,7 @@ index 5b64baa..4627b75 100644
      })
  
      socket.on("updating_rtkbase", function() {
-@@ -501,16 +644,40 @@ $(document).ready(function () {
+@@ -501,16 +650,40 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -489,7 +503,7 @@ index 5b64baa..4627b75 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -527,14 +694,6 @@ $(document).ready(function () {
+@@ -527,14 +700,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -504,7 +518,7 @@ index 5b64baa..4627b75 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -598,7 +757,10 @@ $(document).ready(function () {
+@@ -598,7 +763,10 @@ $(document).ready(function () {
          }
  
          var networkElt = document.getElementById("network_infos");
@@ -516,7 +530,7 @@ index 5b64baa..4627b75 100644
      })
  
      function createNetworkInterfacesList(interfaces) {
-@@ -726,6 +888,22 @@ $(document).ready(function () {
+@@ -726,6 +894,22 @@ $(document).ready(function () {
            };
        };
  
@@ -539,7 +553,7 @@ index 5b64baa..4627b75 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +915,19 @@ $(document).ready(function () {
+@@ -737,16 +921,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -564,7 +578,7 @@ index 5b64baa..4627b75 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +939,130 @@ $(document).ready(function () {
+@@ -758,5 +945,130 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
