@@ -6,6 +6,10 @@ state=DOWN
 FLAG_INIT=/usr/local/rtkbase/ledInited.flg
 FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
 
+if ! (gpioget -v | grep gpioget | grep -q v1); then
+   GPIOKEY="-t0 -c"
+fi
+
 #We work only on Pi4 with USB devices in Type C.
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
 HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
@@ -39,8 +43,8 @@ elif [[ "${HAVE_ELT0x33}" != "" ]] && [[ "${HAVE_MOSAIC}" == "" ]]; then
           if [[ "${gpiochip}" != "" ]]; then
              CHIP=`echo ${gpiochip} | sed s/^.*gpiochip//`
              #echo CHIP=${CHIP}
-             #echo gpioset gpiochip${CHIP} 3=0
-             gpioset gpiochip${CHIP} 3=0
+             #echo gpioset ${GPIOKEY} gpiochip${CHIP} 3=0
+             gpioset ${GPIOKEY} gpiochip${CHIP} 3=0
              USE_FTDI=Y
              GPIO=1
          fi
@@ -71,7 +75,7 @@ fi
 
 set_gpio(){
 if [[ "${USE_FTDI}" = "Y" ]]; then
-   gpioset gpiochip${CHIP} ${GPIO}=${1}
+   gpioset ${GPIOKEY} gpiochip${CHIP} ${GPIO}=${1}
 elif [[ "${USE_FTDI}" = "M" ]]; then
    if [[ "${1}" == "1" ]]; then
       value=LevelHigh
@@ -95,7 +99,7 @@ elif [[ "${USE_FTDI}" = "M" ]]; then
    done
    return ${lastcode}
 else
-   gpioset gpiochip${CHIP} ${GPIO}=${1}
+   gpioset ${GPIOKEY} gpiochip${CHIP} ${GPIO}=${1}
 fi
 }
 

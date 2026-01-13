@@ -36,8 +36,12 @@ else
 fi
 
 GPIO=8
-gpioset gpiochip${CHIP} ${GPIO}=0
-sleep 0.2
-gpioset gpiochip${CHIP} ${GPIO}=1
+if gpioget -v | grep gpioget | grep -q v1; then
+   gpioset gpiochip${CHIP} ${GPIO}=0
+   sleep 0.2
+   gpioset gpiochip${CHIP} ${GPIO}=1
+else
+   gpioset -t200ms,0 -c gpiochip${CHIP} ${GPIO}=0
+fi
 echo Receiver reboted
 exit 0

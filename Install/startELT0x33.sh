@@ -30,13 +30,16 @@ if [[ "$1" == "Septentrio04" ]]; then
    done
 elif [[ "$1" == "ELT0x33" ]] && [[ "$2" =~ "gpiochip" ]]; then
    #echo CHIP=$2 >>${LOG}
+   if ! (gpioget -v | grep gpioget | grep -q v1); then
+      GPIOKEY="-t0 -c"
+   fi
    for i in `seq 0 2`; do
-       #echo gpioset $2 $i=0 >>${LOG}
-       gpioset $2 $i=0
+       #echo gpioset ${GPIOKEY} $2 $i=0 >>${LOG}
+       gpioset ${GPIOKEY} $2 $i=0
        lastcode=$?
        if [[ "${lastcode}" != "0" ]]; then
-          #echo BUG=${lastcode} in gpioset $2 $i=0 >>${LOG}
-          echo BUG=${lastcode} in gpioset $2 $i=0
+          #echo BUG=${lastcode} in gpioset ${GPIOKEY} $2 $i=0 >>${LOG}
+          echo BUG=${lastcode} in gpioset ${GPIOKEY} $2 $i=0
        fi
    done
 fi

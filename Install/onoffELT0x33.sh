@@ -101,8 +101,12 @@ else
                else
                   pin=${3}
                fi
-               #echo gpioset gpiochip${CHIP} ${pin}=${value} \# for ${com_port}
-               gpioset gpiochip${CHIP} ${pin}=${value}
+
+               if ! (gpioget -v | grep gpioget | grep -q v1); then
+                  GPIOKEY="-t0 -c"
+               fi
+               #echo gpioset ${GPIOKEY} gpiochip${CHIP} ${pin}=${value} \# for ${com_port}
+               gpioset ${GPIOKEY} gpiochip${CHIP} ${pin}=${value}
                if [[ "${pin}=${value}" == "3=1" ]]; then
                   #echo sleep 0.1
                   sleep 0.1
