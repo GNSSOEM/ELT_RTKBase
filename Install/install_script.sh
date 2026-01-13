@@ -773,7 +773,7 @@ add_rtkbase_user(){
    #echo HAVEUSER=${HAVEUSER}
    if [[ ${HAVEUSER} == "" ]]
    then
-      HAVE_DEB12=`lsb_release -c | grep bookworm`
+      HAVE_DEB12=`lsb_release -c | grep "bookworm\|trixie"`
       if [[ "${HAVE_DEB12}" != "" ]]; then
          UID990="--firstuid 800 --lastuid 999"
       else

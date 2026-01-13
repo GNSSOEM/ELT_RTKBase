@@ -15,7 +15,7 @@ if [[ "${HAVE_ELT0x33}" == "" ]]; then
       exit 0
    fi
    HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
-   HAVE_DEB12=`lsb_release -c | grep bookworm`
+   HAVE_DEB12=`lsb_release -c | grep "bookworm\|trixie"`
    #echo HAVE_ZERO=${HAVE_ZERO} HAVE_DEB12=${HAVE_DEB12}
    if [[ "${HAVE_ZERO}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
       #echo Mosaic and no Pi Zero 2 W or no Debian 12

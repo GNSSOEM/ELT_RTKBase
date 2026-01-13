@@ -10,7 +10,7 @@ FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
 HAVE_ZERO=`cat /proc/cpuinfo | grep Model | grep "Pi Zero 2 W"`
 HAVE_TYPEC=`lsusb | grep "Bus 003" | grep -v "root hub"`
-HAVE_DEB12=`lsb_release -c | grep bookworm`
+HAVE_DEB12=`lsb_release -c | grep "bookworm\|trixie"`
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
 #echo HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_MOSAIC=${HAVE_MOSAIC}

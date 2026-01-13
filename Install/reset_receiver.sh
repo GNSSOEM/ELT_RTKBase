@@ -19,7 +19,7 @@ fi
 
 #We work only on Pi4
 HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
-HAVE_DEB12=`lsb_release -c | grep bookworm`
+HAVE_DEB12=`lsb_release -c | grep "bookworm\|trixie"`
 HAVE_ELT0x33=`find -P /dev/serial/by-id -name "*ELT0x33*" 2>/dev/null`
 if [[ "${HAVE_ELT0x33}" != "" ]] || [[ "${HAVE_PI4}" == "" ]] || [[ "${HAVE_DEB12}" == "" ]]; then
    echo Receiver ${receiver} NOT reboted! HAVE_ELT0x33=${HAVE_ELT0x33} HAVE_PI4=${HAVE_PI4} HAVE_DEB12=${HAVE_DEB12}
