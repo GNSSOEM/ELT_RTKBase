@@ -379,11 +379,20 @@ add_pps_module(){
 
 set_permanenet_journals(){
   JOURLAND_CONF=/etc/systemd/journald.conf
+  JOURLAND_CONF2=/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf
   if [[ -f ${JOURLAND_CONF} ]]; then
      if ! grep -q "^Storage=persistent" ${JOURLAND_CONF}; then
         #echo sed -i "s/^Storage=volatile/\#Storage=volatile/" ${JOURLAND_CONF}
         sed -i "s/^\#*Storage=.*/Storage=persistent/" ${JOURLAND_CONF}
         echo Set permanent journals to ${JOURLAND_CONF}
+        NEEDREBOOT=Y
+     fi
+  fi
+  if [[ -f ${JOURLAND_CONF2} ]]; then
+     if ! grep -q "^\#Storage=volatile" ${JOURLAND_CONF2}; then
+        #echo sed -i "s/^\#*Storage=.*/\#Storage=volatile/" ${JOURLAND_CONF2}
+        sed -i "s/^\#*Storage=.*/\#Storage=volatile/" ${JOURLAND_CONF2}
+        echo Set permanent journals to ${JOURLAND_CONF2}
         NEEDREBOOT=Y
      fi
   fi
