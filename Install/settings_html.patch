@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..f7e52d6 100644
+index 9690796..c0459cc 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -44,7 +44,14 @@ index 9690796..f7e52d6 100644
            </div>
        </form>
  
-@@ -129,13 +139,28 @@
+@@ -123,19 +133,34 @@
+     <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
+     <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
+     <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
+-    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to a Ntrip (broad)caster server like rtk2go, centipede, or others.">
++    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to Onocoy Ntrip caster.">
+       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#6c757d" class="bi bi-info-circle" viewBox="0 0 16 16">
+         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -126,7 +133,14 @@ index 9690796..f7e52d6 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -203,13 +235,28 @@
+@@ -197,19 +229,34 @@
+     <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
+     <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
+     <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
+-    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to a Ntrip (broad)caster server like rtk2go, centipede, or others.">
++    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to RtkDirect Ntrip caster.">
+       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#6c757d" class="bi bi-info-circle" viewBox="0 0 16 16">
+         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -218,7 +232,7 @@ index 9690796..f7e52d6 100644
 +    <label for="ntrip_C-switch" class="col-4 col-form-label col-form-label-lg">Ntrip C service</label>
 +    <input id="ntrip_C-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
 +    <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_C_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_C_service_options">Options</button>
-+    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to a Ntrip (broad)caster server like rtk2go, centipede, or others.">
++    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to rtk2go Ntrip caster.">
 +      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#6c757d" class="bi bi-info-circle" viewBox="0 0 16 16">
 +        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
 +        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
@@ -314,7 +328,7 @@ index 9690796..f7e52d6 100644
 +    <label for="ntrip_D-switch" class="col-4 col-form-label col-form-label-lg">Ntrip D service</label>
 +    <input id="ntrip_D-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
 +    <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_D_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_D_service_options">Options</button>
-+    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to a Ntrip (broad)caster server like rtk2go, centipede, or others.">
++    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to Emlid Ntrip caster.">
 +      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#6c757d" class="bi bi-info-circle" viewBox="0 0 16 16">
 +        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
 +        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
@@ -410,7 +424,7 @@ index 9690796..f7e52d6 100644
 +    <label for="ntrip_E-switch" class="col-4 col-form-label col-form-label-lg">Ntrip E service</label>
 +    <input id="ntrip_E-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
 +    <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_E_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_E_service_options">Options</button>
-+    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to a Ntrip (broad)caster server like rtk2go, centipede, or others.">
++    <a role="button" data-toggle="tooltip" title="This service sends the rtcm messages to Centipede Ntrip caster.">
 +      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#6c757d" class="bi bi-info-circle" viewBox="0 0 16 16">
 +        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
 +        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
