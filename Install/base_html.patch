@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/base.html b/web_app/templates/base.html
-index 4a2b669..7357f3f 100644
+index 4a2b669..0dccd75 100644
 --- a/web_app/templates/base.html
 +++ b/web_app/templates/base.html
 @@ -10,6 +10,8 @@
@@ -19,7 +19,7 @@ index 4a2b669..7357f3f 100644
 +      <div class="container text-center bg-light"><span class="text-muted small">
 +      <a href="https://github.com/GNSSOEM/ELT_RTKBase" target="_blank">ELT_RTKBase v{{ g.elt_version }}</a> based on
 +      <a href="https://github.com/Stefal/rtkbase" target="_blank">RTKBase v{{ g.version }}</a> Our store
-+      <a href="https://gnss.store/78-onocoy-miners" target="_blank">gnss.store</a> Read
++      <a href="https://gnss.store/collections/onocoy-miners" target="_blank">gnss.store</a> Read
 +      <a href="https://github.com/GNSSOEM/ELT_RTKBase/raw/main/Doc/ELT_RTKBase_v1.8.1_EN.pdf" target="_self">documentation</a> If you have a problem,
 +      <a href="mailto:info@gnss.store?subject=ELT_RTKBase%20v{{ g.elt_version }}" target="_blank">ask us</a>
 +      </span></div>
