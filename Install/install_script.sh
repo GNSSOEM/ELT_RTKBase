@@ -51,6 +51,7 @@ GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
 RTKCONTROLLER_PATCH=RtkController_py.patch
 NETWORK_INFOS_PATCH=network_infos_py.patch
+LOGMANAGER_PATCH=LogManager_py.patch
 UBX_PY_PATCH=ubx_py.patch
 STATUS_PATCH=status_js.patch
 SETTING_PATCH=settings_js.patch
@@ -1089,6 +1090,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_WEB}/RTKBaseConfigManager.py   ${RTKBASE_CONFIG_MANAGER_PATCH}
    patch_one ${RTKBASE_WEB}/RtkController.py          ${RTKCONTROLLER_PATCH}
    patch_one ${RTKBASE_WEB}/network_infos.py          ${NETWORK_INFOS_PATCH}
+   patch_one ${RTKBASE_WEB}/LogManager.py             ${LOGMANAGER_PATCH}
    patch_one ${RTKBASE_WEB}/static/status.js          ${STATUS_PATCH}
    patch_one ${RTKBASE_WEB}/static/settings.js        ${SETTING_PATCH}
    patch_one ${RTKBASE_WEB}/templates/settings.html   ${SETTING_HTML_PATCH}
@@ -1734,7 +1736,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${MODEM_WEB_PROXY_SERVICE} ${CONFX20P} ${CONFIG_ORIG2} ${UBX_PY_PATCH} \
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
-              ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM}"
+              ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM}
+              ${LOGMANAGER_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
