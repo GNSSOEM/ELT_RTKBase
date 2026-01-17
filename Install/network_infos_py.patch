@@ -1,5 +1,5 @@
 diff --git a/web_app/network_infos.py b/web_app/network_infos.py
-index f71b92e..90b36f1 100644
+index f71b92e..3b2252c 100644
 --- a/web_app/network_infos.py
 +++ b/web_app/network_infos.py
 @@ -44,7 +44,7 @@ def get_up_if():
@@ -11,11 +11,15 @@ index f71b92e..90b36f1 100644
      if_stats = {k:v for (k,v) in if_stats.items() if not k.startswith('docker')} # remove docker interface
      return if_stats
  
-@@ -87,7 +87,8 @@ def get_interfaces_infos():
+@@ -86,8 +86,11 @@ def get_interfaces_infos():
+         conn_name = get_conn_name(k)
          if conn_name:
              device_info["conn_name"] = conn_name
-         device_info["hwaddr"] = nmcli.device.show(k).get('GENERAL.HWADDR')
+-        device_info["hwaddr"] = nmcli.device.show(k).get('GENERAL.HWADDR')
 -        interfaces_infos.append(device_info)
++        hwaddr = nmcli.device.show(k).get('GENERAL.HWADDR')
++        if hwaddr != "(unknown)":
++           device_info["hwaddr"] = hwaddr
 +        if (len(ipv4) > 0) or (len(ipv6) > 0):
 +            interfaces_infos.append(device_info)
      return interfaces_infos
