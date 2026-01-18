@@ -33,7 +33,6 @@ config.* text eol=lf
 # Denote all files that are truly binary and should not be modified.
 *.png binary
 *.jpg binary
-./rtkbase_install.sh binary
 Install/rtkbase_install.sh binary
-install.sh binary
+/install.sh binary
 *.exe binary
