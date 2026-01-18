@@ -1478,6 +1478,7 @@ configure_gnss(){
    HAVE_TTYAMA=`find /dev/ttyAMA* 2>/dev/null`
    #echo HAVE_TTYUSB=${HAVE_TTYUSB} HAVE_TTYACM=${HAVE_TTYACM} HAVE_TTYAMA=${HAVE_TTYAMA} RECVPORT=${RECVPORT}
    if [[ "${HAVE_TTYUSB}" == "" ]] && [[ "${HAVE_TTYACM}" == "" ]] && [[ "${HAVE_TTYAMA}" == "" ]] && [[ ! -c "${RECVPORT}" ]]; then
+      NO_START_MAIN_SERVICE=YES
       echo 'No any ports for GNSS receiver. We can'\''t detect and configure.'
       ExitCodeCheck 1
    else
@@ -1490,11 +1491,15 @@ configure_gnss(){
                break;
             fi
          done
+         if [[ $lastcode != 0 ]]; then
+            NO_START_MAIN_SERVICE=YES
+         fi
       fi
 
       if [[ ${OLD_VERSION} < 193 ]] || ! have_full; then
          source <( grep '^com_port=' "${SETTINGS_NOW}" ) #import settings
          if [[ "${com_port}" == "" ]]; then
+            NO_START_MAIN_SERVICE=YES
             echo 'GNSS receiver is not specified. We can'\''t configure.'
             if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
                ExitCodeCheck 1
@@ -1509,6 +1514,9 @@ configure_gnss(){
                   break;
                fi
             done
+            if [[ $lastcode != 0 ]]; then
+               NO_START_MAIN_SERVICE=YES
+            fi
          fi
       fi
    fi
