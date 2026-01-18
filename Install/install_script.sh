@@ -1456,7 +1456,7 @@ configure_settings(){
       #echo if ! grep -q \"^\[ntrip_C\]=\" \"${SETTINGS_NOW}\"\; then
       if ! grep -q "^\[ntrip_C\]" "${SETTINGS_NOW}"; then
          echo insert [ntrip_C] into ${SETTINGS_NOW}
-         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'rtk2go\.com\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'2\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'\'\nrtcm_msg_c=\'${rtcm_msg_rtkgo}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^ntrip_b_receiver_options=/a \ \n[ntrip_C]\n\n# NTRIP C caster options\n\n#ntrip C caster url\nsvr_addr_c=\'rtk2go\.com\'\n#ntrip C caster port\nsvr_port_c=\'2101\'\n#ntrip C caster mode\nsvr_mode_c=\'0\'\n#ntrip C caster login\nsvr_login_c=\'\'\n#ntrip C caster password\nsvr_pwd_c=\'\'\n#Mount name\nmnt_name_c=\'\'\nrtcm_msg_c=\'${rtcm_msg_rtkgo}\'\n#Receiver dependent options\nntrip_c_receiver_options=\'\'" "${SETTINGS_NOW}"
       fi
 
       #echo if ! grep -q "^mobile_modem_web_ip=" "${SETTINGS_NOW}"; then

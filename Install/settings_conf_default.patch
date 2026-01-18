@@ -1,5 +1,5 @@
 diff --git a/settings.conf.default b/settings.conf.default
-index 318184c..ba7e906 100644
+index 318184c..9eaabf4 100644
 --- a/settings.conf.default
 +++ b/settings.conf.default
 @@ -3,6 +3,8 @@
@@ -124,7 +124,7 @@ index 318184c..ba7e906 100644
 +#ntrip C caster port
 +svr_port_c='2101'
 +#ntrip C caster mode
-+svr_mode_c='2'
++svr_mode_c='0'
 +#ntrip C caster login
 +svr_login_c=''
 +#ntrip C caster password
