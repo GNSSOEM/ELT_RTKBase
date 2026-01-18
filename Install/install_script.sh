@@ -1599,8 +1599,18 @@ start_rtkbase_services(){
      fi
   fi
 
-  #echo systemctl enable --now str2str_tcp.service
-  systemctl enable --now str2str_tcp.service
+  if [[ "${ONLINE_UPDATE}" == "UPDATE" ]]; then
+     if ! [[ "${serviceStartList}" =~ "str2str_tcp.service" ]]; then
+        NO_START_MAIN_SERVICE=YES
+     fi
+  fi
+  if [[ "${NO_START_MAIN_SERVICE}" != "YES" ]]; then
+     main_service_key="--now"
+  fi
+  #echo ONLINE_UPDATE=${ONLINE_UPDATE} NO_START_MAIN_SERVICE=${NO_START_MAIN_SERVICE} main_service_key=${main_service_key} serviceStartList=${serviceStartList}
+
+  #echo systemctl enable ${main_service_key} str2str_tcp.service
+  systemctl enable ${main_service_key} str2str_tcp.service
   ExitCodeCheck $?
   delete_from_service_list str2str_tcp.service
   if [[ "${lastcode}" != "0" ]] ; then
