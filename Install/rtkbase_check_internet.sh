@@ -83,8 +83,8 @@ elif [[ "${USE_FTDI}" = "M" ]]; then
       value=LevelLow
    fi
    for i in `seq 1 5`; do
-      #echo RESULT=\`/usr/local/rtkbase/rtkbase/NmeaConf ${MOSAIC} \"setGPIOFunctionality,GP${CHIP},Output,none,${value}\" QUIET\`
-      RESULT=`/usr/local/rtkbase/rtkbase/NmeaConf ${MOSAIC} "setGPIOFunctionality,GP${GPIO},Output,none,${value}" QUIET`
+      #echo RESULT=\`NmeaConf ${MOSAIC} \"setGPIOFunctionality,GP${CHIP},Output,none,${value}\" QUIET\`
+      RESULT=`NmeaConf ${MOSAIC} "setGPIOFunctionality,GP${GPIO},Output,none,${value}" QUIET`
       lastcode=$?
       if [[ "${lastcode}" != "0" ]]; then
          echo ${lastcode}:${RESULT}

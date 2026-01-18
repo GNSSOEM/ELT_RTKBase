@@ -28,7 +28,7 @@ _check_user() {
 detect_Unicore() {
     echo 'DETECTION Unicore ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
-    RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} VERSION SILENT`
+    RECVVER=`${NMEACONF} ${RECVPORT} VERSION SILENT`
     if [[ "${RECVVER}" != "" ]]
     then
        #echo RECVVER=${RECVVER}
@@ -59,13 +59,13 @@ detect_speed_Unicore() {
 detect_Bynav() {
     echo 'DETECTION Bynav ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" SILENT`
+    RECVINFO=`${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" SILENT`
     if [[ "${RECVINFO}" != "" ]]; then
        #echo RECVINFO=${RECVINFO}
        RECVNAME=`echo ${RECVINFO} | awk -F ';' '{print $2}'| awk -F ' ' '{print $2}'`
        if [[ ${RECVNAME} != "" ]]; then
           for i in `seq 1 3`; do
-              RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
+              RECVVER=`${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
               #echo RECVVER=${RECVVER}
               if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
                  break
@@ -97,7 +97,7 @@ detect_speed_Bynav() {
 detect_Ublox() {
     echo 'DETECTION Ublox ON ' ${1} ' at ' ${2}
     RECVPORT=/dev/${1}:${2}
-    RECVINFO=$(${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" SILENT)
+    RECVINFO=$(${NMEACONF} ${RECVPORT} "UBX-MON-VER" SILENT)
     lastcode=$?
     #echo lastcode=${lastcode} ubxVer=${ubxVer}
     if [[ "${lastcode}" == 0 ]]; then
@@ -149,8 +149,8 @@ detect_Septentrio() {
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
     rm -rf ${TEMPFILE}
-    #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET \>${TEMPFILE} 2\>\&1
-    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
+    #echo ${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET \>${TEMPFILE} 2\>\&1
+    ${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
     RECVERROR=`cat ${TEMPFILE} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
 
@@ -513,7 +513,7 @@ clear_TADJ() {
 configure_unicore(){
     RECVPORT=${1}
 
-    RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} VERSION SILENT`
+    RECVVER=`${NMEACONF} ${RECVPORT} VERSION SILENT`
     #echo RECVVER=${RECVVER}
     RECVERROR=`echo ${RECVVER} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
@@ -541,8 +541,8 @@ configure_unicore(){
     SetConf "receiver_firmware" "${FIRMWARE}"
 
     if [[ -f "${RECVCONF}" ]]; then
-       #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
-       recv_com=`${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} COM | tee /dev/stderr | grep "^COM.$"`
+       #echo ${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
+       recv_com=`${NMEACONF} ${RECVPORT} ${RECVCONF} COM | tee /dev/stderr | grep "^COM.$"`
        exitcode=$?
        #echo recv_com=${recv_com}
        #echo exitcode=${exitcode}
@@ -574,7 +574,7 @@ configure_bynav(){
 
     RECVNAME=
     for i in `seq 1 3`; do
-       RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
+       RECVINFO=`${NMEACONF} ${RECVPORT} "LOG AUTHORIZATION" QUIET`
 
        if [[ "${RECVINFO}" != "" ]]; then
           #echo RECVINFO=${RECVINFO}
@@ -590,7 +590,7 @@ configure_bynav(){
     done
 
     for i in `seq 1 3`; do
-        RECVVER=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
+        RECVVER=`${NMEACONF} ${RECVPORT} "LOG VERSION" QUIET`
         #echo RECVVER=${RECVVER}
         if [[ "${RECVVER}" =~ ^"$BDVER" ]]; then
            break
@@ -614,18 +614,18 @@ configure_bynav(){
 
     if [[ -f "${RECVCONF}" ]]
     then
-       recv_com=`${rtkbase_path}/NmeaConf ${RECVPORT} TEST COM | grep "^COM.$"`
+       recv_com=`${NMEACONF} ${RECVPORT} TEST COM | grep "^COM.$"`
        #echo recv_com=${recv_com}
        if [[ "${RECVSPEED}" != "115200" ]]
        then
-          #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} \"SERIALCONFIG ${recv_com} 115200\" QUIET
-          ${rtkbase_path}/${NMEACONF} ${RECVPORT} "SERIALCONFIG ${recv_com} 115200" QUIET 2>&1
+          #echo ${NMEACONF} ${RECVPORT} \"SERIALCONFIG ${recv_com} 115200\" QUIET
+          ${NMEACONF} ${RECVPORT} "SERIALCONFIG ${recv_com} 115200" QUIET 2>&1
           RECVPORT=${RECVDEV}:115200
           #echo NEW RECVPORT=${RECVPORT}
        fi
 
-       #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
-       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET 2>&1
+       #echo ${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
+       ${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET 2>&1
        exitcode=$?
        #echo exitcode=${exitcode}
        if [[ ${exitcode} != 0 ]]; then
@@ -659,8 +659,8 @@ configure_septentrio() {
     RECVTEST=${rtkbase_path}/receiver_cfg/Septentrio_TEST.txt
     TEMPFILE=/run/Septentrio.tmp
     rm -rf ${TEMPFILE}
-    #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET \>${TEMPFILE} 2\>\&1
-    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
+    #echo ${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET \>${TEMPFILE} 2\>\&1
+    ${NMEACONF} ${RECVPORT} ${RECVTEST} QUIET >${TEMPFILE} 2>&1
     RECVERROR=`cat ${TEMPFILE} | grep ERROR`
     #echo RECVERROR=${RECVERROR}
 
@@ -688,7 +688,7 @@ configure_septentrio() {
 
     if [[ -f "${RECVCONF}" ]]; then
        if [[ "${RECVNAME}" =~ "mosaic-H" ]]; then
-          WAS_FRONTEND=`${rtkbase_path}/${NMEACONF} ${RECVPORT} getFrontendMode QUIET | awk -F ', ' '{print $2}'`
+          WAS_FRONTEND=`${NMEACONF} ${RECVPORT} getFrontendMode QUIET | awk -F ', ' '{print $2}'`
           if [[ "${RECVNAME}" == "mosaic-H1" ]]; then
              NEW_FRONTED=SingleAnt
           else
@@ -696,10 +696,10 @@ configure_septentrio() {
           fi
           #echo WAS_FRONTEND=${WAS_FRONTEND} NEW_FRONTED=${NEW_FRONTED}
           if [[ ${WAS_FRONTEND} != ${NEW_FRONTED} ]]; then
-             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
-             ${rtkbase_path}/${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
-             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
-             ${rtkbase_path}/${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
+             #echo ${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
+             ${NMEACONF} ${RECVPORT} "setFrontendMode,${NEW_FRONTED}" NOMSG
+             #echo ${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
+             ${NMEACONF} ${RECVPORT} "exeResetReceiver,Soft,none" NOMSG
              sleep 15
              for i in `seq 0 20`; do
                  if [[ -c ${RECVDEV} ]]; then
@@ -710,7 +710,7 @@ configure_septentrio() {
              done
              sleep 25
              for i in `seq 1 10`; do
-                 ${rtkbase_path}/${NMEACONF} ${RECVPORT} getFrontendMode NOMSG >/dev/null
+                 ${NMEACONF} ${RECVPORT} getFrontendMode NOMSG >/dev/null
                  lastcode=$?
                  #echo lastcode=${lastcode}
                  if [[ ${lastcode} == 0 ]]; then
@@ -722,8 +722,8 @@ configure_septentrio() {
           fi
        fi
 
-       #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
-       ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
+       #echo ${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG
+       ${NMEACONF} ${RECVPORT} ${RECVCONF} NOMSG 2>&1
        exitcode=$?
 
        RECVVER=$(echo ${FIRMWARE} | awk -F '.' '{print $1$2}')
@@ -731,8 +731,8 @@ configure_septentrio() {
           RECVCONFNAMEADD=${RECVVER}_${FORMAT^^}_OUT.txt
           RECVCONFADD=${rtkbase_path}/receiver_cfg/${RECVCONFNAMEADD}
           if [[ -f "${RECVCONFADD}" ]]; then
-             #echo ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG
-             ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG 2>&1
+             #echo ${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG
+             ${NMEACONF} ${RECVPORT} ${RECVCONFADD} NOMSG 2>&1
              RECVCONFNAMEADDTEXT=" and ${RECVCONFNAMEADD}"
           else
              echo Additional confiuration file for ${RECVNAME} \(${RECVCONFNAMEADD}\) NOT FOUND.
@@ -772,7 +772,7 @@ configure_ublox(){
     RECVSPEED=${3}
     FORMAT=${4}
     #echo RECVPORT=${RECVPORT} RECVDEV=${RECVDEV} RECVSPEED=${RECVSPEED} ${FORMAT}=${FORMAT}
-    RECVINFO=`${rtkbase_path}/${NMEACONF} ${RECVPORT} "UBX-MON-VER" QUIET`
+    RECVINFO=`${NMEACONF} ${RECVPORT} "UBX-MON-VER" QUIET`
     FIRMWARE=$(echo ${RECVINFO} | awk -F ',' '{print $2}')
     RECVNAME=$(echo ${RECVINFO} | awk -F ',' '{print $1}')
     if [[ ${RECVNAME} == "" ]] || [[ ${FIRMWARE} == "" ]]; then
@@ -795,7 +795,7 @@ configure_ublox(){
        return 1
     fi
 
-    ${rtkbase_path}/${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
+    ${NMEACONF} ${RECVPORT} ${RECVCONF} QUIET
     exitcode=$?
     #echo exitcode=${exitcode}
     if [[ ${exitcode} != 0 ]]; then

@@ -68,8 +68,8 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
    fi
    #echo com_port=${com_port} origdevice=${origdevice} device=${device}
    for i in `seq 1 5`; do
-       #echo RESULT=\`"${BASEDIR}"/NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
-       RESULT=`"${BASEDIR}"/NmeaConf "${device}" "setGPIOFunctionality,${pin},Output,none,${value}" QUIET`
+       #echo RESULT=\`NmeaConf "${device}" \"setGPIOFunctionality,${pin},Output,none,${value}\" QUIET\`
+       RESULT=`NmeaConf "${device}" "setGPIOFunctionality,${pin},Output,none,${value}" QUIET`
        exitcode=$?
        if [[ "${exitcode}" == "0" ]] || [[ ${exitcode} > 4 ]]; then
           break

@@ -7,15 +7,15 @@ if [[ "${HAVE_ELT0x33}" == "" ]] && [[ "${HAVE_MOSAIC}" != "" ]]; then
       MOSAIC=`readlink -f /dev/ttyGNSS_CTRL`
       BASEDIR="$(dirname $(dirname "$0"))"
       for i in `seq 1 5`; do
-          #echo "${BASEDIR}"/NmeaConf "${MOSAIC}" "setDataInOut,USB1,CMD,none" QUIET
-          "${BASEDIR}"/NmeaConf "${MOSAIC}" "setDataInOut,USB1,CMD,none" QUIET
+          #echo "NmeaConf "${MOSAIC}" "setDataInOut,USB1,CMD,none" QUIET
+          NmeaConf "${MOSAIC}" "setDataInOut,USB1,CMD,none" QUIET
           if [[ "$?" == "0" ]]; then
              break
          fi
       done
       for i in `seq 1 5`; do
-          #echo "${BASEDIR}"/NmeaConf "${MOSAIC}" "setGPIOFunctionality,all,Output,none,LevelLow" QUIET
-          "${BASEDIR}"/NmeaConf "${MOSAIC}" "setGPIOFunctionality,all,Output,none,LevelLow" QUIET
+          #echo NmeaConf "${MOSAIC}" "setGPIOFunctionality,all,Output,none,LevelLow" QUIET
+          NmeaConf "${MOSAIC}" "setGPIOFunctionality,all,Output,none,LevelLow" QUIET
           if [[ "$?" == "0" ]]; then
              break
          fi

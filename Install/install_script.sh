@@ -86,6 +86,7 @@ CONFIG=config.txt
 CONFIG_ORIG=config.original
 CONFIG_ORIG2=config.original2
 RTKLIB=rtklib
+LOCAL_BIN=/usr/local/bin/
 SERVICE_PATH=/etc/systemd/system
 NETWORK_DISPATHER_PATH=/usr/lib/NetworkManager/dispatcher.d
 PI=pi
@@ -854,13 +855,20 @@ install_rtklib() {
     echo '################################'
     echo 'INSTALLING RTKLIB'
     echo '################################'
+    #echo mv ${BASEDIR}/${NMEACONF} ${LOCAL_BIN}
+    mv ${BASEDIR}/${NMEACONF} ${LOCAL_BIN}
+    ExitCodeCheck $?
+    #echo chmod 711 ${LOCAL_BIN}/${NMEACONF}
+    chmod 711 ${LOCAL_BIN}/${NMEACONF}
+    ExitCodeCheck $?
+
     platform=$(uname -m)
     RTKLIB_DIR=${BASEDIR}/${RTKLIB}/${platform}
     if [[ -d ${RTKLIB_DIR} ]] && lsb_release -c | grep -q 'bookworm\|trixie'; then
        echo RtkLib copyed from ${RTKLIB_DIR}
-       LOCAL_BIN=/usr/local/bin/
        #echo chmod 711 ${RTKLIB_DIR}/*
        chmod 711 ${RTKLIB_DIR}/*
+       ExitCodeCheck $?
        #echo mv ${RTKLIB_DIR}/* ${LOCAL_BIN}
        mv ${RTKLIB_DIR}/* ${LOCAL_BIN}
        ExitCodeCheck $?
@@ -1290,7 +1298,6 @@ configure_for_unicore(){
    echo '################################'
 
    copy_script "${SET_BASE_POS}" "${RTKBASE_GIT}"
-   copy_script "${NMEACONF}" "${RTKBASE_GIT}"
    copy_script "${RTCM3LED}" "${RTKBASE_PATH}"
    copy_script "${UNICORE_CONFIGURE}" "${RTKBASE_TOOLS}"
    copy_script "${TAILSCALE_GET_HREF}" "${RTKBASE_TOOLS}"

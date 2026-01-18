@@ -15,7 +15,7 @@ if [[ "$1" == "Septentrio04" ]]; then
       MOSAIC=/dev/ttyACM1
    fi
    BASEDIR="$(dirname "$0")"
-   NMEACONF=${BASEDIR}/rtkbase/NmeaConf
+   NMEACONF=NmeaConf
    stty -F ${MOSAIC} 115200
    for i in `seq 1 5`; do
        #echo RESULT=\`${NMEACONF} ${MOSAIC} \"setGPIOFunctionality,all,Output,none,LevelLow\" QLONG\`  >>${LOG}

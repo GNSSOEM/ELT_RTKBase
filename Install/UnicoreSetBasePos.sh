@@ -167,15 +167,15 @@ if [[ ${SETSPEED} == Y ]] && [[ "${recv_com}" == "" ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
    then
-      recv_com=`${BASEDIR}/NmeaConf ${OLDDEV} RESET COM | grep COM`
+      recv_com=`NmeaConf ${OLDDEV} RESET COM | grep COM`
       if [[ "${recv_com}" == "" ]]
       then
-          recv_com=`${BASEDIR}/NmeaConf ${DEVICE} RESET COM | grep COM`
+          recv_com=`NmeaConf ${DEVICE} RESET COM | grep COM`
           if [[ "${recv_com}" != "" ]]
           then
              echo Receiver already on ${com_speed}
-             #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-             ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             #echo NmeaConf ${DEVICE} saveconfig QUIET
+             NmeaConf ${DEVICE} saveconfig QUIET
              ExitCodeCheck $?
              recv_speed=${com_speed}
              SAVECONF=Y
@@ -184,15 +184,15 @@ then
       fi
    elif [[ "${receiver}" =~ Bynav ]]
    then
-      recv_com=`${BASEDIR}/NmeaConf ${OLDDEV} TEST COM | grep COM`
+      recv_com=`NmeaConf ${OLDDEV} TEST COM | grep COM`
       if [[ "${recv_com}" == "" ]]
       then
-          recv_com=`${BASEDIR}/NmeaConf ${DEVICE} TEST COM | grep COM`
+          recv_com=`NmeaConf ${DEVICE} TEST COM | grep COM`
           if [[ "${recv_com}" != "" ]]
           then
              echo Receiver already on ${com_speed}
-             #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-             ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             #echo NmeaConf ${DEVICE} saveconfig QUIET
+             NmeaConf ${DEVICE} saveconfig QUIET
              ExitCodeCheck $?
              recv_speed=${com_speed}
              SAVECONF=Y
@@ -227,28 +227,28 @@ then
    do
       if [[ "${receiver}" =~ Unicore ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"CONFIG ${recv_com} ${com_speed}\" QUIET
-         ${BASEDIR}/NmeaConf ${OLDDEV} "CONFIG ${recv_com} ${com_speed}" QUIET
+         #echo NmeaConf ${OLDDEV} \"CONFIG ${recv_com} ${com_speed}\" QUIET
+         NmeaConf ${OLDDEV} "CONFIG ${recv_com} ${com_speed}" QUIET
          lastcode=$?
       elif [[ "${receiver}" =~ Bynav ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${OLDDEV} \"SERIALCONFIG ${recv_com} ${com_speed}\" QUIET
-         ${BASEDIR}/NmeaConf ${OLDDEV} "SERIALCONFIG ${recv_com} ${com_speed}" QUIET
+         #echo NmeaConf ${OLDDEV} \"SERIALCONFIG ${recv_com} ${com_speed}\" QUIET
+         NmeaConf ${OLDDEV} "SERIALCONFIG ${recv_com} ${com_speed}" QUIET
          lastcode=$?
       elif [[ "${receiver}" =~ u-blox ]]; then
-         #echo ${BASEDIR}/NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
-         ${BASEDIR}/NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
+         #echo NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
+         NmeaConf ${OLDDEV} "CFG-UART1-BAUDRATE,${com_speed}" QUIET
          lastcode=$?
       fi
       #echo lastcode=${lastcode}
       if [[ ${lastcode} == 0 ]] || [[ ${lastcode} == 3 ]]; then
           if [[ "${receiver}" =~ u-blox ]]; then
-             #echo ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
-             ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+             #echo NmeaConf ${DEVICE} UBX-MON-VER QUIET
+             NmeaConf ${DEVICE} UBX-MON-VER QUIET
              lastcode=$?
           else
-             #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-             ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+             #echo NmeaConf ${DEVICE} saveconfig QUIET
+             NmeaConf ${DEVICE} saveconfig QUIET
              lastcode=$?
           fi
           #echo lastcode=${lastcode}
@@ -289,8 +289,8 @@ then
       NO_ANSWER_COUNT=0;
       for i in `seq 1 30`
       do
-         #echo UNICORE_MODE=\`${BASEDIR}/NmeaConf ${DEVICE} MODE\`
-         UNICORE_MODE=`${BASEDIR}/NmeaConf ${DEVICE} MODE`
+         #echo UNICORE_MODE=\`NmeaConf ${DEVICE} MODE\`
+         UNICORE_MODE=`NmeaConf ${DEVICE} MODE`
          IS_FINE=`echo ${UNICORE_MODE} | grep -c "1005"`
          NO_ANSWER=`echo ${UNICORE_MODE} | grep -c "maxRead=0 "`
          #echo UNICORE_MODE=${UNICORE_MODE}
@@ -310,8 +310,8 @@ then
          fi
          sleep 1
       done
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"MODE BASE 1 ${position}\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "MODE BASE 1 ${position}" QUIET
+      #echo NmeaConf ${DEVICE} \"MODE BASE 1 ${position}\" QUIET
+      NmeaConf ${DEVICE} "MODE BASE 1 ${position}" QUIET
       lastcode=$?
       if [[ $lastcode == 0 ]]; then
          CHECKPOS=Y
@@ -322,8 +322,8 @@ then
       fi
    elif [[ "${receiver}" =~ Bynav ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"FIX POSITION ${position}\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "FIX POSITION ${position}" QUIET
+      #echo NmeaConf ${DEVICE} \"FIX POSITION ${position}\" QUIET
+      NmeaConf ${DEVICE} "FIX POSITION ${position}" QUIET
       lastcode=$?
       if [[ $lastcode == 0 ]]
       then
@@ -340,13 +340,13 @@ then
    then
       commapos=`echo ${position} | sed "s/ \{2,99\}/ /g" | sed "s/^ //" | sed "s/ $//" | sed "s/ /,/g"`
       #echo commapos=${commapos}
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1, ${commapos}\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "setStaticPosGeodetic , Geodetic1, ${commapos}" QUIET
+      #echo NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1, ${commapos}\" QUIET
+      NmeaConf ${DEVICE} "setStaticPosGeodetic , Geodetic1, ${commapos}" QUIET
       lastcode=$?
       if [[ $lastcode == 0 ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1\" QUIET
-         ${BASEDIR}/NmeaConf ${DEVICE} "setPVTMode, , , Geodetic1" QUIET
+         #echo NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1\" QUIET
+         NmeaConf ${DEVICE} "setPVTMode, , , Geodetic1" QUIET
          ExitCodeCheck $?
          if [[ $lastcode == 0 ]]
          then
@@ -363,8 +363,8 @@ then
          TIMEPOS=Y
       fi
    elif [[ "${receiver}" =~ u-blox ]]; then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
+      #echo NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
+      NmeaConf ${DEVICE} "UBX-FIXMODE,${position}" QUIET
       lastcode=$?
       if [[ $lastcode == 0 ]]; then
          BADPOS=N
@@ -380,8 +380,8 @@ fi
 #echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS} SAVECONF=${SAVECONF} BADPOS=${BADPOS}
 if [[ ${CHECKPOS} == Y ]]
 then
-   #echo UNICORE_ANSWER=\`${BASEDIR}/NmeaConf ${DEVICE} CONFIG\`
-   UNICORE_ANSWER=`${BASEDIR}/NmeaConf ${DEVICE} CONFIG`
+   #echo UNICORE_ANSWER=\`NmeaConf ${DEVICE} CONFIG\`
+   UNICORE_ANSWER=`NmeaConf ${DEVICE} CONFIG`
    ExitCodeCheck $?
    #echo UNICORE_ANSWER=${UNICORE_ANSWER}
    POSITION_INCORRECT=`echo ${UNICORE_ANSWER} | grep -c "not correct"`
@@ -432,22 +432,22 @@ if [[ ${TIMEPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Unicore ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"MODE BASE 1 TIME 60 1\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "MODE BASE 1 TIME 60 1" QUIET
+      #echo NmeaConf ${DEVICE} \"MODE BASE 1 TIME 60 1\" QUIET
+      NmeaConf ${DEVICE} "MODE BASE 1 TIME 60 1" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Bynav ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"FIX NONE\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "FIX NONE" QUIET
+      #echo NmeaConf ${DEVICE} \"FIX NONE\" QUIET
+      NmeaConf ${DEVICE} "FIX NONE" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setPVTMode, , , auto\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "setPVTMode, , , auto" QUIET
+      #echo NmeaConf ${DEVICE} \"setPVTMode, , , auto\" QUIET
+      NmeaConf ${DEVICE} "setPVTMode, , , auto" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ u-blox ]]; then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
+      #echo NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
+      NmeaConf ${DEVICE} "UBX-SURVEY,60 15000" QUIET
       ExitCodeCheck $?
    fi
    recv_position="${ZEROPOS}"
@@ -480,20 +480,20 @@ if [[ ${SETANT} == Y ]]; then
       #ANTINFO="\"${ANTNAME}\" \"${ANTSERIAL}\" ${ANTSETUP}"
       ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
+      #echo NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
+      NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio_mosaic-H ]]; then
       ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\""
       #echo ANTINFO=${ANTINFO}
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      #echo NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
+      NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio ]]; then
       ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\", ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      #echo NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
+      NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
       ExitCodeCheck $?
    else
       lastcode=0
@@ -511,17 +511,17 @@ if [[ ${SAVEPOS} == Y ]]
 then
    if [[ "${receiver}" =~ Septentrio ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"exeCopyConfigFile, Current, Boot\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "exeCopyConfigFile, Current, Boot" QUIET
+      #echo NmeaConf ${DEVICE} \"exeCopyConfigFile, Current, Boot\" QUIET
+      NmeaConf ${DEVICE} "exeCopyConfigFile, Current, Boot" QUIET
       ExitCodeCheck $?
    elif [[ ! "${receiver}" =~ u-blox ]]; then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} saveconfig QUIET
+      #echo NmeaConf ${DEVICE} saveconfig QUIET
+      NmeaConf ${DEVICE} saveconfig QUIET
       ExitCodeCheck $?
       if [[ "${receiver}" =~ Bynav ]]
       then
-         #echo ${BASEDIR}/NmeaConf ${DEVICE} REBOOT QUIET
-         ${BASEDIR}/NmeaConf ${DEVICE} REBOOT QUIET
+         #echo NmeaConf ${DEVICE} REBOOT QUIET
+         NmeaConf ${DEVICE} REBOOT QUIET
          ExitCodeCheck $?
       fi
    fi
@@ -546,8 +546,8 @@ if [[ "${receiver}" =~ Septentrio ]]; then
    fi
    if [[ -n "${receiver_protocol}"  ]]; then
       for i in `seq 1 5`; do
-          #echo RESULT=\`${BASEDIR}/NmeaConf ${DEVICE} \"setDataInOut,USB1,CMD,${receiver_protocol}\" QUIET\`
-          RESULT=`${BASEDIR}/NmeaConf ${DEVICE} "setDataInOut,USB1,CMD,${receiver_protocol}" QUIET`
+          #echo RESULT=\`NmeaConf ${DEVICE} \"setDataInOut,USB1,CMD,${receiver_protocol}\" QUIET\`
+          RESULT=`NmeaConf ${DEVICE} "setDataInOut,USB1,CMD,${receiver_protocol}" QUIET`
           lastcode=$?
           if [[ "${lastcode}" != "0" ]]; then
              #echo ERROR $i:${RESULT}  >>${LOG}
@@ -565,17 +565,17 @@ fi
 if [[ ${lastcode} == N ]]; then
    if [[ "${receiver}" =~ Unicore ]]
    then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} MODE QUIET
+      #echo NmeaConf ${DEVICE} MODE QUIET
+      NmeaConf ${DEVICE} MODE QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Bynav ]]; then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} \"LOG REFSTATION\" QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} "LOG REFSTATION" QUIET
+      #echo NmeaConf ${DEVICE} \"LOG REFSTATION\" QUIET
+      NmeaConf ${DEVICE} "LOG REFSTATION" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio ]]; then
       for i in `seq 1 5`; do
-         #echo ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
-         ${BASEDIR}/NmeaConf ${DEVICE} getPVTMode QUIET
+         #echo NmeaConf ${DEVICE} getPVTMode QUIET
+         NmeaConf ${DEVICE} getPVTMode QUIET
          lastcode=$?
          if [[ "${lastcode}" != "4" ]] || [[ -z ${WasNotExists} ]]; then
             break
@@ -584,8 +584,8 @@ if [[ ${lastcode} == N ]]; then
       done
       ExitCodeCheck ${lastcode}
    elif [[ "${receiver}" =~ u-blox ]]; then
-      #echo ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
-      ${BASEDIR}/NmeaConf ${DEVICE} UBX-MON-VER QUIET
+      #echo NmeaConf ${DEVICE} UBX-MON-VER QUIET
+      NmeaConf ${DEVICE} UBX-MON-VER QUIET
       ExitCodeCheck $?
    fi
 fi
