@@ -12,6 +12,7 @@ then
 fi
 
 serviceList="RtkbaseSystemConfigure.service \
+             rtkbase_system_configure.service \
              rtkbase_check_internet.service \
              rtkbase_check_satelites.service \
              rtkbase_septentrio_NAT.service \

@@ -10,7 +10,7 @@ tar --exclude-vcs \
     NmeaConf UM980_RTCM3_OUT.txt UM982_RTCM3_OUT.txt \
     run_cast_sh.patch UnicoreSetBasePos.sh \
     uninstall.sh rtkbase_install.sh UnicoreConfigure.sh \
-    RtkbaseSystemConfigure.sh RtkbaseSystemConfigure.service \
+    rtkbase_system_configure.sh rtkbase_system_configure.service \
     server_py.patch settings_conf_default.patch \
     status_js.patch tune_power.sh config.txt rtklib/*.patch \
     settings_js.patch base_html.patch RTKBaseConfigManager_py.patch \

@@ -19,6 +19,7 @@ for service_name in str2str_ntrip_A.service \
                     rtkbase_gnss_web_proxy.service \
                     rtkbase_modem_web_proxy.service \
                     RtkbaseSystemConfigure.service \
+                    rtkbase_system_configure.service \
                     rtkbase_check_internet.service \
                     rtkbase_check_satelites.service \
                     rtkbase_septentrio_NAT.service \

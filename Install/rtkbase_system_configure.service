@@ -5,7 +5,7 @@ After=network.target
 After=rtkbase_setup.service
 
 [Service]
-ExecStart=/usr/local/rtkbase/RtkbaseSystemConfigure.sh
+ExecStart=/usr/local/rtkbase/rtkbase_system_configure.sh
 RemainAfterExit=true
 Type=oneshot
 SyslogIdentifier=rtkbase_system_configure

@@ -12,7 +12,7 @@ if [[ ${WHOAMI} != "root" ]]; then
    exit 1
 fi
 
-SERVICE=RtkbaseSystemConfigure.service
+SERVICE=rtkbase_system_configure.service
 service_active=$(systemctl is-active ${SERVICE})
 if [[ "${service_active}" == "active" ]]; then
    IS_EXITED=$(systemctl status ${SERVICE} | grep "active (exited)")
@@ -40,5 +40,5 @@ cat <<"EOF" >/boot/firmware/system.txt
 #WIFI_DNS="8.8.8.8"
 EOF
 
-/usr/local/rtkbase/RtkbaseSystemConfigure.sh
+/usr/local/rtkbase/rtkbase_system_configure.sh
 exit 254

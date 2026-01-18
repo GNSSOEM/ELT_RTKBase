@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..7c9d537
+index e36bbc4..0433995
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,7 @@ from RTKLIB import RTKLIB
@@ -276,7 +276,7 @@ index e36bbc4..7c9d537
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
 +    rtkbase_check_internet_service = {'service_unit' : 'rtkbase_check_internet.service', 'name' : 'RTKBase show internet state on led'}
 +    rtkbase_check_satelites_service = {'service_unit' : 'rtkbase_check_satelites.service', 'name' : 'RTKBase show internet state on led'}
-+    RtkbaseSystemConfigure_service = {'service_unit' : 'RtkbaseSystemConfigure.service', 'name' : 'RTKBase system configure at start'}
++    rtkbase_system_configure_service = {'service_unit' : 'rtkbase_system_configure.service', 'name' : 'RTKBase system configure at start'}
 +    rtkbase_septentrio_NAT_service = {'service_unit' : 'rtkbase_septentrio_NAT.service', 'name' : 'RTKBase configure Septentrio NAT at start'}
 +    rtkbase_DHCP_service = {'service_unit' : 'rtkbase_DHCP.service', 'name' : 'RTKBase DHCP server for Septentrio'}
 +    NetworkManager_service = {'service_unit' : 'NetworkManager.service', 'name' : 'Network Manager'}
@@ -287,7 +287,7 @@ index e36bbc4..7c9d537
 +
      logs = []
 -    for service in services_list + [rtkbase_web_service]:
-+    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, RtkbaseSystemConfigure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service, NetworkManager_service, gpsd_service, chrony_service]:
++    for service in services_list + [rtkbase_web_service, rtkbase_check_internet_service, rtkbase_check_satelites_service, rtkbase_system_configure_service, rtkbase_septentrio_NAT_service, rtkbase_DHCP_service, NetworkManager_service, gpsd_service, chrony_service]:
          sysctl_status = subprocess.run(['systemctl', 'status', service['service_unit']],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True,

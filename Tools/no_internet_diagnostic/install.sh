@@ -14,6 +14,7 @@ ls -la /dev/serial/by-id/ >>${SYSLOG}
 
 serviceList="NetworkManager \
              RtkbaseSystemConfigure \
+             rtkbase_system_configure \
              rtkbase_web \
              str2str_tcp \
              rtkbase_check_internet \

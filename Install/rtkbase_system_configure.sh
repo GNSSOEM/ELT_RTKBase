@@ -145,14 +145,14 @@ then
          #echo CRYPTO=${CRYPTO}
          ExitCodeCheck $?
          #echo useradd --comment "Added by system" --create-home --password "${CRYPTO}" "${LOGIN}"
-         useradd --comment "Added by RtkBaseSystemConfigure" --create-home --password "${CRYPTO}" "${LOGIN}"
+         useradd --comment "Added by rtkbase_system_configure" --create-home --password "${CRYPTO}" "${LOGIN}"
          ExitCodeCheck $?
          usermod -a -G plugdev,dialout,gpio "${LOGIN}"
          ExitCodeCheck $?
          echo Added user ${LOGIN} with password -- code ${exitcode}
       else
          #echo useradd --comment "Added by system" --create-home --disabled-password "${LOGIN}"
-         useradd --comment "Added by RtkBaseSystemConfigure" --create-home "${LOGIN}"
+         useradd --comment "Added by rtkbase_system_configure" --create-home "${LOGIN}"
          ExitCodeCheck $?
          echo Added user ${LOGIN} without password -- code ${exitcode}
       fi

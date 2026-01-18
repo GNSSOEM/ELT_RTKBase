@@ -67,8 +67,10 @@ STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
 RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
-SYSCONGIG=RtkbaseSystemConfigure.sh
-SYSSERVICE=RtkbaseSystemConfigure.service
+SYSCONGIG=rtkbase_system_configure.sh
+SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
+SYSSERVICE=rtkbase_system_configure.service
+SYSSERVICE_OLD=RtkbaseSystemConfigure.service
 NETWORK_EVENT=rtkbase_network_event.sh
 CHECK_INTERNET=rtkbase_check_internet.sh
 CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
@@ -965,6 +967,24 @@ install_rtkbase_system_configure(){
   #echo mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
   ExitCodeCheck $?
+
+  if [[ -f ${RTKBASE_PATH}/${SYSCONGIG_OLD} ]]; then
+     #echo rm ${RTKBASE_PATH}/${SYSCONGIG_OLD}
+     rm ${RTKBASE_PATH}/${SYSCONGIG_OLD}
+     ExitCodeCheck $?
+  fi
+  if ! ischroot; then
+     if systemctl is-enabled --quiet ${SYSSERVICE_OLD} 2>/dev/null; then
+        #echo systemctl disable ${SYSSERVICE_OLD}
+        systemctl disable ${SYSSERVICE_OLD}
+        ExitCodeCheck $?
+     fi
+  fi
+  if [[ -f ${SERVICE_PATH}/${SYSSERVICE_OLD} ]]; then
+     #echo rm ${SERVICE_PATH}/${SYSSERVICE_OLD}
+     rm ${SERVICE_PATH}/${SYSSERVICE_OLD}
+     ExitCodeCheck $?
+  fi
 
   #echo mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
   mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
