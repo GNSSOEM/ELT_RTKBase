@@ -614,13 +614,25 @@ install_tailscale(){
 
 delete_pi_user(){
    FOUND=`sed 's/:.*//' /etc/passwd | grep "${PI}"`
-   if [[ -n "${FOUND}" ]]
-   then
+   if [[ -n "${FOUND}" ]]; then
+      PIDIR=`getent passwd "${PI}" | awk -F : '{print $6}'`
+      if [[ -n "${PIDIR}" ]]; then
+         PIUSED=`ls -A -I .profile -I .bashrc -I .bash_logout ${PIDIR}`
+         if [[ -n "${PIUSED}" ]]; then
+            NO_DELETE_PI=YES
+         fi;
+      fi
       echo '################################'
-      echo 'DELETE PI USER'
+      if [[ -z "${NO_DELETE_PI}" ]]; then
+         echo 'DELETE PI USER'
+      else
+         echo "DON'T DELETE PI USER"
+      fi
       echo '################################'
-      userdel -r "${PI}"
-      ExitCodeCheck $?
+      #echo PIDIR=${PIDIR} NO_DELETE_PI=${NO_DELETE_PI} PIUSED=${PIUSED}
+      if [[ -z "${NO_DELETE_PI}" ]]; then
+         userdel -r "${PI}"
+      fi
    fi
    if [[ -f "${BANNER}" ]]
    then
