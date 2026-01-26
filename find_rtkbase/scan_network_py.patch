@@ -1,8 +1,8 @@
 diff --git a/tools/find_rtkbase/scan_network.py b/tools/find_rtkbase/scan_network.py
-index dd69c9d..2628f67 100644
+index dd69c9d..4b828f3 100644
 --- a/tools/find_rtkbase/scan_network.py
 +++ b/tools/find_rtkbase/scan_network.py
-@@ -31,11 +31,12 @@ def zeroconf_scan(name, prot_type, timeout=5):
+@@ -31,11 +31,13 @@ def zeroconf_scan(name, prot_type, timeout=5):
      browser = ServiceBrowser(zeroconf, prot_type, listener)
      time.sleep(timeout)
      for service in listener.services:
@@ -17,10 +17,11 @@ index dd69c9d..2628f67 100644
 +                                    'PORTS' : [service.port],
 +                                    'SERVER' : service.server.rstrip('.'),
 +                                    'IP' : '.'.join(str(byte) for byte in service.addresses[0])})
++    service_list = sorted(service_list, key=lambda x: x['SERVER'])
      log.debug(f"filtered list for {name}")
      log.debug(service_list)
      return service_list
-@@ -53,6 +54,9 @@ def arp_scan(ip, interface=conf.iface):
+@@ -53,6 +55,9 @@ def arp_scan(ip, interface=conf.iface):
      except (PermissionError) as e:
          log.debug(f"{interface} - {ip} : {e}")
          pass
@@ -30,3 +31,12 @@ index dd69c9d..2628f67 100644
      results = []
  
      for element in answered_list:
+@@ -105,7 +110,7 @@ def get_rtkbase_infos(host_list):
+             try:
+                 for port in result.get('PORTS'):
+                     #try with mDns server name at first, then with the ip address if it fails
+-                    for address in (result.get('SERVER'), result.get('IP')):
++                    for address in (result.get('IP'), result.get('IP'), result.get('SERVER')):
+                         try:
+                             ans = None
+                             if address is None:
