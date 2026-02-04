@@ -50,7 +50,7 @@ Based on [RtkBase](https://github.com/Stefal/rtkbase) by Stefal
 + Host mode
 
 ## ready-made base stations:
-You can buy ready-made base stations at [gnss.store](https://gnss.store/collections/onocoy-miners). To choose stations, read [our blog](https://gnss.store/blogs/elt-rtk-base/tagged/2-choosing-a-gnss-base-station).
+You can buy ready-made base stations at [gnss.store](https://gnss.store/collections/cors-fanless-stations). To choose stations, read [our blog](https://gnss.store/blogs/elt-rtk-base/tagged/2-choosing-a-gnss-base-station).
 
 ## License:
 ELT_RTKBase is licensed under AGPL 3 (see [LICENSE](./LICENSE) file).
