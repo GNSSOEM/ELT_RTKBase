@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..0433995
+index e36bbc4..4d9afb6
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,7 @@ from RTKLIB import RTKLIB
@@ -172,7 +172,7 @@ index e36bbc4..0433995
 +    answer = subprocess.run([update_archive, "-s"], encoding="UTF-8", stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=False)
 +    if answer.returncode != 0:
 +        if answer.stderr != "":
-+            error = answer.stderr
++            error = answer.stderr + answer.stdout
 +        else:
 +            error = answer.stdout
 +        #print("update -s answer.returncode = ", answer.returncode)
