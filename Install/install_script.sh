@@ -106,6 +106,7 @@ MOBILE_LINK=70-usb-net-mobile.link
 SEPTENTRIO_MODEM=77-mm-septentio-port-types.rules
 CYPRESS_MODEM=77-mm-cypress-port-types.rules
 AUTOCONNECT_CONF=autoconnect-retries-forever.conf
+GLOBAL_DNS_CONF=global-dns.conf
 LINK_RULES=/usr/lib/systemd/network
 MODEM_RULES=/lib/udev/rules.d
 NETWORK_CONF=/usr/lib/NetworkManager/conf.d
@@ -1355,6 +1356,7 @@ configure_for_unicore(){
    mkdir -p ${NETWORK_CONF}
    ExitCodeCheck $?
    copy_root "${AUTOCONNECT_CONF}" "${NETWORK_CONF}"
+   copy_root "${GLOBAL_DNS_CONF}" "${NETWORK_CONF}"
    if ! ischroot; then
       if systemctl is-enabled --quiet NetworkManager.service 2>/dev/null; then
          #echo nmcli general reload
@@ -1794,7 +1796,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM}
-              ${LOGMANAGER_PATCH}"
+              ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
