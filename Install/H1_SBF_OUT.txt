@@ -3,7 +3,7 @@ SSSSSSSSSS
 exeCopyConfigFile, RxDefault, Current
 setFrontendMode,SingleAnt
 setReceiverDynamics,Low,Static
-setSatelliteTracking, -C31-C56-C57-C58
+setSatelliteTracking, -C56-C57-C58
 setSignalTracking, all
 setSignalUsage,all,all
 setPVTMode, Static, StandAlone, auto

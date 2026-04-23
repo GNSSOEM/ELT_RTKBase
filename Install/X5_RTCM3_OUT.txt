@@ -2,7 +2,7 @@ SSSSSSSSSS
 SSSSSSSSSS
 exeCopyConfigFile, RxDefault, Current
 setReceiverDynamics,Low,Static
-setSatelliteTracking, -SBAS-C31-C56-C57-C58
+setSatelliteTracking, -SBAS-C56-C57-C58
 setSignalTracking, all
 setSignalUsage,all
 setPVTMode, Static, StandAlone, auto
