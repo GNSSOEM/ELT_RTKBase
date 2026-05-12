@@ -184,10 +184,10 @@ then
       fi
    elif [[ "${receiver}" =~ Bynav ]]
    then
-      recv_com=`NmeaConf ${OLDDEV} TEST COM | grep COM`
+      recv_com=`NmeaConf ${OLDDEV} "LOG ANTIJAMTYPEA" COM | grep COM`
       if [[ "${recv_com}" == "" ]]
       then
-          recv_com=`NmeaConf ${DEVICE} TEST COM | grep COM`
+          recv_com=`NmeaConf ${DEVICE} "LOG ANTIJAMTYPEA" COM | grep COM`
           if [[ "${recv_com}" != "" ]]
           then
              echo Receiver already on ${com_speed}
