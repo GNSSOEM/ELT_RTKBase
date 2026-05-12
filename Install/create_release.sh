@@ -35,7 +35,7 @@ tar --exclude-vcs \
     RtkController_py.patch X5_SBF_OUT.txt T_SBF_OUT.txt \
     H1_RTCM3_OUT.txt H1_SBF_OUT.txt H_RTCM3_OUT.txt H_SBF_OUT.txt \
     raw2nmea_sh.patch network_infos_py.patch 77-mm-cypress-port-types.rules \
-    LogManager_py.patch global-dns.conf
+    LogManager_py.patch global-dns.conf servicecontroller_py.patch
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

@@ -47,6 +47,7 @@ CFGX20P=X20P_${UBX_TAIL}
 CONFF9P=F9P_${RTCM3_TAIL}
 CFGF9P=F9P_${UBX_TAIL}
 SERVER_PATCH=server_py.patch
+SERVICE_CONTROLLER_PATCH=servicecontroller_py.patch
 GNSS_RPROXY_PATCH=gnss_rproxy_server_py.patch
 RTKBASE_CONFIG_MANAGER_PATCH=RTKBaseConfigManager_py.patch
 RTKCONTROLLER_PATCH=RtkController_py.patch
@@ -1127,6 +1128,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_UNIT}/str2str_ntrip_A.service  ${STR2STR_NTRIP_A_PATCH}
    patch_one ${RTKBASE_UNIT}/str2str_rtcm_svr.service ${STR2STR_RTCM_SVR_PATCH}
    patch_one ${RTKBASE_WEB}/server.py                 ${SERVER_PATCH}
+   patch_one ${RTKBASE_WEB}/ServiceController.py      ${SERVICE_CONTROLLER_PATCH}
    patch_one ${RTKBASE_WEB}/gnss_rproxy_server.py     ${GNSS_RPROXY_PATCH}
    patch_one ${RTKBASE_WEB}/RTKBaseConfigManager.py   ${RTKBASE_CONFIG_MANAGER_PATCH}
    patch_one ${RTKBASE_WEB}/RtkController.py          ${RTKCONTROLLER_PATCH}
@@ -1796,7 +1798,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CFGX20P} ${CONFF9P} ${CFGF9P} ${RTKCONTROLLER_PATCH} ${CONFX5SBF} \
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF}
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM}
-              ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF}"
+              ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

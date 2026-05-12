@@ -1,0 +1,28 @@
+diff --git a/web_app/ServiceController.py b/web_app/ServiceController.py
+index be31a62..8e844bd 100644
+--- a/web_app/ServiceController.py
++++ b/web_app/ServiceController.py
+@@ -16,9 +16,21 @@ class ServiceController(object):
+         self.unit = Unit(bytes(unit, 'utf-8'), _autoload=True)
+         
+     def isActive(self):
+-        if self.unit.Unit.ActiveState == b'active':
++        last_exception = None
++
++        for _ in range(3):
++            try:
++                activeState = self.unit.Unit.ActiveState
++                break
++            except DBusError as e:
++                last_exception = e
++                time.sleep(0.001)
++        else:
++            raise last_exception
++
++        if activeState == b'active':
+             return True
+-        elif self.unit.Unit.ActiveState == b'activating':
++        elif activeState == b'activating':
+             #TODO manage this transitionnal state differently
+             return True
+         else:
