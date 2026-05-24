@@ -206,6 +206,8 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if the I2C interface should be enabled"},
         {"CFG-I2C-EXTENDEDTIMEOUT", 0x10510002, "L", 1, "",
          "Flag to disable timeouting the interface after 1.5 s"},
+        {"CFG-I2C-PULL_UPS_DISABLED", 0x1051000b, "L", 1, "",
+         "Flag to indicate if the internal Pull-Ups (SDA and SCL lines) should be disabled"},
 
         // M10S, protVer 34.00
         {"CFG-I2C-REMAP", 0x10510004, "L", 1, "",
@@ -516,6 +518,18 @@ TUbxCfg UbxCfgTable[] = {
          "Output rate of the RTCM-3X-TYPE1005 message on port UART2"},
         {"CFG-MSGOUT-RTCM_3X_TYPE1005_USB", 0x209102c0, "U1", 1, "",
          "Output rate of the RTCM-3X-TYPE1005 message on port USB"},
+
+        {"CFG-MSGOUT-RTCM_3X_TYPE1006_I2C", 0x209102c2, "U1", 1, "",
+         "Output rate of the RTCM-3X-TYPE1006 message on port I2C"},
+        {"CFG-MSGOUT-RTCM_3X_TYPE1006_SPI", 0x209102c6, "U1", 1, "",
+         "Output rate of the RTCM-3X-TYPE1006 message on port SPI"},
+        {"CFG-MSGOUT-RTCM_3X_TYPE1006_UART1", 0x209102c3, "U1", 1, "",
+         "Output rate of the RTCM-3X-TYPE1006 message on port UART1"},
+        {"CFG-MSGOUT-RTCM_3X_TYPE1006_UART2", 0x209102c4, "U1", 1, "",
+         "Output rate of the RTCM-3X-TYPE1006 message on port UART2"},
+        {"CFG-MSGOUT-RTCM_3X_TYPE1006_USB", 0x209102c5, "U1", 1, "",
+         "Output rate of the RTCM-3X-TYPE1006 message on port USB"},
+
 
         {"CFG-MSGOUT-RTCM_3X_TYPE1074_I2C", 0x2091035e, "U1", 1, "",
          "Output rate of the RTCM-3X-TYPE1074 message on port I2C"},
@@ -1270,6 +1284,14 @@ TUbxCfg UbxCfgTable[] = {
         {"CFG-NAV2-SBAS_USE_INTEGRITY", 0x10170002, "L", 1, "",
          "Use SBAS integrity in NAV2 output"},
 
+        // CFG-NAVCOR-
+        {"CFG-NAVCOR", 0x100dffff, "", 0, "",
+         "get all CFG-NAVCOR"},
+        {"CFG-NAVCOR-ENABLE-GAL-HAS", 0x100d0002, "L", 1, "",
+         "If this is true, and HOST corrections are disabled, Galileo HAS corrections are processed."},
+        {"CFG-NAVCOR-ENABLE-HOST", 0x100d0001, "L", 1, "",
+         "Enable/disable HOST corrections"},
+
         // CFG-NAVHPG-
         {"CFG-NAVHPG", 0x2014ffff, "", 0, "",
          "get all CFG-NAVHPG"},
@@ -1586,6 +1608,8 @@ TUbxCfg UbxCfgTable[] = {
          "RTCM input filter configuration based on DF003 value"},
         {"CFG-RTCM-DF003_OUT", 0x30090001, "U2", 1, "",
          "RTCM DF003 reference station ID (output)"},
+        {"CFG-RTCM-DF028_OUT", 0x30090010, "U2", 0.0001, "m",
+         "RTCM DF028 (antenna height) output value"},
 
         // CFG-SBAS-
         {"CFG-SBAS", 0x1036ffff, "", 0, "",
@@ -1759,6 +1783,8 @@ TUbxCfg UbxCfgTable[] = {
          "QZSS enable"},
         {"CFG-SIGNAL-QZSS_L1CA_ENA", 0x10310012, "L", 1, "",
          "QZSS L1C/A enable"},
+        {"CFG-SIGNAL-QZSS_L1CB_ENA", 0x10310039, "L", 1, "",
+         "QZSS L1C/B enable"},
         {"CFG-SIGNAL-QZSS_L1S_ENA", 0x10310014, "L", 1, "",
          "QZSS L1S enable"},
         {"CFG-SIGNAL-QZSS_L2C_ENA", 0x10310015, "L", 1, "",
@@ -2211,6 +2237,7 @@ TUbxCmd UbxCmdTable[] = {
    {0x0259, "UBX-RXM-RLM"},
    {0x0261, "UBX-RXM-IMES"},
    {0x0272, "UBX-RXM-PMP"},
+   {0x0273, "UBX-RXM-QZSSL6"},
    {0x0274, "UBX-RXM-TM"},
    {0x0300, "UBX-INF-ERROR"},
    {0x0301, "UBX-INF-WARNING"},
