@@ -388,7 +388,6 @@ stoping_services() {
                   str2str_rtcm_udp_client.service \
                   str2str_rtcm_serial.service \
                   str2str_file.service \
-                  rtkbase_raw2nmea.service \
                   str2str_tcp.service"
      serviceStartList=
      for i in `seq 1 3`; do
