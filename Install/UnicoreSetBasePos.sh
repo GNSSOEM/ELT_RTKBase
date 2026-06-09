@@ -116,6 +116,9 @@ else
    recv_com=
    SAVECONF=Y
 fi
+
+#echo stty -F /dev/${com_port} -echo -icrnl ${recv_speed}
+stty -F /dev/${com_port} -echo -icrnl ${recv_speed}
 #echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
 
 #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
@@ -278,6 +281,9 @@ then
       ExitCodeCheck ${exit_code}
       exit ${exit_code}
    fi
+
+   #echo stty -F /dev/${com_port} -echo -icrnl ${com_speed}
+   stty -F /dev/${com_port} -echo -icrnl ${com_speed}
 fi
 
 CHECKPOS=N
