@@ -1,5 +1,5 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index e8f6f2d..c3dc465
+index e8f6f2d..ebac3d5
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -8,18 +8,163 @@ BASEDIR="$(dirname "$0")"
@@ -174,7 +174,7 @@ index e8f6f2d..c3dc465
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,72 +173,114 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,72 +173,117 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -242,17 +242,20 @@ index e8f6f2d..c3dc465
 +       echo run_cast exit with exitcode ${exitcode}
 +       exit ${exitcode}
 +    fi
+     # What is this ${!1} ? It's variable indirection
+-    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp_$(date "+%F-%T").log
++    #echo ${cast} -in ${!1} ${out_tcp} -b 1  -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log \&
++    ${cast} -in ${!1} ${out_tcp} -b 1 -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log &
 +    RAW2NMEA_SERVICE=rtkbase_raw2nmea.service
 +    enabled=$(systemctl is-enabled ${RAW2NMEA_SERVICE})
 +    if [[ "${enabled}" == "enabled" ]]; then
 +       active=$(systemctl is-active ${RAW2NMEA_SERVICE})
 +       #echo enabled=${enabled} active=${active}
-+       [[ "${active}" != "active" ]] && systemctl start ${RAW2NMEA_SERVICE}
++       if [[ "${active}" != "active" ]]; then
++          #echo \{ sleep 20 \; systemctl start ${RAW2NMEA_SERVICE} \;\} \&
++          { sleep 3 ; systemctl start ${RAW2NMEA_SERVICE} ;} &
++       fi
 +    fi
-     # What is this ${!1} ? It's variable indirection
--    ${cast} -in ${!1} -out ${out_tcp} -b 1 -t ${level} -fl ${logdir}/str2str_tcp_$(date "+%F-%T").log
-+    #echo ${cast} -in ${!1} ${out_tcp} -b 1  -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log \&
-+    ${cast} -in ${!1} ${out_tcp} -b 1 -t ${level} ${logdir}/str2str_tcp_$(date "+%F-%T").log &
      ;;
  
    out_caster_A)
@@ -309,7 +312,7 @@ index e8f6f2d..c3dc465
      ;;
  
    out_file)
-@@ -103,8 +290,12 @@ mkdir -p ${logdir}
+@@ -103,8 +293,12 @@ mkdir -p ${logdir}
      if [ ${ret} -eq 0 ]
      then
        mkdir -p ${datadir}
