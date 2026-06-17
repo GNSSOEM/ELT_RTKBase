@@ -1,8 +1,16 @@
 diff --git a/web_app/ServiceController.py b/web_app/ServiceController.py
-index be31a62..8e844bd 100644
+index be31a62..c908997 100644
 --- a/web_app/ServiceController.py
 +++ b/web_app/ServiceController.py
-@@ -16,9 +16,21 @@ class ServiceController(object):
+@@ -1,6 +1,7 @@
+ import os
+ from pystemd.systemd1 import Unit
+ from pystemd.systemd1 import Manager
++from pystemd.dbusexc import DBusError
+ 
+ class ServiceController(object):
+     """
+@@ -16,9 +17,21 @@ class ServiceController(object):
          self.unit = Unit(bytes(unit, 'utf-8'), _autoload=True)
          
      def isActive(self):
