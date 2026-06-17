@@ -25,6 +25,7 @@ fi
 cat <<"EOF" >/boot/firmware/system.txt
 # WiFi
 #COUNTRY=LV
+#AP=Y
 #SSID=$'ABC'
 #KEY=$'1234567890'
 #HIDDEN=Y

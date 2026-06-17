@@ -222,6 +222,42 @@ void __fastcall TfmMain::cbIPwifiClick(TObject *)
    SaveChange(NULL);
 }
 //---------------------------------------------------------------------------
+void __fastcall TfmMain::cbWifiAPClick(TObject *)
+{
+   bool enabled = cbWifiAP->Checked;
+   bool disabled = !enabled;
+   if (enabled) {
+      oldWifi = cbWifi->Checked;
+      oldIPwifi = cbIPwifi->Checked;
+      oldCountry = cbCountry->Checked;
+      oldWifiStatic = rbWifiStatic->Checked;
+      cbWifi->Checked = enabled;
+      cbIPwifi->Checked = enabled;
+      cbCountry->Checked = enabled;
+      rbWifiStatic->Checked = enabled;
+   } else {
+      cbWifi->Checked = oldWifi;
+      cbIPwifi->Checked = oldIPwifi;
+      cbCountry->Checked = oldCountry;
+      rbWifiStatic->Checked = oldWifiStatic;
+      rbWifiDHCP->Checked = !oldWifiStatic;
+   }
+
+   cbWifi->Enabled = disabled;
+   cbIPwifi->Enabled = disabled;
+   cbCountry->Enabled = disabled;
+   gbWifiIP->Enabled = disabled;
+   rbWifiStatic->Enabled = disabled;
+   rbWifiDHCP->Enabled = disabled;
+   gbWifiIP->Font->Color = disabled ? clWindowText : clGrayText;
+   edWIFI_Gate->Visible = disabled;
+   lbWIFI_Gate->Visible = disabled;
+   edWIFI_DNS->Visible = disabled;
+   lbWIFI_DNS->Visible = disabled;
+
+   SaveChange(NULL);
+}
+//---------------------------------------------------------------------------
 void __fastcall TfmMain::SaveChange(TObject *)
 {
    bool wifiOK = cbWifi->Checked && (edSSID->Text.Length() > 0);
@@ -351,6 +387,26 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
       return;
    }
 
+   if (cbWifi->Checked && (edSSID->Text.Length() == 0)) {
+      MessageDlg("SSID is empty", mtWarning, TMsgDlgButtons() << mbCancel, 0);
+      return;
+   }
+
+   if (cbWifi->Checked && (edKey->Text.Length() < 8)) {
+      MessageDlg("Key is short or empty", mtWarning, TMsgDlgButtons() << mbCancel, 0);
+      return;
+   }
+
+   AnsiString InvalidIP = "192.168.3.";
+   if (cbIPeth->Checked && rbEthStatic->Checked && (AnsiPos(InvalidIP,edETH_IP->Text) > 0)) {
+      MessageDlg("Networl 192.168.3.* not permited for Ethernet", mtWarning, TMsgDlgButtons() << mbCancel, 0);
+      return;
+   }
+   if (cbIPwifi->Checked && rbWifiStatic->Checked && (AnsiPos(InvalidIP,edWIFI_IP->Text) > 0)) {
+      MessageDlg("Networl 192.168.3.* not permited for Wifi", mtWarning, TMsgDlgButtons() << mbCancel, 0);
+      return;
+   }
+
    int disk = FindRtkbaseDevice();
    if (disk < 0) {
       MessageDlg("SD card for Raspberri not found", mtWarning, TMsgDlgButtons() << mbCancel, 0);
@@ -366,8 +422,12 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
          AnsiString key = edKey->Text;
          if (key.Length() > 0)
             fprintf(file,"KEY=%s\n", quoted(key).c_str());
-         if (cbHidden->Checked)
-            fprintf(file,"HIDDEN=Y\n");
+         if (cbHidden->Visible) {
+            if (cbHidden->Checked)
+               fprintf(file,"HIDDEN=Y\n");
+         }
+         if (cbWifiAP->Checked)
+            fprintf(file,"AP=Y\n");
       }
       if (cbCountry->Checked) {
          int code = (int)(cbxCountry->Items->Objects[cbxCountry->ItemIndex]);
@@ -402,12 +462,16 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
             AnsiString prefix = edWIFI_Prefix->Text;
             if ((ip.Length() > 0) && (prefix.Length() > 0))
                fprintf(file,"WIFI_IP=\"%s/%s\"\n",ip.c_str(),prefix.c_str());
-            AnsiString gate = edWIFI_Gate->Text;
-            if (gate.Length() > 0)
-               fprintf(file,"WIFI_GATE=\"%s\"\n", gate.c_str());
-            AnsiString dns = edWIFI_DNS->Text;
-            if (dns.Length() > 0)
-               fprintf(file,"WIFI_DNS=\"%s\"\n", dns.c_str());
+            if (edWIFI_Gate->Visible) {
+               AnsiString gate = edWIFI_Gate->Text;
+               if (gate.Length() > 0)
+                  fprintf(file,"WIFI_GATE=\"%s\"\n", gate.c_str());
+            }
+            if (edWIFI_DNS->Visible) {
+               AnsiString dns = edWIFI_DNS->Text;
+               if (dns.Length() > 0)
+                  fprintf(file,"WIFI_DNS=\"%s\"\n", dns.c_str());
+            }
          } else
             fprintf(file,"WIFI_IP=DHCP\n");
       }

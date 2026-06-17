@@ -85,46 +85,65 @@ fi
 
 if [[ -n "${SSID}" ]]
 then
-   if [[ -z "${HIDDEN}" ]]
-   then
+   if [[ -z "${HIDDEN}" ]]; then
       HIDnum=0
       HIDkey=
+      HIDbool=no
    else
       HIDnum=1
       HIDkey=-h
+      HIDbool=yes
    fi
-   #echo SSID=${SSID} KEY=${KEY} HIDDEN=${HIDDEN} HIDnum=${HIDnum} HIDkey=${HIDkey}
+   SSIDprinted=$(printf '%s' ${SSID} | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+   #echo SSID=${SSID} SSIDprinted=${SSIDprinted} KEY=${KEY} HIDDEN=${HIDDEN} AP=${AP} HIDnum=${HIDnum} HIDkey=${HIDkey} HIDbool=${HIDbool}
    nm-online -s >/dev/null
    nmcli radio wifi on
-
-   if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-      if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
-         UUID=`nmcli --fields UUID,DEVICE con show | grep wlan0 | awk -F ' ' '{print $1}'`
-         if [[ "${UUID}" = "" ]]; then
-            UUID=`nmcli --fields UUID,NAME con show | grep "preconfigured" | awk -F ' ' '{print $1}'`
-            #UUID=${UUID}
+   if [[ -z "${AP}" ]]; then
+      if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
+         if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
+            UUID=`nmcli --fields UUID,DEVICE con show | grep wlan0 | awk -F ' ' '{print $1}'`
+            if [[ "${UUID}" = "" ]]; then
+               UUID=`nmcli --fields UUID,NAME con show | grep "preconfigured" | awk -F ' ' '{print $1}'`
+               #UUID=${UUID}
+            fi
+            if [[ "${UUID}" != "" ]]; then
+               #echo nmcli connection delete uuid "${UUID}"
+               nmcli connection delete uuid "${UUID}"
+               ExitCodeCheck $?
+            fi
          fi
-         if [[ "${UUID}" != "" ]]; then
-            #echo nmcli connection delete uuid "${UUID}"
-            nmcli connection delete uuid "${UUID}"
-            ExitCodeCheck $?
-         fi
+         #echo /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
+         /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
+         ExitCodeCheck $?
+         #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
+         #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
+         #echo nmcli connection reload
+         nmcli connection reload
+         ExitCodeCheck $?
+      else
+         #https://www.raspberrypi.com/documentation/computers/configuration.html
+         #echo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+         raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+         ExitCodeCheck $?
       fi
-      #echo /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
-      /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
-      ExitCodeCheck $?
-      #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
-      #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
-      #echo nmcli connection reload
-      nmcli connection reload
-      ExitCodeCheck $?
+      echo Wifi SSID set to ${SSID} -- code ${exitcode}
    else
-      #https://www.raspberrypi.com/documentation/computers/configuration.html
-      #echo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
-      raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+      nmcli device wifi hotspot ssid "${SSID}" password "${KEY}" ifname wlan0
       ExitCodeCheck $?
+      if [[ -n "${WIFI_IP}" ]]; then
+         nmcli connection modify id Hotspot ipv4.method manual ipv4.addresses "${WIFI_IP}" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+         ExitCodeCheck $?
+         WIFI_IP_SHOW="${WIFI_IP}"
+         WIFI_IP=""
+      else 
+         nmcli connection modify id Hotspot ipv4.method shared
+         ExitCodeCheck $?
+         WIFI_IP_SHOW=shared
+      fi
+      nmcli connection modify id Hotspot connection.autoconnect yes connection.autoconnect-priority 100 802-11-wireless.hidden ${HIDbool}
+      ExitCodeCheck $?
+      echo Wifi Hotspot set to ${SSID} \(${WIFI_IP_SHOW}\)-- code ${exitcode}
    fi
-   echo Wifi SSID set to ${SSID} -- code ${exitcode}
    WORK=Y
 fi
 

@@ -61,6 +61,7 @@ __published:	// IDE-managed Components
         TGroupBox *gbWifiIP;
         TRadioButton *rbWifiStatic;
         TRadioButton *rbWifiDHCP;
+        TCheckBox *cbWifiAP;
         void __fastcall cbWifiClick(TObject *Sender);
         void __fastcall cbCountryClick(TObject *Sender);
         void __fastcall cbUserClick(TObject *Sender);
@@ -71,7 +72,12 @@ __published:	// IDE-managed Components
         void __fastcall FormCreate(TObject *Sender);
         void __fastcall cbIPethClick(TObject *Sender);
         void __fastcall cbIPwifiClick(TObject *Sender);
+        void __fastcall cbWifiAPClick(TObject *Sender);
 private:	// User declarations
+        bool oldWifi;
+        bool oldIPwifi;
+        bool oldCountry;
+        bool oldWifiStatic;
         char sshkey[MAX_SSH];
         void AddCountryLine(const char *str);
         void FillCountryList(TCustomComboBox *cbxCountry);

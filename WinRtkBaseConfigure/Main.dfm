@@ -1,9 +1,9 @@
 object fmMain: TfmMain
   Left = 984
-  Top = 89
+  Top = 88
   BorderStyle = bsToolWindow
   Caption = 'Win RtkBase Configure'
-  ClientHeight = 397
+  ClientHeight = 398
   ClientWidth = 392
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -203,6 +203,15 @@ object fmMain: TfmMain
         TabStop = True
         OnClick = cbIPwifiClick
       end
+    end
+    object cbWifiAP: TCheckBox
+      Left = 96
+      Top = 64
+      Width = 90
+      Height = 17
+      Caption = 'WiFi AP'
+      TabOrder = 7
+      OnClick = cbWifiAPClick
     end
   end
   object gbCountry: TGroupBox
@@ -500,7 +509,7 @@ object fmMain: TfmMain
     Filter = '*.pub|*.pub|All|*.*'
     Options = [ofReadOnly, ofEnableSizing]
     Title = 'SSH public key'
-    Left = 144
-    Top = 64
+    Left = 280
+    Top = 80
   end
 end
