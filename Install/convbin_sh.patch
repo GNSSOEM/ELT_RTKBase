@@ -1,0 +1,13 @@
+diff --git a/tools/convbin.sh b/tools/convbin.sh
+index 91a8020..de46e5f 100755
+--- a/tools/convbin.sh
++++ b/tools/convbin.sh
+@@ -10,7 +10,7 @@ RAW_TYPE=$receiver_format
+ RINEX_TYPE=$3
+ CONVBIN_PATH=$(type -P convbin)
+ ANT_POSITION=$(echo "${position}" | cs2cs  EPSG:4979 EPSG:4978 -f "%.2f" | sed 's/\s/\//g')
+-RECEIVER="${receiver}"
++RECEIVER=$(echo "${receiver}" | sed  's/Septentrio_mosaic-/SEPT MOSAIC-/')
+ REC_VERSION="${receiver_firmware}"
+ REC_OPTION=''
+ [[ -n $ntrip_a_receiver_options ]] && REC_OPTION="${ntrip_a_receiver_options}"

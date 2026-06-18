@@ -128,10 +128,10 @@ then
       fi
       echo Wifi SSID set to ${SSID} -- code ${exitcode}
    else
-      nmcli device wifi hotspot ssid "${SSID}" password "${KEY}" ifname wlan0
+      nmcli device wifi hotspot ssid "${SSID}" password "${KEY}" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
       if [[ -n "${WIFI_IP}" ]]; then
-         nmcli connection modify id Hotspot ipv4.method manual ipv4.addresses "${WIFI_IP}" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+         nmcli connection modify id Hotspot ipv4.method manual ipv4.addresses "${WIFI_IP}"
          ExitCodeCheck $?
          WIFI_IP_SHOW="${WIFI_IP}"
          WIFI_IP=""

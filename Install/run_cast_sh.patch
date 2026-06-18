@@ -1,13 +1,18 @@
 diff --git a/run_cast.sh b/run_cast.sh
-index e8f6f2d..ebac3d5
+old mode 100755
+new mode 100644
+index e8f6f2d..a2d85df
 --- a/run_cast.sh
 +++ b/run_cast.sh
-@@ -8,18 +8,163 @@ BASEDIR="$(dirname "$0")"
+@@ -7,19 +7,165 @@
+ BASEDIR="$(dirname "$0")"
  source <( grep -v '^#' "${BASEDIR}"/settings.conf | grep '=' ) #import settings
  
- receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
+-receiver_info="RTKBase ${receiver},${version} ${receiver_firmware}"
 -in_serial="serial://${com_port}:${com_port_settings}#${receiver_format}"
 -in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format}"
++receiver_igs=$(echo "${receiver}" | sed  's/Septentrio_mosaic-/SEPT MOSAIC-/')
++receiver_info="RTKBase ${receiver_igs},${version} ${receiver_firmware}"
 +[[ -z "${receiver_inactivity_timeout}" ]] && receiver_inactivity_timeout=60
 +in_serial="serial://${com_port}:${com_port_settings}#${receiver_format} -s ${receiver_inactivity_timeout}000 -d 100 -r 1000"
 +in_tcp="tcpcli://localhost:${tcp_port}#${receiver_format} -s 0 -d 100 -r 1000"
@@ -174,7 +179,7 @@ index e8f6f2d..ebac3d5
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,72 +173,117 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,72 +174,117 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -312,7 +317,7 @@ index e8f6f2d..ebac3d5
      ;;
  
    out_file)
-@@ -103,8 +293,12 @@ mkdir -p ${logdir}
+@@ -103,8 +294,12 @@ mkdir -p ${logdir}
      if [ ${ret} -eq 0 ]
      then
        mkdir -p ${datadir}
