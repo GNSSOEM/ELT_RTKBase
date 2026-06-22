@@ -104,6 +104,7 @@ fi
 }
 
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
+HOTSPOT_FLAG=/usr/local/rtkbase/HOTSPOT.flg
 RESET_INTERNET_LED_FLAG=/usr/local/rtkbase/reset_intenet_led.flg
 wasWPS=
 
@@ -179,18 +180,37 @@ while : ; do
          fi
       fi
 
-      for i in `seq 1 ${CNT}`; do
-         if [[ -f ${FLAG} ]]; then
-            cat ${FLAG}
-            rm -f ${FLAG}
-            break
+      if [[ "${state}" == "DONW" ]] && [[ -f ${HOTSPOT_FLAG} ]]; then
+         if [[ "${wasHOTSPOT}" == "" ]]; then
+            echo HOTSPOT started
+            wasHOTSPOT=YES
          fi
-         if [[ -f ${WPS_FLAG} ]]; then
-            break
-         fi
-         sleep 1
+         set_gpio 0
+         sleep 0.25
+         set_gpio 1
+         sleep 0.25
+         set_gpio 0
+         sleep 0.25
+         set_gpio 1
+         sleep 0.25
          let ALL_CNT++
-      done
+      elif [[ "${wasHOTSPOT}" != "" ]]; then
+         echo HOTSPOT finished
+         wasHOTSPOT=
+      else
+         for i in `seq 1 ${CNT}`; do
+            if [[ -f ${FLAG} ]]; then
+               cat ${FLAG}
+               rm -f ${FLAG}
+               break
+            fi
+            if [[ -f ${WPS_FLAG} ]]; then
+               break
+            fi
+            sleep 1
+            let ALL_CNT++
+         done
+      fi
    fi
 
 

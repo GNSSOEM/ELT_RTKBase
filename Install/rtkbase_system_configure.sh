@@ -4,6 +4,7 @@
 #NEWCONF=system.txt
 NEWCONF=/boot/firmware/system.txt
 BASEDIR="$(dirname "$0")"
+HOTSPOT=Hotspot
 exitcode=0
 
 ExitCodeCheck(){
@@ -16,26 +17,59 @@ ExitCodeCheck(){
 }
 
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
+HOTSPOT_FLAG=/usr/local/rtkbase/HOTSPOT.flg
+rm -f ${WPS_FLAG}
+rm -f ${HOTSPOT_FLAG}
 
 Ciao(){
   #echo Trap now
   rm -f ${WPS_FLAG}
 }
 
+DeleteHotSpots(){
+   HOTSPOT_LIST=$(nmcli --fields NAME connection show | grep ${HOTSPOT})
+   #echo HOTSPOT_LIST=${HOTSPOT_LIST}
+   for hotspot_name in ${HOTSPOT_LIST}; do
+       nmcli connection delete id ${hotspot_name}
+   done
+}
+
 WPS() {
   nm-online -s >/dev/null
   HAVE_INTERNET=`nmcli networking connectivity check`
-  #echo HAVE_INTERNET=${HAVE_INTERNET}
-  if [[ "${HAVE_INTERNET}" != "full" ]]; then
+  HAVE_HOTSPOT=`nmcli  --fields NAME connection show --active | grep ${HOTSPOT}`
+  #echo before WPS  HAVE_INTERNET=${HAVE_INTERNET} HAVE_HOTSPOT=${HAVE_HOTSPOT}
+  if [[ "${HAVE_INTERNET}" != "full" ]] && [[ "${HAVE_HOTSPOT}" == "" ]]; then
+     DeleteHotSpots
      echo Start WPS PBC
      trap Ciao EXIT HUP INT QUIT ABRT KILL TERM
      echo Start WPS PBC >${WPS_FLAG}
      nmcli radio wifi on
+     ExitCodeCheck $?
      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
+     nmcli radio wifi on
+     ExitCodeCheck $?
      rm -f ${WPS_FLAG}
+     HAVE_INTERNET=`nmcli networking connectivity check`
+     #echo after WPS HAVE_INTERNET=${HAVE_INTERNET}
+     if [[ "${HAVE_INTERNET}" != "full" ]]; then
+        nmcli device wifi hotspot con-name ${HOTSPOT} ssid "RtkBase" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+        ExitCodeCheck $?
+        nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
+        ExitCodeCheck $?
+        nmcli connection down id ${HOTSPOT}
+        ExitCodeCheck $?
+        nmcli connection up id ${HOTSPOT}
+        ExitCodeCheck $?
+     fi
+  fi
+  HAVE_HOTSPOT=`nmcli connection show --active | grep ${HOTSPOT}`
+  if [[ -n "${HAVE_HOTSPOT}" ]]; then
+     echo Hotspot Started >${HOTSPOT_FLAG}
   fi
   ExitCodeCheck 0
 }
+
 
 WHOAMI=`whoami`
 if [[ ${WHOAMI} != "root" ]]
@@ -94,7 +128,7 @@ then
       HIDkey=-h
       HIDbool=yes
    fi
-   SSIDprinted=$(printf '%s' ${SSID} | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+   SSIDprinted=$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
    #echo SSID=${SSID} SSIDprinted=${SSIDprinted} KEY=${KEY} HIDDEN=${HIDDEN} AP=${AP} HIDnum=${HIDnum} HIDkey=${HIDkey} HIDbool=${HIDbool}
    nm-online -s >/dev/null
    nmcli radio wifi on
@@ -128,21 +162,24 @@ then
       fi
       echo Wifi SSID set to ${SSID} -- code ${exitcode}
    else
-      nmcli device wifi hotspot ssid "${SSID}" password "${KEY}" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      DeleteHotSpots
+      nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      ExitCodeCheck $?
+      nmcli connection modify id ${HOTSPOT} connection.autoconnect yes connection.autoconnect-priority 100 802-11-wireless.hidden ${HIDbool}
       ExitCodeCheck $?
       if [[ -n "${WIFI_IP}" ]]; then
-         nmcli connection modify id Hotspot ipv4.method manual ipv4.addresses "${WIFI_IP}"
+         nmcli connection modify id ${HOTSPOT} ipv4.addresses "${WIFI_IP}"
          ExitCodeCheck $?
          WIFI_IP_SHOW="${WIFI_IP}"
          WIFI_IP=""
       else 
-         nmcli connection modify id Hotspot ipv4.method shared
-         ExitCodeCheck $?
-         WIFI_IP_SHOW=shared
+         WIFI_IP_SHOW=$(nmcli connection show id ${HOTSPOT} | grep "IP4.ADDRESS[1]" | awk -F ' ' '{print $2}')
       fi
-      nmcli connection modify id Hotspot connection.autoconnect yes connection.autoconnect-priority 100 802-11-wireless.hidden ${HIDbool}
+      nmcli connection down id ${HOTSPOT}
       ExitCodeCheck $?
-      echo Wifi Hotspot set to ${SSID} \(${WIFI_IP_SHOW}\)-- code ${exitcode}
+      nmcli connection up id ${HOTSPOT}
+      ExitCodeCheck $?
+      echo Wifi ${HOTSPOT} set to ${SSID} \(${WIFI_IP_SHOW}\)-- code ${exitcode}
    fi
    WORK=Y
 fi
