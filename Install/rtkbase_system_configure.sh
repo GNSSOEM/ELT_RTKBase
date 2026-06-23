@@ -71,6 +71,7 @@ WPS() {
 }
 
 
+
 WHOAMI=`whoami`
 if [[ ${WHOAMI} != "root" ]]
 then
@@ -82,6 +83,29 @@ then
       echo exit with code ${exitcode}
    fi
    exit ${exitcode}
+fi
+
+PRECONFIGURED=preconfigured
+HAVE_PRECONFIGURED=`nmcli --fields NAME connection show | grep -w "${PRECONFIGURED}"`
+if [[ -n "${HAVE_PRECONFIGURED}" ]]; then
+   PRECONFIGURED_SSID=`nmcli --fields 802-11-wireless.ssid connection show id "${PRECONFIGURED}" | awk -F ' ' '{print $2}'`
+   PRECONFIGURED_SSIDprinted=WiFi_$(printf '%s' "${PRECONFIGURED_SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+   PRECONFIGURED_FILE=`nmcli --fields NAME,FILENAME connection show| grep "${PRECONFIGURED}" | awk -F ' ' '{print $2}'`
+   PRECONFIGURED_NEW_FILE=`dirname "${PRECONFIGURED_FILE}"`/${PRECONFIGURED_SSIDprinted}.nmconnection
+   #echo PRECONFIGURED_SSID=${PRECONFIGURED_SSID} PRECONFIGURED_SSIDprinted=${PRECONFIGURED_SSIDprinted} PRECONFIGURED_FILE=${PRECONFIGURED_FILE} PRECONFIGURED_NEW_FILE=${PRECONFIGURED_NEW_FILE}
+   if [[ "${PRECONFIGURED}" != "${PRECONFIGURED_SSIDprinted}" ]]; then
+      #echo nmcli connection modify id "${PRECONFIGURED}" connection.id "${PRECONFIGURED_SSIDprinted}"
+      nmcli connection modify id "${PRECONFIGURED}" connection.id "${PRECONFIGURED_SSIDprinted}"
+      ExitCodeCheck $?
+   fi
+   if [[ "${PRECONFIGURED_FILE}" != "${PRECONFIGURED_NEW_FILE}" ]]; then
+      #echo mv "${PRECONFIGURED_FILE}" "${PRECONFIGURED_NEW_FILE}"
+      mv "${PRECONFIGURED_FILE}" "${PRECONFIGURED_NEW_FILE}"
+      ExitCodeCheck $?
+      #echo nmcli connection reload
+      nmcli connection reload
+      ExitCodeCheck $?
+   fi
 fi
 
 if [[ -f ${NEWCONF} ]]
@@ -120,46 +144,24 @@ fi
 if [[ -n "${SSID}" ]]
 then
    if [[ -z "${HIDDEN}" ]]; then
-      HIDnum=0
-      HIDkey=
       HIDbool=no
    else
-      HIDnum=1
-      HIDkey=-h
       HIDbool=yes
    fi
-   SSIDprinted=$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+   SSIDprinted=Wifi_$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
    #echo SSID=${SSID} SSIDprinted=${SSIDprinted} KEY=${KEY} HIDDEN=${HIDDEN} AP=${AP} HIDnum=${HIDnum} HIDkey=${HIDkey} HIDbool=${HIDbool}
    nm-online -s >/dev/null
    nmcli radio wifi on
    if [[ -z "${AP}" ]]; then
-      if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-         if [ -f /etc/NetworkManager/system-connections/preconfigured.nmconnection ]; then
-            UUID=`nmcli --fields UUID,DEVICE con show | grep wlan0 | awk -F ' ' '{print $1}'`
-            if [[ "${UUID}" = "" ]]; then
-               UUID=`nmcli --fields UUID,NAME con show | grep "preconfigured" | awk -F ' ' '{print $1}'`
-               #UUID=${UUID}
-            fi
-            if [[ "${UUID}" != "" ]]; then
-               #echo nmcli connection delete uuid "${UUID}"
-               nmcli connection delete uuid "${UUID}"
-               ExitCodeCheck $?
-            fi
-         fi
-         #echo /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
-         /usr/lib/raspberrypi-sys-mods/imager_custom set_wlan ${HIDkey} "${SSID}" "${KEY}"
-         ExitCodeCheck $?
-         #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "ssid="
-         #cat /etc/NetworkManager/system-connections/preconfigured.nmconnection | grep "psk="
-         #echo nmcli connection reload
-         nmcli connection reload
-         ExitCodeCheck $?
-      else
-         #https://www.raspberrypi.com/documentation/computers/configuration.html
-         #echo raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
-         raspi-config nonint do_wifi_ssid_passphrase "${SSID}" "${KEY}" ${HIDnum}
+      HAVE_OLD_SSID=`nmcli --fields NAME connection show | grep -w "${SSIDprinted}"`
+      if [ -n "${HAVE_OLD_SSID}" ]; then
+         #echo nmcli connection delete id "${SSIDprinted}"
+         nmcli connection delete id "${SSIDprinted}"
          ExitCodeCheck $?
       fi
+      #echo nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool}
+      nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      ExitCodeCheck $?
       echo Wifi SSID set to ${SSID} -- code ${exitcode}
    else
       DeleteHotSpots
