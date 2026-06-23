@@ -2158,8 +2158,10 @@ const char *ubx_find_cfg_byKey(TUbxKey key)
 //---------------------------------------------------------------------------
 bool ubx_is_cfg(const char *str)
 {
-   int res = strncmpi(str,"CFG-",4);
-   return res == 0;
+   int res1 = strncmpi(str,"CFG-",4);
+   int res2 = strncmpi(str,"CFG,",4);
+   int res3 = stricmp(str,"CFG");
+   return (res1 == 0) || (res2 == 0) || (res3 == 0);
 }
 //---------------------------------------------------------------------------
 int ubx_cfg_value_len(TUbxKey key)
