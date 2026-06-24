@@ -1484,11 +1484,19 @@ configure_settings(){
          ExitCodeCheck $?
       fi
 
-      #if ! grep -q "^receiver_inactivity_timeout=" "${SETTINGS_NOW}"; then
+      #echo if ! grep -q "^receiver_inactivity_timeout=" "${SETTINGS_NOW}"; then
       if ! grep -q "^receiver_inactivity_timeout=" "${SETTINGS_NOW}"; then
          echo insert receiver_inactivity_timeout into ${SETTINGS_NOW}
-         #echo ${sed} "/^gnss_rcv_web_proxy_port=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
+         #echo ${sed} "/^receiver_carrier=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
          ${sed} "/^receiver_carrier=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
+      fi
+
+      #cho if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
+         echo insert marker_name \& marker number into ${SETTINGS_NOW}
+         #echo ${sed} "/^min_free_space=/a #Marker name for RINEX\nmarker_name=\'\'\n#Marker number for RINEX\nmarker_number=\'\'" "${SETTINGS_NOW}"
+         ${sed} "/^min_free_space=/a #Marker name for RINEX\nmarker_name=\'\'\n#Marker number for RINEX\nmarker_number=\'\'" "${SETTINGS_NOW}"
          ExitCodeCheck $?
       fi
    else
