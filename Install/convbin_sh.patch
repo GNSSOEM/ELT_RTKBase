@@ -89,3 +89,15 @@ index 91a8020..cc6816c 100755
  fi
  
  #Let's launch the CONVBIN process
+@@ -105,6 +116,10 @@ if [[ $file_extension == 'zip' ]]
+ fi
+ ${rnx_conversion_func}
+ return_code=$?
++if [[ ! -f "${RINEX_FILE}" ]]; then
++   echo RINEX not created
++   exit 1
++fi
+ echo -n 'rinex_file='"${RINEX_FILE}"
+ [[ $file_extension == 'zip' ]] && rm "${raw_file}"
+ exit $return_code
+\ No newline at end of file
