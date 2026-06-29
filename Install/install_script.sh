@@ -370,7 +370,9 @@ check_version(){
      OLD_VERSION=${NEW_VERSION}
      UPDATE=N
   fi
-  echo ${NEW_VERSION} >${RTKBASE_PATH}/${VERSION_FILE}
+  if [[ -d ${RTKBASE_PATH} ]]; then
+     echo ${NEW_VERSION} >${RTKBASE_PATH}/${VERSION_FILE}
+  fi
 }
 
 add_pps_module(){
@@ -801,7 +803,7 @@ add_rtkbase_user(){
    echo 'ADD RTKBASE USER'
    echo '################################'
 
-   HAVEUSER=`cat /etc/passwd | grep ${RTKBASE_USER}`
+   HAVEUSER=`cat /etc/passwd | grep -w "${RTKBASE_USER}"`
    #echo HAVEUSER=${HAVEUSER}
    if [[ ${HAVEUSER} == "" ]]
    then
@@ -863,6 +865,8 @@ add_rtkbase_user(){
       #echo chown -R rtkbase:rtkbase ${RTKBASE_GIT}
       chown -R rtkbase:rtkbase ${RTKBASE_GIT}
    fi
+
+   echo ${NEW_VERSION} >${RTKBASE_PATH}/${VERSION_FILE}
 }
 
 doPatch(){
@@ -1016,26 +1020,12 @@ install_rtkbase_system_configure(){
   echo 'INSTALL RTKBASE SYSTEM CONFIGURE'
   echo '################################'
 
-  #echo BASEDIR=${BASEDIR} RTKBASE_PATH=${RTKBASE_PATH}
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]
-  then
-     #echo mv ${BASEDIR}/${SYSCONGIG} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${SYSCONGIG} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${SYSCONGIG}
-  chmod +x ${RTKBASE_PATH}/${SYSCONGIG}
-  ExitCodeCheck $?
-
-  #echo mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
-  mv ${BASEDIR}/${SYSSERVICE} ${SERVICE_PATH}/
-  ExitCodeCheck $?
-
   if [[ -f ${RTKBASE_PATH}/${SYSCONGIG_OLD} ]]; then
      #echo rm ${RTKBASE_PATH}/${SYSCONGIG_OLD}
      rm ${RTKBASE_PATH}/${SYSCONGIG_OLD}
      ExitCodeCheck $?
   fi
+
   if ! ischroot; then
      if systemctl is-enabled --quiet ${SYSSERVICE_OLD} 2>/dev/null; then
         #echo systemctl disable ${SYSSERVICE_OLD}
@@ -1051,51 +1041,16 @@ install_rtkbase_system_configure(){
 
   copy_root_script "${START}"                   "${RTKBASE_PATH}"
   copy_root        "${START_SERVICE}"           "${SERVICE_PATH}"
-  #echo mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
-  mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
-  ExitCodeCheck $?
-  #echo chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
-  chmod +x ${NETWORK_DISPATHER_PATH}/${NETWORK_EVENT}
-  ExitCodeCheck $?
-
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-     #echo mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${CHECK_INTERNET} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
-  chmod +x ${RTKBASE_PATH}/${CHECK_INTERNET}
-  ExitCodeCheck $?
-
-  #echo mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
-  mv ${BASEDIR}/${CHECK_INTERNET_SERVICE} ${SERVICE_PATH}/
-  ExitCodeCheck $?
-
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-     #echo mv ${BASEDIR}/${CHECK_SATELITES} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${CHECK_SATELITES} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${CHECK_SATELITES}
-  chmod +x ${RTKBASE_PATH}/${CHECK_SATELITES}
-  ExitCodeCheck $?
-
-  #echo mv ${BASEDIR}/${CHECK_SATELITES_SERVICE} ${SERVICE_PATH}/
-  mv ${BASEDIR}/${CHECK_SATELITES_SERVICE} ${SERVICE_PATH}/
-  ExitCodeCheck $?
-
-  if [[ "${BASEDIR}" != "${RTKBASE_PATH}" ]]; then
-     #echo mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
-     mv ${BASEDIR}/${DHCP_CONF} ${RTKBASE_PATH}/
-     ExitCodeCheck $?
-  fi
-  #echo chmod +x ${RTKBASE_PATH}/${DHCP_CONF}
-  chmod +x ${RTKBASE_PATH}/${DHCP_CONF}
-  ExitCodeCheck $?
-
-  #echo mv ${BASEDIR}/${DHCP_SERVICE} ${SERVICE_PATH}/
-  mv ${BASEDIR}/${DHCP_SERVICE} ${SERVICE_PATH}/
-  ExitCodeCheck $?
+  copy_root_script "${SYSCONGIG}"               "${RTKBASE_PATH}"
+  copy_root        "${SYSSERVICE}"              "${SERVICE_PATH}"
+  copy_root_script "${NETWORK_EVENT}"           "${NETWORK_DISPATHER_PATH}"
+  copy_root_script "${CHECK_INTERNET}"          "${RTKBASE_PATH}"
+  copy_root        "${CHECK_INTERNET_SERVICE}"  "${SERVICE_PATH}"
+  copy_root_script "${CHECK_SATELITES}"         "${RTKBASE_PATH}"
+  copy_root        "${CHECK_SATELITES_SERVICE}" "${SERVICE_PATH}"
+  copy_root_script "${DHCP_CONF}"               "${RTKBASE_PATH}"
+  copy_root        "${DHCP_SERVICE}"            "${SERVICE_PATH}"
+  copy_root_script "${CHECK_SEPTENRIO_NET}"     "${RTKBASE_PATH}"
 
   if ! ischroot; then
      #echo systemctl daemon-reload
@@ -1619,8 +1574,8 @@ start_rtkbase_services(){
      #echo systemctl enable --now modem_check.timer
      systemctl enable --now modem_check.timer
      ExitCodeCheck $?
-     delete_from_service_list modem_check.timer
   fi
+  delete_from_service_list modem_check.timer
 
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
   ExitCodeCheck $?
@@ -1635,17 +1590,14 @@ start_rtkbase_services(){
      #echo systemctl start "${DHCP_SERVICE}"
      systemctl start "${DHCP_SERVICE}"
      ExitCodeCheck $?
-     delete_from_service_list ${DHCP_SERVICE}
 
      #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      ExitCodeCheck $?
-     delete_from_service_list ${SEPTENTRIO_NAT_SERVICE}
 
      #echo systemctl enable --now "${GNSS_WEB_PROXY}"
      systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
-     delete_from_service_list ${GNSS_WEB_PROXY}
 
      if is_ELT07x5; then
         GPSD_CONFIG=/etc/default/gpsd
@@ -1666,9 +1618,13 @@ start_rtkbase_services(){
         #echo systemctl enable --now "${RAW2NMEA_SERVICE}"
         systemctl enable --now "${RAW2NMEA_SERVICE}"
         ExitCodeCheck $?
-        delete_from_service_list ${RAW2NMEA_SERVICE}
      fi
   fi
+
+  delete_from_service_list ${DHCP_SERVICE}
+  delete_from_service_list ${SEPTENTRIO_NAT_SERVICE}
+  delete_from_service_list ${GNSS_WEB_PROXY}
+  delete_from_service_list ${RAW2NMEA_SERVICE}
 
   if [[ "${ONLINE_UPDATE}" == "UPDATE" ]]; then
      if ! [[ "${serviceStartList}" =~ "str2str_tcp.service" ]]; then
@@ -1700,22 +1656,24 @@ start_rtkbase_services(){
            #echo systemctl restart gpsd.service
            systemctl restart gpsd.service
            ExitCodeCheck $?
-           delete_from_service_list gpsd.service
            #echo systemctl restart chrony.service
            systemctl restart chrony.service
            ExitCodeCheck $?
-           delete_from_service_list chrony.service
         fi
      fi
   fi
+
+  delete_from_service_list gpsd.service
+  delete_from_service_list chrony.service
 
   MOBILE=/sys/class/net/mobile
   if [[ -L ${MOBILE} ]]; then
      #echo systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
      systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
      ExitCodeCheck $?
-     delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
   fi
+  delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
+
   #echo systemctl start "${START_SERVICE}"
   systemctl start "${START_SERVICE}"
   ExitCodeCheck $?
