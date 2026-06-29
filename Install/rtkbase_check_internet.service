@@ -1,6 +1,6 @@
 [Unit]
 Description=RTKBase show internet state on led
-After=local-fs.target network.target
+After=local-fs.target network.target After=rtkbase_start.service
 Wants=local-fs.target network.target
 
 [Service]

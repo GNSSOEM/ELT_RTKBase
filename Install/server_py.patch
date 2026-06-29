@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..84164b2
+index e36bbc4..16bf48b
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,7 @@ from RTKLIB import RTKLIB
@@ -512,7 +512,7 @@ index e36bbc4..84164b2
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1230,17 @@ def update_settings(json_msg):
+@@ -1004,6 +1230,24 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -526,6 +526,13 @@ index e36bbc4..84164b2
 +        socketio.emit("tailscale_href", answer.stdout, namespace="/test")
 +    else:
 +        socketio.emit("tailscale_error", answer.stdout, namespace="/test")
++
++@socketio.on("mosaic available", namespace="/test")
++def mosaic_available():
++    for service in services_list:
++        if service["service_unit"] == 'rtkbase_gnss_web_proxy.service':
++           is_gnss_active = service["unit"].isActive()
++    socketio.emit("mosaic_available_result", is_gnss_active, namespace="/test")
 +
  def arg_parse():
      parser = argparse.ArgumentParser(

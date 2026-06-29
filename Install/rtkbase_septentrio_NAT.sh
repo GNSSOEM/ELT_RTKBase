@@ -1,7 +1,7 @@
 #!/bin/bash
 
 nm-online -s >/dev/null
-SEPTENTRIO_UUID=`nmcli --fields UUID,DEVICE con show | grep septentrio | awk -F ' ' '{print $1}'`
+SEPTENTRIO_UUID=`nmcli --fields UUID,DEVICE con show --active | grep septentrio | awk -F ' ' '{print $1}'`
 if [[ -n "${SEPTENTRIO_UUID}" ]]; then
    SEPTENTRIO_IP="192.168.3.1"
    SEPTENTRIO_NET="${SEPTENTRIO_IP}/32"
@@ -13,15 +13,6 @@ if [[ -n "${SEPTENTRIO_UUID}" ]]; then
       nmcli connection down uuid "${SEPTENTRIO_UUID}"
       nmcli --wait 3 connection up uuid "${SEPTENTRIO_UUID}"
    fi
-fi
-
-if [[ -n "${SEPTENTRIO_IP}" ]]; then
-  HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c ${SEPTENTRIO_IP}`
-  #echo HAS_SEPTENTRIO_NAT=${HAS_SEPTENTRIO_NAT}
-  if [[ ${HAS_SEPTENTRIO_NAT} > 0 ]]; then
-     echo NAT for septentrio already setuped
-     SEPTENTRIO_IP=
-  fi
 fi
 
 MOBILE_USB=`lsusb | grep Mobile`
@@ -56,20 +47,47 @@ if [[ -n "${MOBILE_UUID}" ]]; then
    done
 fi
 
-#echo MOBILE_IP=${MOBILE_IP} MOBILE_UUID=${MOBILE_UUID}
+needChange=NO
+
+if [[ -n "${SEPTENTRIO_IP}" ]]; then
+   HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c "${SEPTENTRIO_IP}"`
+fi
+#echo SEPTENTRIO_IP=${SEPTENTRIO_IP} HAS_SEPTENTRIO_NAT=${HAS_SEPTENTRIO_NAT}
+if (( (${#SEPTENTRIO_IP} == 0) == (${#HAS_SEPTENTRIO_NAT} == 0) )); then
+   echo NAT for septentrio already setuped
+else
+   if [[ -n ${HAS_SEPTENTRIO_NAT} ]]; then
+      echo drop NAT for septentrio
+   else
+      echo setup NAT for septentrio
+   fi
+   needChange=YES
+fi
+
 if [[ -n "${MOBILE_IP}" ]]; then
-  HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c ${MOBILE_IP}`
-  #echo HAS_MOBILE_NAT=${HAS_MOBILE_NAT}
-  if [[ ${HAS_MOBILE_NAT} > 0 ]]; then
-     echo NAT for mobile already setuped
-     MOBILE_IP=
-  fi
+   HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c "${MOBILE_IP}"`
+fi
+#echo MOBILE_IP=${MOBILE_IP} MOBILE_UUID=${MOBILE_UUID} HAS_MOBILE_NAT=${HAS_MOBILE_NAT}
+if (( (${#MOBILE_IP} == 0) == (${#HAS_MOBILE_NAT} == 0) )); then
+   echo NAT for mobile already setuped
+else
+   if [[ -n ${HAS_MOBILE_NAT} ]]; then
+      echo drop NAT for mobile
+   else
+      echo setup NAT for mobile
+   fi
+   needChange=YES
 fi
 
 #echo MOBILE_IP="${MOBILE_IP}" SEPTENTRIO_IP="${SEPTENTRIO_IP}"
-if [[ -n "${MOBILE_IP}" ]] || [[ -n "${SEPTENTRIO_IP}" ]]; then
+if [[ "${needChange}" == "YES" ]]; then
    echo -- Setting up redirections --
    echo 1 >/proc/sys/net/ipv4/ip_forward
+   /sbin/iptables -F
+   /sbin/iptables -X
+   /sbin/iptables -t nat -F
+   /sbin/iptables -t nat -X
+   /sbin/iptables -P FORWARD DROP
    #echo /sbin/iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
    /sbin/iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 else

@@ -147,11 +147,8 @@ while : ; do
       wasWPS=
       state=
    else
-
-      #echo ping -4 -c 1 -W 1 -q 8.8.8.8 \>/dev/null 2\>\&1
-      ping -4 -c 1 -W 1 -q 8.8.8.8 >/dev/null 2>&1
-      lastcode=$?
-      if [[ "${lastcode}" == "0" ]]; then
+      HAVE_INTERNET=`nmcli networking connectivity check`
+      if [[ "${HAVE_INTERNET}" == "full" ]]; then
          newstate=UP
          CNT=5
       else
@@ -167,11 +164,13 @@ while : ; do
       if [[ "${newstate}" != "${state}" ]]; then
          if [ "${newstate}" == "UP" ]; then
             set_gpio 1
+            source "${BASEDIR}"/check_septentrio_net.sh
          else
             set_gpio 0
          fi
          if [[ "$?" == "0" ]]; then
             state=${newstate}
+            #echo state=${state}
          else
             #echo \$\?=$?
             sleep 1
@@ -180,19 +179,20 @@ while : ; do
          fi
       fi
 
-      if [[ "${state}" == "DONW" ]] && [[ -f ${HOTSPOT_FLAG} ]]; then
+      if [[ "${state}" == "DOWN" ]] && [[ -f ${HOTSPOT_FLAG} ]]; then
          if [[ "${wasHOTSPOT}" == "" ]]; then
             echo HOTSPOT started
             wasHOTSPOT=YES
          fi
          set_gpio 0
-         sleep 0.25
+         sleep 0.7
          set_gpio 1
-         sleep 0.25
+         sleep 0.1
          set_gpio 0
-         sleep 0.25
+         sleep 0.1
          set_gpio 1
-         sleep 0.25
+         sleep 0.1
+         set_gpio 0
          let ALL_CNT++
       elif [[ "${wasHOTSPOT}" != "" ]]; then
          echo HOTSPOT finished

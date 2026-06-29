@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..8a9ab1c 100644
+index 5b64baa..1776cb0 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -580,7 +580,7 @@ index 5b64baa..8a9ab1c 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,130 @@ $(document).ready(function () {
+@@ -758,5 +947,144 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -709,5 +709,19 @@ index 5b64baa..8a9ab1c 100644
 +    $("#main_service_save").on('click', set_rtcm_mode);
 +
 +    set_rtcm_mode();
++
++    $('#ext_web_site').on("click", function (e){
++        e.preventDefault();
++        socket.emit("mosaic available");
++    })
++
++    socket.on("mosaic_available_result", function(msg) {
++        if (msg) {
++           ext_web_site = document.getElementById("ext_web_site");
++           href = ext_web_site.parentElement.href;
++           window.open(href, '_blank');
++        } else 
++           $('#warningModal').modal();
++    })
      // end of document.ready
  });

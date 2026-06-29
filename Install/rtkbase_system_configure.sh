@@ -18,8 +18,6 @@ ExitCodeCheck(){
 
 WPS_FLAG=/usr/local/rtkbase/WPS.flg
 HOTSPOT_FLAG=/usr/local/rtkbase/HOTSPOT.flg
-rm -f ${WPS_FLAG}
-rm -f ${HOTSPOT_FLAG}
 
 Ciao(){
   #echo Trap now
@@ -67,6 +65,7 @@ WPS() {
   if [[ -n "${HAVE_HOTSPOT}" ]]; then
      echo Hotspot Started >${HOTSPOT_FLAG}
   fi
+  source "${BASEDIR}"/check_septentrio_net.sh
   ExitCodeCheck 0
 }
 
@@ -153,6 +152,7 @@ then
    nm-online -s >/dev/null
    nmcli radio wifi on
    if [[ -z "${AP}" ]]; then
+      DeleteHotSpots
       HAVE_OLD_SSID=`nmcli --fields NAME connection show | grep -w "${SSIDprinted}"`
       if [ -n "${HAVE_OLD_SSID}" ]; then
          #echo nmcli connection delete id "${SSIDprinted}"

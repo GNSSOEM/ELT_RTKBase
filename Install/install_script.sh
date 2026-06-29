@@ -73,6 +73,8 @@ SYSCONGIG=rtkbase_system_configure.sh
 SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
 SYSSERVICE=rtkbase_system_configure.service
 SYSSERVICE_OLD=RtkbaseSystemConfigure.service
+START=rtkbase_start.sh
+START_SERVICE=rtkbase_start.service
 NETWORK_EVENT=rtkbase_network_event.sh
 CHECK_INTERNET=rtkbase_check_internet.sh
 CHECK_INTERNET_SERVICE=rtkbase_check_internet.service
@@ -81,6 +83,7 @@ CHECK_SATELITES_SERVICE=rtkbase_check_satelites.service
 SEPTENTRIO_NAT=rtkbase_septentrio_NAT.sh
 SEPTENTRIO_NAT_SERVICE=rtkbase_septentrio_NAT.service
 MODEM_WEB_PROXY_SERVICE=rtkbase_modem_web_proxy.service
+CHECK_SEPTENRIO_NET=check_septentrio_net.sh
 DHCP_CONF=rtkbase_DHCP.conf
 DHCP_SERVICE=rtkbase_DHCP.service
 TUNE_POWER=tune_power.sh
@@ -762,6 +765,7 @@ stop_rtkbase_services(){
                   modem_check.timer \
                   rtkbase_gnss_web_proxy.service \
                   ${MODEM_WEB_PROXY_SERVICE} \
+                  ${START_SERVICE} \
                   ${CHECK_INTERNET_SERVICE} \
                   ${CHECK_SATELITES_SERVICE} \
                   ${SEPTENTRIO_NAT_SERVICE} \
@@ -971,6 +975,42 @@ copy_rtkbase_install_file(){
   ExitCodeCheck $?
 }
 
+copy_script(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
+   ExitCodeCheck $?
+   #echo chmod +x ${2}/${1}
+   chmod +x ${2}/${1}
+   ExitCodeCheck $?
+}
+
+copy_root(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+}
+
+copy_root_script(){
+   #echo BASEDIR=${BASEDIR} 2=${2}
+   if [[ "${BASEDIR}" != "${2}" ]]; then
+      #echo mv ${BASEDIR}/${1} ${2}/
+      mv ${BASEDIR}/${1} ${2}/
+      ExitCodeCheck $?
+   fi
+   #echo chmod +x ${2}/${1}
+   chmod +x ${2}/${1}
+   ExitCodeCheck $?
+}
+
 install_rtkbase_system_configure(){
   echo '################################'
   echo 'INSTALL RTKBASE SYSTEM CONFIGURE'
@@ -1009,6 +1049,8 @@ install_rtkbase_system_configure(){
      ExitCodeCheck $?
   fi
 
+  copy_root_script "${START}"                   "${RTKBASE_PATH}"
+  copy_root        "${START_SERVICE}"           "${SERVICE_PATH}"
   #echo mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
   mv ${BASEDIR}/${NETWORK_EVENT} ${NETWORK_DISPATHER_PATH}/
   ExitCodeCheck $?
@@ -1061,12 +1103,17 @@ install_rtkbase_system_configure(){
   fi
 
   #echo systemctl enable ${SYSSERVICE}
+  systemctl enable ${START_SERVICE}
+  ExitCodeCheck $?
+
+  #echo systemctl enable ${SYSSERVICE}
   systemctl enable ${SYSSERVICE}
   ExitCodeCheck $?
 
   #echo systemctl enable ${CHECK_INTERNET_SERVICE}
   systemctl enable ${CHECK_INTERNET_SERVICE}
   ExitCodeCheck $?
+
   #echo systemctl enable ${CHECK_SATELITES_SERVICE}
   systemctl enable ${CHECK_SATELITES_SERVICE}
   ExitCodeCheck $?
@@ -1269,42 +1316,6 @@ copy_file(){
    fi
    #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
    chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
-   ExitCodeCheck $?
-}
-
-copy_script(){
-   #echo BASEDIR=${BASEDIR} 2=${2}
-   if [[ "${BASEDIR}" != "${2}" ]]; then
-      #echo mv ${BASEDIR}/${1} ${2}/
-      mv ${BASEDIR}/${1} ${2}/
-      ExitCodeCheck $?
-   fi
-   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
-   chown ${RTKBASE_USER}:${RTKBASE_USER} ${2}/${1}
-   ExitCodeCheck $?
-   #echo chmod +x ${2}/${1}
-   chmod +x ${2}/${1}
-   ExitCodeCheck $?
-}
-
-copy_root(){
-   #echo BASEDIR=${BASEDIR} 2=${2}
-   if [[ "${BASEDIR}" != "${2}" ]]; then
-      #echo mv ${BASEDIR}/${1} ${2}/
-      mv ${BASEDIR}/${1} ${2}/
-      ExitCodeCheck $?
-   fi
-}
-
-copy_root_script(){
-   #echo BASEDIR=${BASEDIR} 2=${2}
-   if [[ "${BASEDIR}" != "${2}" ]]; then
-      #echo mv ${BASEDIR}/${1} ${2}/
-      mv ${BASEDIR}/${1} ${2}/
-      ExitCodeCheck $?
-   fi
-   #echo chmod +x ${2}/${1}
-   chmod +x ${2}/${1}
    ExitCodeCheck $?
 }
 
@@ -1705,6 +1716,10 @@ start_rtkbase_services(){
      ExitCodeCheck $?
      delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
   fi
+  #echo systemctl start "${START_SERVICE}"
+  systemctl start "${START_SERVICE}"
+  ExitCodeCheck $?
+  delete_from_service_list ${START_SERVICE}
 
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
@@ -1808,7 +1823,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF} \
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM} \
               ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH} \
-              ${CONVBIN_SH_PATCH}"
+              ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

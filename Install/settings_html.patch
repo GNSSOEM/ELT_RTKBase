@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..f2be54d 100644
+index 9690796..0fbb6be 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -652,7 +652,7 @@ index 9690796..f2be54d 100644
          </div>      
        </div>
      </div>
-@@ -794,6 +1179,27 @@
+@@ -794,6 +1179,47 @@
    </div>
  </div>
  
@@ -672,6 +672,26 @@ index 9690796..f2be54d 100644
 +      <div class="modal-footer mx-auto">
 +        <button id="confirm-upgrade-button" type="button" class="btn btn-danger">Upgrade</button>
 +        <button id="upgrade-cancel-button" type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
++      </div>
++    </div>
++  </div>
++</div>
++
++<!-- warning Modal dialog box-->
++<div class="modal" id="warningModal">
++  <div class="modal-dialog">
++    <div class="modal-content">
++      <!-- Modal Header -->
++      <div class="modal-header">
++        <h4 class="modal-title">Warning</h4>
++        <button type="button" class="close" data-dismiss="modal">&times;</button>
++      </div>
++      <!-- Modal body -->
++      <div class="modal-body text-center ">Mosaic Web server is unavailable because the address 192.168.3.1 belongs to a different network.
++      </div>
++      <!-- Modal footer -->
++      <div class="modal-footer mx-auto">
++        <button id="warning-cancel-button" type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
 +      </div>
 +    </div>
 +  </div>

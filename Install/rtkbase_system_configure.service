@@ -1,8 +1,7 @@
 [Unit]
 Description=RTKBase system configure at start
-After=local-fs.target
-After=network.target
-After=rtkbase_setup.service
+After=local-fs.target network.target rtkbase_start.service
+Wants=local-fs.target network.target
 
 [Service]
 ExecStart=/usr/local/rtkbase/rtkbase_system_configure.sh
