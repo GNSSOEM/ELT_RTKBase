@@ -1,5 +1,5 @@
 diff --git a/web_app/RTKBaseConfigManager.py b/web_app/RTKBaseConfigManager.py
-index cf1c729..5e9eda3 100644
+index cf1c729..3b3ade3 100644
 --- a/web_app/RTKBaseConfigManager.py
 +++ b/web_app/RTKBaseConfigManager.py
 @@ -48,6 +48,7 @@ class RTKBaseConfigManager:
@@ -78,7 +78,7 @@ index cf1c729..5e9eda3 100644
          """
          ordered_file = [{"source_section" : "local_storage"}]
 -        for key in ("datadir", "file_name", "file_rotate_time", "file_overlap_time", "archive_rotate"):
-+        for key in ("datadir", "file_name", "file_rotate_time", "file_overlap_time", "archive_rotate", "marker_name", "marker_number"):
++        for key in ("datadir", "file_name", "file_rotate_time", "file_overlap_time", "archive_rotate", "marker_name", "marker_number", "rinex_filename", "rinex_mode"):
              ordered_file.append({key : self.config.get('local_storage', key).strip("'")})
          return ordered_file
  

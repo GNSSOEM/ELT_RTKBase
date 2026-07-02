@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..0fbb6be 100644
+index 9690796..42eade4 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -28,6 +28,7 @@
@@ -535,7 +535,7 @@ index 9690796..0fbb6be 100644
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -479,6 +821,20 @@
+@@ -479,6 +821,46 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -553,10 +553,36 @@ index 9690796..0fbb6be 100644
 +            <input id="marker_number" type="text" name="marker_number" class="form-control" aria-describedby="marker_numberHelp" value="{{ file_settings[6].marker_number }}" pattern="[a-zA-Z\d_\-]+">
 +            <small class="form-text text-muted" id="marker_numberHelp">Marker number for RINEX</small>
 +        </div>
++      </div>
++      <div class="form-group row">
++        <label for="rinex_filename" class="col-sm-3 col-form-label">RINEX filename mode: </label>
++        <div class="col-sm-9">
++            <select id="rinex_filename" name="rinex_filename" class="form-control" aria-describedby="rinex_filename_Help" value="{{ file_settings[7].rinex_filename }}" required>
++                <!-- https://stackoverflow.com/questions/66903741/html-form-select-dynamically-preselected-value-flask-->
++                <option value="0" {% if file_settings[7].rinex_filename == '0' %} selected {% endif %}>Classic</option>
++                <option value="1" {% if file_settings[7].rinex_filename == '1' %} selected {% endif %}>RINEX 2</option>
++                <option value="2" {% if file_settings[7].rinex_filename == '2' %} selected {% endif %}>RINEX 3</option>
++            </select>
++            <small class="form-text text-muted" id="rinex_filename_Help">RINEX filename mode</small>
++        </div>
++      </div>
++      <div class="form-group row">
++        <label for="rinex_mode" class="col-sm-3 col-form-label">RINEX autoconvertation: </label>
++        <div class="col-sm-9">
++            <select id="rinex_mode" name="rinex_mode" class="form-control" aria-describedby="rinex_mode_Help" value="{{ file_settings[8].rinex_mode }}">
++                <!-- https://stackoverflow.com/questions/66903741/html-form-select-dynamically-preselected-value-flask-->
++                <option value="" {% if file_settings[8].rinex_mode == '' %} selected {% endif %}>None</option>
++                <option value="ign" {% if file_settings[8].rinex_mode == 'ign' %} selected {% endif %}>Ign</option>
++                <option value="nrcan" {% if file_settings[8].rinex_mode == 'nrcan' %} selected {% endif %}>Nrcan</option>
++                <option value="30s_full" {% if file_settings[8].rinex_mode == '30s_full' %} selected {% endif %}>Full 30s</option>
++                <option value="1s_full" {% if file_settings[8].rinex_mode == '1s_full' %} selected {% endif %}>Full 1s</option>
++            </select>
++            <small class="form-text text-muted" id="rinex_mode_Help">RINEX mode for automatic convertation</small>
++        </div>
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +845,7 @@
+@@ -489,7 +871,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -565,7 +591,7 @@ index 9690796..0fbb6be 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +867,24 @@
+@@ -511,17 +893,24 @@
              </div>
            </div>
            -->      
@@ -592,7 +618,7 @@ index 9690796..0fbb6be 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -539,7 +902,7 @@
+@@ -539,7 +928,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -601,7 +627,7 @@ index 9690796..0fbb6be 100644
          {% endif %}
        </span>
      </div>
-@@ -621,11 +984,32 @@
+@@ -621,11 +1010,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -635,7 +661,7 @@ index 9690796..0fbb6be 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1017,7 @@
+@@ -633,6 +1043,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -643,7 +669,7 @@ index 9690796..0fbb6be 100644
        </div>
    </div>
      
-@@ -675,7 +1060,7 @@
+@@ -675,7 +1086,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -652,7 +678,7 @@ index 9690796..0fbb6be 100644
          </div>      
        </div>
      </div>
-@@ -794,6 +1179,47 @@
+@@ -794,6 +1205,47 @@
    </div>
  </div>
  

@@ -1,8 +1,8 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..cc6816c 100755
+index 91a8020..d567fc5 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
-@@ -5,12 +5,22 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+@@ -5,12 +5,23 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
  source <( grep '=' "${SCRIPT_DIR}"/../settings.conf )
  RAW_ARCHIVE=$1
  DATA_DIR=$2
@@ -14,6 +14,7 @@ index 91a8020..cc6816c 100755
 +MARKER_NUMBER="${marker_number}"
  RAW_TYPE=$receiver_format
  RINEX_TYPE=$3
++FILENAME_MODE=$rinex_filename
  CONVBIN_PATH=$(type -P convbin)
 -ANT_POSITION=$(echo "${position}" | cs2cs  EPSG:4979 EPSG:4978 -f "%.2f" | sed 's/\s/\//g')
 -RECEIVER="${receiver}"
@@ -28,7 +29,7 @@ index 91a8020..cc6816c 100755
  REC_VERSION="${receiver_firmware}"
  REC_OPTION=''
  [[ -n $ntrip_a_receiver_options ]] && REC_OPTION="${ntrip_a_receiver_options}"
-@@ -29,7 +39,7 @@ extract_raw_file() {
+@@ -29,7 +40,7 @@ extract_raw_file() {
  convert_to_rinex_ign() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 2.11 -r "${RAW_TYPE}"       \
@@ -37,7 +38,7 @@ index 91a8020..cc6816c 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y R -y E -y J -y S -y C -y I             \
-@@ -40,7 +50,7 @@ convert_to_rinex_ign() {
+@@ -40,7 +51,7 @@ convert_to_rinex_ign() {
  
  convert_to_rinex_ign_bis() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
@@ -46,7 +47,7 @@ index 91a8020..cc6816c 100755
    "${CONVBIN_PATH}" "${args}"
      return $?
  }
-@@ -48,7 +58,7 @@ convert_to_rinex_ign_bis() {
+@@ -48,7 +59,7 @@ convert_to_rinex_ign_bis() {
  convert_to_rinex_nrcan() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -55,7 +56,7 @@ index 91a8020..cc6816c 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y J -y S -y C -y I                  \
-@@ -61,7 +71,7 @@ convert_to_rinex_nrcan() {
+@@ -61,7 +72,7 @@ convert_to_rinex_nrcan() {
  convert_to_rinex_30s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -64,7 +65,7 @@ index 91a8020..cc6816c 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 30 -tt 0                   \
-@@ -73,7 +83,7 @@ convert_to_rinex_30s_full() {
+@@ -73,7 +84,7 @@ convert_to_rinex_30s_full() {
  convert_to_rinex_1s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -73,7 +74,7 @@ index 91a8020..cc6816c 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 1 -tt 0                    \
-@@ -88,10 +98,11 @@ filedate=$(echo ${1:0:10})
+@@ -88,10 +99,50 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -86,10 +87,49 @@ index 91a8020..cc6816c 100755
 +elif [[ ${RINEX_TYPE} == '30s_full' ]] ; then rnx_conversion_func='convert_to_rinex_30s_full' ; RINEX_FILE=$(echo "${filedate}"-"${MARKER_NAME}"_"${RINEX_TYPE}".obs)
 +elif [[ ${RINEX_TYPE} == '1s_full' ]] ; then rnx_conversion_func='convert_to_rinex_1s_full' ; RINEX_FILE=$(echo "${filedate}"-"${MARKER_NAME}"_"${RINEX_TYPE}".obs)
 +else echo Error: invalid rinex type \"${RINEX_TYPE}\"; exit 1
++fi
++
++marker4="${MARKER_NAME}____"
++marker4="${marker4:0:4}"
++day=$(date -d "${RAW_ARCHIVE:0:10}" +%j)
++markernum="${MARKER_NUMBER}0"
++markernum="${markernum:0:1}"
++
++iso3() {
++    local code2
++    code2=$(curl -s "http://ip-api.com/json/$ip?fields=countryCode"  | jq -r '.countryCode')
++    jq -r --arg code "$code2" \
++       '."3166-1"[]
++        | select(.alpha_2 == $code)
++        | .alpha_3' \
++       /usr/share/iso-codes/json/iso_3166-1.json
++}
++
++getHHMM() {
++   local hh="00"
++   local mm="00"
++   if [[ "$1" =~ _([0-9]{2})(-([0-9]{2}))? ]]; then
++      hh=${BASH_REMATCH[1]}
++      mm=${BASH_REMATCH[3]:-00}
++   fi
++   echo "${hh}${mm}"
++}
++
++if [[ ${FILENAME_MODE} == '1' ]]; then
++   RINEX_FILE=$(echo "${marker4}""${day}"0."${year2}"o)
++elif [[ ${FILENAME_MODE} == '2' ]]; then
++   year4=$(echo ${RAW_ARCHIVE:0:4})
++   hhmm=$(getHHMM "${RAW_ARCHIVE}")
++   if [[ ${RINEX_TYPE} == '30s_full' ]]; then
++      datafreq="30S"
++   else
++      datafreq="01S"
++   fi
++   RINEX_FILE=$(echo "${marker4}""${markernum}"0"$(iso3)"_R_"${year4}""${day}""${hhmm}"_01D_"${datafreq}"_MO.rnx.obs)
  fi
  
  #Let's launch the CONVBIN process
-@@ -105,6 +116,10 @@ if [[ $file_extension == 'zip' ]]
+@@ -105,6 +156,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?

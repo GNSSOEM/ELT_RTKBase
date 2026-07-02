@@ -560,6 +560,8 @@ install_additional_utilies(){
    install_packet_if_not_installed zlib1g-dev
    install_packet_if_not_installed libssl-dev
    install_packet_if_not_installed openssl
+   install_packet_if_not_installed iso-codes
+   install_packet_if_not_installed jq
    if lsb_release -c | grep -q 'bullseye'; then
       install_packet_if_not_installed cpufrequtils
       install_packet_if_not_installed raspi-utils
@@ -1460,11 +1462,19 @@ configure_settings(){
          ExitCodeCheck $?
       fi
 
-      #cho if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
+      #echo if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
       if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
          echo insert marker_name \& marker number into ${SETTINGS_NOW}
          #echo ${sed} "/^min_free_space=/a #Marker name for RINEX\nmarker_name=\'\'\n#Marker number for RINEX\nmarker_number=\'\'" "${SETTINGS_NOW}"
          ${sed} "/^min_free_space=/a #Marker name for RINEX\nmarker_name=\'\'\n#Marker number for RINEX\nmarker_number=\'\'" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
+      fi
+
+      #echo if ! grep -q "^rinex_filename=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^rinex_filename=" "${SETTINGS_NOW}"; then
+         echo insert rinex_filename \& rinex_mode into ${SETTINGS_NOW}
+         #echo ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\''" "${SETTINGS_NOW}"
+         ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\''" "${SETTINGS_NOW}"
          ExitCodeCheck $?
       fi
    else
