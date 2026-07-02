@@ -1,0 +1,59 @@
+diff --git a/tools/uninstall.sh b/tools/uninstall.sh
+index 37d86d4..05b5e54 100755
+--- a/tools/uninstall.sh
++++ b/tools/uninstall.sh
+@@ -3,9 +3,11 @@
+ BASEDIR=$(dirname "$0")
+ 
+ # removing services
+-for service_name in str2str_tcp.service \
+-                    str2str_ntrip_A.service \
++for service_name in str2str_ntrip_A.service \
+                     str2str_ntrip_B.service \
++                    str2str_ntrip_C.service \
++                    str2str_ntrip_D.service \
++                    str2str_ntrip_E.service \
+                     str2str_local_ntrip_caster \
+                     str2str_rtcm_svr.service \
+                     str2str_rtcm_client.service \
+@@ -13,27 +15,29 @@ for service_name in str2str_tcp.service \
+                     str2str_rtcm_udp_client.service \
+                     str2str_rtcm_serial.service \
+                     str2str_file.service \
++                    str2str_tcp.service \
+                     rtkbase_web \
+-                    rtkbase_archive.service \
+                     rtkbase_archive.timer \
++                    rtkbase_archive.service \
+                     modem_check.service \
+                     modem_check.timer \
+                     rtkbase_gnss_web_proxy.service
+ do
+-    echo 'Deleting ' "${service_name}"
+-    systemctl stop "${service_name}"
+-    systemctl disable "${service_name}"
+-    rm /etc/systemd/system/"${service_name}"
+-    rm /usr/lib/systemd/system/"${service_name}" 
+-    systemctl daemon-reload
+-    systemctl reset-failed
++    enabled=`systemctl is-enabled ${service_name} 2>/dev/null`
++    #[[ "${enabled}" != "" ]] && echo ${service_name} ${enabled}
++    [[ "${enabled}" != "" ]] && systemctl is-active --quiet ${service_name} && systemctl stop ${service_name}
++    [[ "${enabled}" != "disabled" ]] && [[ "${enabled}" != "masked" ]] && [[ "${enabled}" != "" ]] && systemctl disable ${service_name}
++    rm -f /etc/systemd/system/${service_name}
+ done
+ 
+ # removing rtklib binaries
+ echo 'Deleting RTKLib binaries'
+-rm /usr/bin/str2str
+-rm /usr/bin/conv2bin
+-rm /usr/bin/rtkrcv
++rm /usr/local/bin/str2str
++rm /usr/local/bin/conv2bin
++rm /usr/local/bin/rtkrcv
++rm /usr/local/bin/rtkrcv.nav
++rm /usr/local/bin/NmeaConf
++rm /usr/local/bin/ntripserver
+ 
+ # removing udev and polkitd rules
+ echo 'Deleting udev rules'

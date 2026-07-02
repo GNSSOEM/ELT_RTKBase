@@ -69,6 +69,7 @@ STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
 RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
 CONVBIN_SH_PATCH=convbin_sh.patch 
+UNINSTALL_SH_PATCH=uninstall_sh.patch
 SYSCONGIG=rtkbase_system_configure.sh
 SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
 SYSSERVICE=rtkbase_system_configure.service
@@ -1145,6 +1146,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_TOOLS}/gps/ubx.py              ${UBX_PY_PATCH}
    patch_one ${RTKBASE_TOOLS}/raw2nmea/raw2nmea.sh    ${RAW2NMEA_SH_PATCH}
    patch_one ${RTKBASE_TOOLS}/convbin.sh              ${CONVBIN_SH_PATCH}             755
+   patch_one ${RTKBASE_TOOLS}/uninstall.sh            ${UNINSTALL_SH_PATCH}           755
    patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
@@ -1774,7 +1776,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CONFTSBF} ${CONFH1RTCM3} ${CONFH1SBF} ${CONFHRTCM3} ${CONFHSBF} \
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM} \
               ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH} \
-              ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET}"
+              ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
+              ${UNINSTALL_SH_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
