@@ -53,10 +53,10 @@ if [[ -n "${SEPTENTRIO_IP}" ]]; then
    HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c "${SEPTENTRIO_IP}"`
 fi
 #echo SEPTENTRIO_IP=${SEPTENTRIO_IP} HAS_SEPTENTRIO_NAT=${HAS_SEPTENTRIO_NAT}
-if (( (${#SEPTENTRIO_IP} == 0) == (${#HAS_SEPTENTRIO_NAT} == 0) )); then
+if (( (${#SEPTENTRIO_IP} == 0) == (${HAS_SEPTENTRIO_NAT} == 0) )); then
    echo NAT for septentrio already setuped
 else
-   if [[ -n ${HAS_SEPTENTRIO_NAT} ]]; then
+   if [[ ${HAS_SEPTENTRIO_NAT} != 0 ]]; then
       echo drop NAT for septentrio
    else
       echo setup NAT for septentrio
@@ -68,10 +68,10 @@ if [[ -n "${MOBILE_IP}" ]]; then
    HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c "${MOBILE_IP}"`
 fi
 #echo MOBILE_IP=${MOBILE_IP} MOBILE_UUID=${MOBILE_UUID} HAS_MOBILE_NAT=${HAS_MOBILE_NAT}
-if (( (${#MOBILE_IP} == 0) == (${#HAS_MOBILE_NAT} == 0) )); then
+if (( (${#MOBILE_IP} == 0) == (${HAS_MOBILE_NAT} == 0) )); then
    echo NAT for mobile already setuped
 else
-   if [[ -n ${HAS_MOBILE_NAT} ]]; then
+   if [[ ${HAS_MOBILE_NAT} != 0 ]]; then
       echo drop NAT for mobile
    else
       echo setup NAT for mobile

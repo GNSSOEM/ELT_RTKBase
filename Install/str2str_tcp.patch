@@ -1,8 +1,15 @@
 diff --git a/unit/str2str_tcp.service b/unit/str2str_tcp.service
-index d586de7..31ddd21 100644
+index d586de7..5b0c36d 100644
 --- a/unit/str2str_tcp.service
 +++ b/unit/str2str_tcp.service
-@@ -9,6 +9,7 @@ Type=simple
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=RTKBase Tcp
++After=rtkbase_start.service
+ #After=network-online.target
+ #Wants=network-online.target
+ #Requires=network-online.target
+@@ -9,6 +10,7 @@ Type=simple
  SyslogIdentifier=str2str_tcp
  User={user}
  ExecStart={script_path}/run_cast.sh in_serial out_tcp

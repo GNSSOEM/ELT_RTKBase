@@ -1665,13 +1665,6 @@ start_rtkbase_services(){
 
   delete_from_service_list gpsd.service
   delete_from_service_list chrony.service
-
-  MOBILE=/sys/class/net/mobile
-  if [[ -L ${MOBILE} ]]; then
-     #echo systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
-     systemctl enable --now "${MODEM_WEB_PROXY_SERVICE}"
-     ExitCodeCheck $?
-  fi
   delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
 
   #echo systemctl start "${START_SERVICE}"

@@ -26,8 +26,8 @@ status=`tailscale status`
 #ExitCodeCheck $? # Down and logout exitstatus is 1
 #echo status=${status} exitstatus=$?
 if [[ "${status}" =~ "Logged out." ]]; then
-   #echo sudo tailscale login --timeout=1s \>/dev/null 2\>\&1
-   sudo tailscale login --timeout=5s >/dev/null 2>&1
+   #echo sudo tailscale login --timeout=10s \>/dev/null 2\>\&1
+   sudo tailscale login --timeout=10s >/dev/null 2>&1
    #ExitCodeCheck $? # exitstatus is 1
    status=`tailscale status`
    #ExitCodeCheck $? # Down and logout exitstatus is 1

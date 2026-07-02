@@ -22,6 +22,119 @@ ip_in_subnet() {
     (( (ip_int & mask) == (net_int & mask) ))
 }
 
+cidr_range() {
+    local net=${1%/*}
+    local prefix=${1#*/}
+
+    local net_int=$(ip2int "$net")
+    local mask=$(( (0xFFFFFFFF << (32-prefix)) & 0xFFFFFFFF ))
+
+    local start=$(( net_int & mask ))
+    local end=$(( start | (~mask & 0xFFFFFFFF) ))
+
+    echo "$start $end"
+}
+
+subnets_overlap() {
+    local r1 r2
+    read -r s1 e1 <<< "$(cidr_range "$1")"
+    read -r s2 e2 <<< "$(cidr_range "$2")"
+
+    #echo $s1 \<\= $e2 \&\& $s2 \<\= $e1
+    (( $s1 <= $e2 && $s2 <= $e1 ))
+}
+
+
+SEPTENTRIO="septentrio"
+MOBILE="mobile"
+
+ETH_UUID_LIST=$(nmcli --fields TYPE,UUID connection show | grep -w "ethernet" | awk -F ' ' '{print $2}')
+#echo ETH_UUID_LIST=${ETH_UUID_LIST}
+for UUID in ${ETH_UUID_LIST}; do
+    DEVICE=$(nmcli --fields connection.interface-name connection show uuid "${UUID}" | awk -F ' ' '{print $2}')
+    if [[ "${DEVICE}" == "${SEPTENTRIO}" ]]; then
+       HAS_SEPTENTRIO=YES
+       SEPTENTRIO_UUID="${UUID}"
+       SEPTENTRIO_NET=$(nmcli --get-values IP4.ADDRESS connection show uuid "${UUID}")
+       if [[ -z "${SEPTENTRIO_NET}" ]]; then
+          SEPTENTRIO_NET=$(nmcli --get-values ipv4.addresses connection show uuid "${UUID}")
+       fi
+       if [[ -z "${SEPTENTRIO_NET}" ]]; then
+          SEPTENTRIO_NET="192.168.3.2/2"
+       fi
+    fi
+    if [[ "${DEVICE}" == "${MOBILE}" ]]; then
+       HAS_MOBILE=YES
+       MOBILE_UUID="${UUID}"
+       MOBILE_NET=$(nmcli --get-values IP4.ADDRESS connection show uuid "${UUID}")
+       if [[ -z "${MOBILE_NET}" ]]; then
+          MOBILE_NET=$(nmcli --get-values ipv4.addresses connection show uuid "${UUID}")
+       fi
+       if [[ -z "${MOBILE_NET}" ]]; then
+          MOBILE_NET="192.168.8.100/24"
+       fi
+    fi
+done
+
+if [[ -n "${HAS_SEPTENTRIO}" ]] then
+   SEPTENTRIO_GOOD=YES
+else
+   SEPTENTRIO_GOOD=NO
+fi
+if [[ -n "${HAS_MOBILE}" ]] then
+   MOBILE_GOOD=YES
+else
+   MOBILE_GOOD=NO
+fi
+#echo HAS_SEPTENTRIO=${HAS_SEPTENTRIO} SEPTENTRIO_UUID=${SEPTENTRIO_UUID} SEPTENTRIO_NET=${SEPTENTRIO_NET} SEPTENTRIO_GOOD=${SEPTENTRIO_GOOD} 
+#echo HAS_MOBILE=${HAS_MOBILE} MOBILE_UUID=${MOBILE_UUID} MOBILE_NET=${MOBILE_NET} MOBILE_GOOD=${MOBILE_GOOD}
+
+if [[ -n "${HAS_SEPTENTRIO}" ]] || [[ -n "${HAS_MOBILE}" ]]; then
+   UUID_LIST=$(nmcli --get-values UUID connection show --active)
+   #echo UUID_LIST=${UUID_LIST}
+   for UUID in ${UUID_LIST}; do
+       DEVICE=$(nmcli --get-values connection.interface-name connection show uuid "${UUID}")
+       NETS=$(nmcli --get-values IP4.ADDRESS connection show uuid "${UUID}")
+       #echo DEVICE=${DEVICE} NETS=${NETS}
+       for NET in "${NETS}"; do
+           if [[ -n "${NET}" ]]; then
+              if [[ -n "${HAS_SEPTENTRIO}" ]] && [[ "${DEVICE}" != "${SEPTENTRIO}" ]]; then
+                 if subnets_overlap "${SEPTENTRIO_NET}" "${NET}"; then
+                    echo "${DEVICE}" "${NET}" disable "${SEPTENTRIO}" USB ethernet device "${SEPTENTRIO_NET}"
+                    SEPTENTRIO_GOOD=NO
+                 fi
+              fi
+              if [[ -n "${HAS_MOBILE}" ]] && [[ "${DEVICE}" != "${MOBILE}" ]]; then
+                 if subnets_overlap "${MOBILE_NET}" "${NET}"; then
+                    echo "${DEVICE}" "${NET}" disable "${MOBILE}" USB ethernet device "${MOBILE_NET}"
+                    MOBILE_GOOD=NO
+                 fi
+              fi
+           fi
+       done
+   done
+fi
+
+CHANGE=NO
+up_down_device() {
+   local good="${1}"
+   local isactive="${2}"
+   local uuid="${3}"
+   if [[ "${good}" == "YES" ]]; then
+      if [[ -z "${isactive}" ]]; then
+         echo nmcli connection up uuid "${uuid}"
+         nmcli connection up uuid "${uuid}"
+         CHANGE=YES
+      fi
+   else
+      if [[ -n "${isactive}" ]]; then
+         echo nmcli connection down uuid "${uuid}"
+         nmcli connection down uuid "${uuid}"
+         CHANGE=YES
+      fi
+   fi
+}
+
 start_stop_service(){
    local service_name=$1
    local action=$2
@@ -40,68 +153,28 @@ start_stop_service(){
    fi
 }
 
-SEPTENTRIO="septentrio"
+if [[ -n "${HAS_SEPTENTRIO}" ]]; then
+   SEPTENTRIO_ISACTIVE=$(nmcli --get-values DEVICE connection show --active | grep -w "${SEPTENTRIO}")
+   #echo SEPTENTRIO_GOOD=${SEPTENTRIO_GOOD} SEPTENTRIO_ISACTIVE=${SEPTENTRIO_ISACTIVE}
 
-ETH_UUID_LIST=$(nmcli --fields TYPE,UUID connection show | grep -w "ethernet" | awk -F ' ' '{print $2}')
-#echo ETH_UUID_LIST=${ETH_UUID_LIST}
-for UUID in ${ETH_UUID_LIST}; do
-    DEVICE=$(nmcli --fields connection.interface-name connection show uuid "${UUID}" | awk -F ' ' '{print $2}')
-    if [[ "${DEVICE}" == "${SEPTENTRIO}" ]]; then
-       HAS_SEPTENTRIO=YES
-       SEPTENTRIO_UUID="${UUID}"
-       break
-    fi
-done
-#echo HAS_SEPTENTRIO=${HAS_SEPTENTRIO}  SEPTENTRIO_UUID=${SEPTENTRIO_UUID}
+   #echo up_down_device "${SEPTENTRIO_GOOD}" "${SEPTENTRIO_ISACTIVE}" "${SEPTENTRIO_UUID}"
+   up_down_device "${SEPTENTRIO_GOOD}" "${SEPTENTRIO_ISACTIVE}" "${SEPTENTRIO_UUID}"
 
-if [[ -z "${HAS_SEPTENTRIO}" ]]; then
-   echo Hasn\'t ${SEPTENTRIO}
-   exit 1
-fi
+   start_stop_service rtkbase_DHCP.service "${SEPTENTRIO_GOOD}"
+   start_stop_service rtkbase_gnss_web_proxy.service "${SEPTENTRIO_GOOD}"
+fi 
 
+if [[ -n "${HAS_MOBILE}" ]]; then
+   MOBILE_ISACTIVE=$(nmcli --get-values DEVICE connection show --active | grep -w "${MOBILE}")
+   #echo MOBILE_GOOD=${MOBILE_GOOD} MOBILE_ISACTIVE=${MOBILE_ISACTIVE}
 
-GOOD=YES
-UUID_LIST=$(nmcli --fields UUID connection show --active | grep -v -w UUID)
-#echo UUID_LIST=${UUID_LIST}
-for UUID in ${UUID_LIST}; do
-    DEVICE=$(nmcli --fields connection.interface-name connection show uuid "${UUID}" | awk -F ' ' '{print $2}')
-    if [[ "${DEVICE}" != "${SEPTENTRIO}" ]]; then
-       NETS=$(nmcli --fields IP4.ADDRESS connection show uuid "${UUID}" | awk -F ' ' '{print $2}')
-       #echo DEVICE=${DEVICE} NETS=${NETS}
-       for NET in "${NETS}"; do
-           if ip_in_subnet "192.168.3.1" "${NET}"; then
-              echo "${DEVICE}" "${NET}" disable septenrio USB ethernet device "192.168.3.1"
-              GOOD=NO
-              break 2
-           fi
-           if ip_in_subnet "192.168.3.2" "${NET}"; then
-              echo "${DEVICE}" "${NET}" disable septenrio USB ethernet host "192.168.3.2"
-              GOOD=NO
-              break 2
-           fi
-       done
-    fi
-done
+   #echo up_down_device "${MOBILE_GOOD}" "${MOBILE_ISACTIVE}" "${MOBILE_UUID}"
+   up_down_device "${MOBILE_GOOD}" "${MOBILE_ISACTIVE}" "${MOBILE_UUID}"
 
-SEPTENTRIO_ISACTIVE=$(nmcli --fields DEVICE connection show --active | grep "${SEPTENTRIO}")
-#echo GOOD=${GOOD} SEPTENTRIO_ISACTIVE=${SEPTENTRIO_ISACTIVE}
-CHANGE=NO
-if [[ "${GOOD}" == "YES" ]]; then
-   if [[ -z "${SEPTENTRIO_ISACTIVE}" ]]; then
-      echo nmcli connection up uuid "${SEPTENTRIO_UUID}"
-      nmcli connection up uuid "${SEPTENTRIO_UUID}"
-      CHANGE=YES
-   fi
-else
-   if [[ -n "${SEPTENTRIO_ISACTIVE}" ]]; then
-      echo nmcli connection down uuid "${SEPTENTRIO_UUID}"
-      nmcli connection down uuid "${SEPTENTRIO_UUID}"
-      CHANGE=YES
-   fi
-fi
+   start_stop_service rtkbase_modem_web_proxy.service "${MOBILE_GOOD}"
+fi 
 
-start_stop_service rtkbase_DHCP.service "${GOOD}"
-start_stop_service rtkbase_gnss_web_proxy.service "${GOOD}"
+#echo CHANGE=${CHANGE}
 if [[ "${CHANGE}" == "YES" ]]; then
    echo systemctl start rtkbase_septentrio_NAT.service
    systemctl start rtkbase_septentrio_NAT.service

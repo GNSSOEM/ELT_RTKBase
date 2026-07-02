@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..1776cb0 100644
+index 5b64baa..54e578d 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -580,7 +580,7 @@ index 5b64baa..1776cb0 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,144 @@ $(document).ready(function () {
+@@ -758,5 +947,165 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -720,8 +720,29 @@ index 5b64baa..1776cb0 100644
 +           ext_web_site = document.getElementById("ext_web_site");
 +           href = ext_web_site.parentElement.href;
 +           window.open(href, '_blank');
-+        } else 
++        } else  {
++           $("#warningModal .modal-body").text('Mosaic Web server is unavailable because the address 192.168.3.1 belongs to a different network.');
 +           $('#warningModal').modal();
++        }
 +    })
++
++
++    $('#modem_web_site').on("click", function (e){
++        e.preventDefault();
++        socket.emit("modem available");
++    })
++
++    socket.on("modem_available_result", function(msg) {
++        if (msg) {
++           modem_web_site = document.getElementById("modem_web_site");
++           href = modem_web_site.parentElement.href;
++           window.open(href, '_blank');
++        } else  {
++           $("#warningModal .modal-body").text('Modem Web server is unavailable because the address 192.168.8.1 belongs to a different network.');
++           $('#warningModal').modal();
++        }
++    })
++
++
      // end of document.ready
  });

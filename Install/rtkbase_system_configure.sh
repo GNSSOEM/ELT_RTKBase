@@ -51,21 +51,24 @@ WPS() {
      HAVE_INTERNET=`nmcli networking connectivity check`
      #echo after WPS HAVE_INTERNET=${HAVE_INTERNET}
      if [[ "${HAVE_INTERNET}" != "full" ]]; then
-        nmcli device wifi hotspot con-name ${HOTSPOT} ssid "RtkBase" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
-        ExitCodeCheck $?
-        nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
-        ExitCodeCheck $?
-        nmcli connection down id ${HOTSPOT}
-        ExitCodeCheck $?
-        nmcli connection up id ${HOTSPOT}
-        ExitCodeCheck $?
+        HAVE_WIFI=`nmcli --get-values TYPE,AUTOCONNECT connection show  | grep -w "802-11-wireless:yes"`
+        #echo HAVE_WIFI=${HAVE_WIFI}
+        if [[ -z "${HAVE_WIFI}" ]]; then
+           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "RtkBase" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+           ExitCodeCheck $?
+           nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
+           ExitCodeCheck $?
+           nmcli connection down id ${HOTSPOT}
+           ExitCodeCheck $?
+           nmcli connection up id ${HOTSPOT}
+           ExitCodeCheck $?
+        fi
      fi
   fi
   HAVE_HOTSPOT=`nmcli connection show --active | grep ${HOTSPOT}`
   if [[ -n "${HAVE_HOTSPOT}" ]]; then
      echo Hotspot Started >${HOTSPOT_FLAG}
   fi
-  source "${BASEDIR}"/check_septentrio_net.sh
   ExitCodeCheck 0
 }
 
@@ -162,7 +165,16 @@ then
       #echo nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool}
       nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
-      echo Wifi SSID set to ${SSID} -- code ${exitcode}
+      HAVE_WIFI=`nmcli --get-values NAME connection show | grep -w "${SSID}"`
+      if [[ -n "${HAVE_WIFI}" ]]; then
+         echo Wifi SSID set to ${SSID} -- code ${exitcode}
+      else
+         echo Wifi ${SSID} not created
+         WIFI_IP=""
+         WIFI_GATE=""
+         WIFI_DNS=""
+         ERROR=Y
+      fi
    else
       DeleteHotSpots
       nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
@@ -264,19 +276,26 @@ then
 fi
 
 ChangeConnection(){
-   device=$1
-   ip="$2"
-   gate="$3"
-   dns="$4"
-   conname="$5"
+   device="$1"
+   type="$2"
+   ip="$3"
+   gate="$4"
+   dns="$5"
+   conname="$6"
    nm-online -s >/dev/null
-   #echo device=${device} ip=${ip} gate=${gate} dns=${dns} conname=${conname}
    #https://askubuntu.com/questions/246077/how-to-setup-a-static-ip-for-network-manager-in-virtual-box-on-ubuntu-server
-   UUID=`nmcli --fields UUID,DEVICE con show | grep ${device} | awk -F ' ' '{print $1}'`
-   if [[ "${UUID}" = "" ]]; then
-      UUID=`nmcli --fields UUID,NAME con show | grep "${conname}" | awk -F ' ' '{print $1}'`
-      #UUID=${UUID}
+   if [[ -n "${conname}"  ]]; then
+      echo UUID=\`nmcli --get-values UUID,NAME con show \| grep -w \"${conname}\" \| head -n 1 \| awk -F \':\' \'\{print $1\}\'\`
+      UUID=`nmcli --get-values UUID,NAME con show | grep -w "${conname}" | head -n 1 | awk -F ':' '{print $1}'`
+   else
+      echo UUID=\`nmcli --get-values UUID,DEVICE con show --active \| grep -w ${device} \| head -n 1 \| awk -F \':\' \'\{print $1\}\'\`
+      UUID=`nmcli --get-values UUID,DEVICE con show --active | grep -w ${device} | head -n 1 | awk -F ':' '{print $1}'`
    fi
+   if [[ -z "${UUID}"  ]]; then
+      echo UUID=\`nmcli --get-values UUID,TYPE con show --active \| grep -w ${type} \| head -n 1 \| awk -F \':\' \'\{print $1\}\'\`
+      UUID=`nmcli --get-values UUID,TYPE con show | grep -w ${type} | head -n 1 | awk -F ':' '{print $1}'`
+   fi
+   echo device=${device} type=${type} ip=${ip} gate=${gate} dns=${dns} conname=${conname} UUID=${UUID}
    if [[ "${UUID}" != "" ]]; then
       CMD="nmcli connection modify uuid \"${UUID}\""
       if [[ "${ip}" =~ DHCP ]]; then
@@ -380,17 +399,17 @@ ChangeConnection(){
          echo ${kind} ${device} already configured as the same
       fi
    else
-      echo conection for ${device} not found
+      echo conection for ${device} \(${type}\) not found
    fi
    WORK=Y
 }
 
 if [[ -n "${ETH_IP}" ]] || [[ -n "${ETH_GATE}" ]] || [[ -n "${ETH_DNS}" ]]; then
-   ChangeConnection eth0 "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}" "Wired connection 1"
+   ChangeConnection eth0 "" "${ETH_IP}" "${ETH_GATE}" "${ETH_DNS}"
 fi
 if [[ -n "${WIFI_IP}" ]] || [[ -n "${WIFI_GATE}" ]] || [[ -n "${WIFI_DNS}" ]]; then
    nmcli radio wifi on
-   ChangeConnection wlan0 "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "preconfigured"
+   ChangeConnection wlan0 802-11-wireless "${WIFI_IP}" "${WIFI_GATE}" "${WIFI_DNS}" "${SSID}"
 fi
 
 WPS
@@ -401,8 +420,12 @@ then
   ExitCodeCheck 1
 fi
 
-rm -f ${NEWCONF}
-ExitCodeCheck $?
+if [[ -z ${ERROR} ]]; then
+   rm -f ${NEWCONF}
+   ExitCodeCheck $?
+else
+   echo ${NEWCONF} is not deleted via error. Operation will repeated at next reboot.
+fi
 
 #echo exit ${exitcode}
 exit ${exitcode}

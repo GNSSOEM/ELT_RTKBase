@@ -1,7 +1,6 @@
 [Unit]
 Description=RTKBase start
 After=local-fs.target
-After=network.target
 After=rtkbase_setup.service
 
 [Service]

@@ -1,10 +1,13 @@
 #!/bin/bash
 
 FLAG=/usr/local/rtkbase/NetworkChange.flg
-rm -f ${FLAG}
-state=DOWN
 FLAG_INIT=/usr/local/rtkbase/ledInited.flg
 FLAG_INITED=/usr/local/rtkbase/MosaicInited.flg
+WPS_FLAG=/usr/local/rtkbase/WPS.flg
+HOTSPOT_FLAG=/usr/local/rtkbase/HOTSPOT.flg
+RESET_INTERNET_LED_FLAG=/usr/local/rtkbase/reset_intenet_led.flg
+state=DOWN
+BASEDIR="$(dirname "$0")"
 
 if ! (gpioget -v | grep gpioget | grep -q v1); then
    GPIOKEY="-t0 -c"
@@ -103,11 +106,8 @@ else
 fi
 }
 
-WPS_FLAG=/usr/local/rtkbase/WPS.flg
-HOTSPOT_FLAG=/usr/local/rtkbase/HOTSPOT.flg
-RESET_INTERNET_LED_FLAG=/usr/local/rtkbase/reset_intenet_led.flg
 wasWPS=
-
+FIRST=YES
 ALL_CNT=0
 
 while : ; do
@@ -126,8 +126,14 @@ while : ; do
    if [[ -f ${FLAG} ]]; then
       cat ${FLAG}
       rm -f ${FLAG}
+      #echo source "${BASEDIR}"/check_septentrio_net.sh
+      source "${BASEDIR}"/check_septentrio_net.sh
       state=
+   elif [[ -n "${FIRST}" ]]; then
+      #echo source "${BASEDIR}"/check_septentrio_net.sh
+      source "${BASEDIR}"/check_septentrio_net.sh
    fi
+   FIRST=
 
    if [[ -f ${RESET_INTERNET_LED_FLAG} ]]; then
       state=
@@ -164,7 +170,6 @@ while : ; do
       if [[ "${newstate}" != "${state}" ]]; then
          if [ "${newstate}" == "UP" ]; then
             set_gpio 1
-            source "${BASEDIR}"/check_septentrio_net.sh
          else
             set_gpio 0
          fi
@@ -199,12 +204,7 @@ while : ; do
          wasHOTSPOT=
       else
          for i in `seq 1 ${CNT}`; do
-            if [[ -f ${FLAG} ]]; then
-               cat ${FLAG}
-               rm -f ${FLAG}
-               break
-            fi
-            if [[ -f ${WPS_FLAG} ]]; then
+            if [[ -f ${FLAG} ]] || [[ -f ${WPS_FLAG} ]]; then
                break
             fi
             sleep 1
