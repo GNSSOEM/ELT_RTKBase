@@ -80,7 +80,7 @@ trap ciao EXIT
 ExitCodeCheck(){
   lastcode=$1
   #echo lastcode=${lastcode}
-  if [[ $lastcode > $exitcode ]]; then
+  if [[ $lastcode -gt $exitcode ]]; then
      exitcode=${lastcode}
      #echo exitcode=${exitcode}
   fi

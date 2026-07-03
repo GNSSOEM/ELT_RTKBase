@@ -126,8 +126,7 @@ exitcode=0
 
 ExitCodeCheck(){
   lastcode=$1
-  if [[ $lastcode > $exitcode ]]
-  then
+  if [[ $lastcode -gt $exitcode ]]; then
      exitcode=${lastcode}
      #echo exitcode=${exitcode}
   fi
@@ -476,8 +475,12 @@ install_packet_if_not_installed(){
 check_platform(){
    platform=$(uname -m)
    if [[ ! ${platform} =~ 'aarch64' ]] && [[ ! ${platform} =~ 'armv7l' ]]; then
-      echo ELT_RTKBase cannot be installed on ${platform} architecture
-      exit 1
+      if [[ ! ${platform} =~ 'x86_64' ]] && [[ ! ${platform} =~ 'amd64' ]]; then
+         echo ELT_RTKBase cannot be installed on ${platform} architecture
+         exit 1
+      else
+        echo WARNING: ELT_RTKBase is not tested on ${platform} architecture, continuing anyway
+      fi
    fi
 }
 
@@ -521,6 +524,7 @@ install_additional_utilies(){
    echo '################################'
 
    NEED_INSTALL=
+   install_packet_if_not_installed lsb-release
    install_packet_if_not_installed avahi-utils
    install_packet_if_not_installed avahi-daemon
    install_packet_if_not_installed uuid
@@ -591,9 +595,14 @@ install_additional_utilies(){
    fi
    #echo NEED_INSTALL=${NEED_INSTALL}
    if [[ "${NEED_INSTALL}" != "" ]]; then
-      #echo apt-get install -q -y ${NEED_INSTALL}
-      apt-get install -q -y ${NEED_INSTALL}
-      ExitCodeCheck $?
+      for pkg in ${NEED_INSTALL}; do
+          #echo apt-get install -q -y ${pkg}
+          apt-get install -q -y ${pkg}
+          ExitCodeCheck $?
+          if [[ "${lastcode}" != "0" ]]; then
+             echo "WARNING: package ${pkg} is not available on this distribution, skipping"
+          fi
+      done
       NEED_INSTALL=
    fi
    sync
@@ -831,6 +840,9 @@ add_rtkbase_user(){
       exit 1
    fi
 
+   getent group plugdev >/dev/null || groupadd plugdev
+   getent group dialout >/dev/null || groupadd dialout
+   getent group gpio >/dev/null || groupadd gpio
    usermod -a -G plugdev,dialout,gpio ${RTKBASE_USER}
    ExitCodeCheck $?
 

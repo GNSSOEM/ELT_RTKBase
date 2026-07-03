@@ -8,8 +8,7 @@ exitcode=0
 
 ExitCodeCheck(){
   lastcode=$1
-  if [[ $lastcode > $exitcode ]]
-  then
+  if [[ $lastcode -gt $exitcode ]]; then
      exitcode=${lastcode}
      #echo exitcode=${exitcode}
   fi
