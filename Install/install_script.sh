@@ -70,6 +70,8 @@ STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
 RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
 CONVBIN_SH_PATCH=convbin_sh.patch 
 UNINSTALL_SH_PATCH=uninstall_sh.patch
+ARCHIVE_AND_CLEAN_PATCH=archive_and_clean_sh.patch
+CREATE_ARCHIVE=create_archive.sh
 SYSCONGIG=rtkbase_system_configure.sh
 SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
 SYSSERVICE=rtkbase_system_configure.service
@@ -1164,6 +1166,7 @@ patch_rtkbase(){
    patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
+   patch_one ${RTKBASE_GIT}/archive_and_clean.sh      ${ARCHIVE_AND_CLEAN_PATCH}      755
    sync
    ExitCodeCheck $?
 }
@@ -1305,6 +1308,7 @@ configure_for_unicore(){
    copy_script "${REBOOT_SH}" "${RTKBASE_TOOLS}"
    copy_script "${RESET_RECEIVER}" "${RTKBASE_TOOLS}"
    copy_script "${NTRIP_LED}" "${RTKBASE_TOOLS}"
+   copy_script "${CREATE_ARCHIVE}" "${RTKBASE_TOOLS}"
 
    copy_file "${CONF980}" "${RTKBASE_RECV}"
    copy_file "${CONF982}" "${RTKBASE_RECV}"
@@ -1799,7 +1803,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM} \
               ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH} \
               ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
-              ${UNINSTALL_SH_PATCH}"
+              ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

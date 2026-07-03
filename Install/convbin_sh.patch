@@ -1,5 +1,5 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..d567fc5 100755
+index 91a8020..44e1f0a 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
 @@ -5,12 +5,23 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -74,7 +74,7 @@ index 91a8020..d567fc5 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 1 -tt 0                    \
-@@ -88,10 +99,50 @@ filedate=$(echo ${1:0:10})
+@@ -88,15 +99,66 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -94,6 +94,7 @@ index 91a8020..d567fc5 100755
 +day=$(date -d "${RAW_ARCHIVE:0:10}" +%j)
 +markernum="${MARKER_NUMBER}0"
 +markernum="${markernum:0:1}"
++file_extension="${RAW_ARCHIVE##*.}"
 +
 +iso3() {
 +    local code2
@@ -103,6 +104,10 @@ index 91a8020..d567fc5 100755
 +        | select(.alpha_2 == $code)
 +        | .alpha_3' \
 +       /usr/share/iso-codes/json/iso_3166-1.json
++}
++
++num2letter() {
++    printf "\\$(printf '%03o' $((97 + 10#$1)))"
 +}
 +
 +getHHMM() {
@@ -116,7 +121,14 @@ index 91a8020..d567fc5 100755
 +}
 +
 +if [[ ${FILENAME_MODE} == '1' ]]; then
-+   RINEX_FILE=$(echo "${marker4}""${day}"0."${year2}"o)
++   if [[ $file_extension == 'zip' ]]; then
++      hourletter='0'
++   else
++      hhmm=$(getHHMM "${RAW_ARCHIVE}")
++      hourletter="$(num2letter ${hhmm:0:2})"
++   fi
++   #echo hhmm=${hhmm} hourletter=${hourletter}
++   RINEX_FILE=$(echo "${marker4}""${day}"${hourletter}."${year2}"o)
 +elif [[ ${FILENAME_MODE} == '2' ]]; then
 +   year4=$(echo ${RAW_ARCHIVE:0:4})
 +   hhmm=$(getHHMM "${RAW_ARCHIVE}")
@@ -129,7 +141,12 @@ index 91a8020..d567fc5 100755
  fi
  
  #Let's launch the CONVBIN process
-@@ -105,6 +156,10 @@ if [[ $file_extension == 'zip' ]]
+ echo "- Processing on	""${RAW_ARCHIVE}"
+-file_extension="${RAW_ARCHIVE##*.}"
+ if [[ $file_extension == 'zip' ]]
+   then
+     extract_raw_file
+@@ -105,6 +167,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?

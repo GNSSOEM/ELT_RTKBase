@@ -37,7 +37,8 @@ tar --exclude-vcs \
     raw2nmea_sh.patch network_infos_py.patch 77-mm-cypress-port-types.rules \
     LogManager_py.patch global-dns.conf servicecontroller_py.patch \
     convbin_sh.patch rtkbase_start.service rtkbase_start.sh \
-    check_septentrio_net.sh uninstall_sh.patch
+    check_septentrio_net.sh uninstall_sh.patch archive_and_clean_sh.patch \
+    create_archive.sh
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME
