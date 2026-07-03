@@ -117,65 +117,63 @@ fi
 
 CHANGE=NO
 up_down_device() {
-   local good="${1}"
-   local isactive="${2}"
-   local uuid="${3}"
-   if [[ "${good}" == "YES" ]]; then
+   local good="${!1}"
+   local uuid="${2}"
+   local isactive=$(nmcli --get-values UUID connection show --active | grep -w "${uuid}")
+   local have=$(nmcli --get-values UUID connection show | grep -w "${uuid}")
+   #echo good=${good} uuid=${uuid} isactive=${isactive} have=${have}
+   if [[ -z "${have}" ]]; then
+      CHANGE=YES
+      eval ${1}="DOWN"
+      #echo ${1}=${!1}
+   elif [[ "${good}" == "YES" ]]; then
       if [[ -z "${isactive}" ]]; then
          echo nmcli connection up uuid "${uuid}"
          nmcli connection up uuid "${uuid}"
          CHANGE=YES
       fi
-   else
-      if [[ -n "${isactive}" ]]; then
-         echo nmcli connection down uuid "${uuid}"
-         nmcli connection down uuid "${uuid}"
-         CHANGE=YES
-      fi
+   elif [[ -n "${isactive}" ]]; then
+      echo nmcli connection down uuid "${uuid}"
+      nmcli connection down uuid "${uuid}"
+      CHANGE=YES
    fi
 }
 
 start_stop_service(){
-   local service_name=$1
-   local action=$2
+   local service_name=${1}
+   local action=${2}
    local service_active=$(systemctl is-active "${service_name}")
    #echo service_name=${service_name} service_active=${service_active} action=${action}
    if [[ "${action}" == "YES" ]]; then
       if [ "${service_active}" != "active" ]; then
          echo systemctl start "${service_name}"
          systemctl start "${service_name}"
+         CHANGE=YES
       fi
    else
       if [ "${service_active}" != "inactive" ]; then
          echo systemctl stop "${service_name}"
          systemctl stop "${service_name}"
+         CHANGE=YES
       fi
    fi
 }
 
 if [[ -n "${HAS_SEPTENTRIO}" ]]; then
-   SEPTENTRIO_ISACTIVE=$(nmcli --get-values DEVICE connection show --active | grep -w "${SEPTENTRIO}")
-   #echo SEPTENTRIO_GOOD=${SEPTENTRIO_GOOD} SEPTENTRIO_ISACTIVE=${SEPTENTRIO_ISACTIVE}
-
-   #echo up_down_device "${SEPTENTRIO_GOOD}" "${SEPTENTRIO_ISACTIVE}" "${SEPTENTRIO_UUID}"
-   up_down_device "${SEPTENTRIO_GOOD}" "${SEPTENTRIO_ISACTIVE}" "${SEPTENTRIO_UUID}"
+   up_down_device SEPTENTRIO_GOOD "${SEPTENTRIO_UUID}"
 
    start_stop_service rtkbase_DHCP.service "${SEPTENTRIO_GOOD}"
    start_stop_service rtkbase_gnss_web_proxy.service "${SEPTENTRIO_GOOD}"
 fi 
 
 if [[ -n "${HAS_MOBILE}" ]]; then
-   MOBILE_ISACTIVE=$(nmcli --get-values DEVICE connection show --active | grep -w "${MOBILE}")
-   #echo MOBILE_GOOD=${MOBILE_GOOD} MOBILE_ISACTIVE=${MOBILE_ISACTIVE}
-
-   #echo up_down_device "${MOBILE_GOOD}" "${MOBILE_ISACTIVE}" "${MOBILE_UUID}"
-   up_down_device "${MOBILE_GOOD}" "${MOBILE_ISACTIVE}" "${MOBILE_UUID}"
+   up_down_device MOBILE_GOOD "${MOBILE_UUID}"
 
    start_stop_service rtkbase_modem_web_proxy.service "${MOBILE_GOOD}"
 fi 
 
 #echo CHANGE=${CHANGE}
 if [[ "${CHANGE}" == "YES" ]]; then
-   echo systemctl start rtkbase_septentrio_NAT.service
-   systemctl start rtkbase_septentrio_NAT.service
+   echo systemctl restart rtkbase_septentrio_NAT.service
+   systemctl restart rtkbase_septentrio_NAT.service
 fi

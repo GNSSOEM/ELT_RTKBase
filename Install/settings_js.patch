@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..54e578d 100644
+index 5b64baa..058d1ab 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -580,7 +580,7 @@ index 5b64baa..54e578d 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,165 @@ $(document).ready(function () {
+@@ -758,5 +947,171 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -609,6 +609,8 @@ index 5b64baa..54e578d 100644
 +    })
 +    function set_ntrip_mode(letter) {
 +        const selectElem = document.getElementById("svr_mode_" + letter);
++        if (selectElem == null)
++           return
 +        const index = selectElem.selectedIndex;
 +        // https://developer.mozilla.org/en-US/docs/Web/API/HTMLSelectElement/selectedIndex
 +        //console.log(selectElem.name + "=" + index);
@@ -672,12 +674,14 @@ index 5b64baa..54e578d 100644
 +    }
 +
 +    document.querySelectorAll("select.form-control").forEach(function(e) {
-+        var letter = e.id.replace("svr_mode_", "");
-+        //console.log(e.id + "(" + letter + ")");
-+        e.addEventListener('click', function(ev) {
-+            set_ntrip_mode(letter);
-+        });
-+        e.click()
++        if (/svr_mode_/.test(e.id)) {
++           var letter = e.id.replace("svr_mode_", "");
++           //console.log(e.id + "(" + letter + ")");
++           e.addEventListener('click', function(ev) {
++               set_ntrip_mode(letter);
++           });
++           e.click()
++        }
 +    });
 +
 +    document.querySelectorAll("input.form-control").forEach(function(e) {
@@ -696,12 +700,14 @@ index 5b64baa..54e578d 100644
 +       //console.log("set_rtcm_mode=" + isRtcm  + "(" + receiver_format.value + ")");
 +       $("#rtcm_svr_msg_group").prop("hidden", isRtcm);
 +       document.querySelectorAll("select.form-control").forEach(function(e) {
-+          //console.log(e.id);
-+          if (!isRtcm && (e.selectedIndex > 1))
-+             e.selectedIndex= 0;
-+          e.options[2].hidden = !isRtcm;
-+          e.options[3].hidden = !isRtcm;
-+          e.options[4].hidden = !isRtcm;
++          if (/svr_mode_/.test(e.id)) {
++             //console.log(e.id);
++             if (!isRtcm && (e.selectedIndex > 1))
++                e.selectedIndex= 0;
++             e.options[2].hidden = !isRtcm;
++             e.options[3].hidden = !isRtcm;
++             e.options[4].hidden = !isRtcm;
++          }
 +       });
 +    };
 +

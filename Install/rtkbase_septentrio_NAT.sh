@@ -49,6 +49,7 @@ fi
 
 needChange=NO
 
+HAS_SEPTENTRIO_NAT=0
 if [[ -n "${SEPTENTRIO_IP}" ]]; then
    HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c "${SEPTENTRIO_IP}"`
 fi
@@ -64,11 +65,12 @@ else
    needChange=YES
 fi
 
+HAS_MOBILE_NAT=0
 if [[ -n "${MOBILE_IP}" ]]; then
    HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c "${MOBILE_IP}"`
 fi
 #echo MOBILE_IP=${MOBILE_IP} MOBILE_UUID=${MOBILE_UUID} HAS_MOBILE_NAT=${HAS_MOBILE_NAT}
-if (( (${#MOBILE_IP} == 0) == (${HAS_MOBILE_NAT} == 0) )); then
+if (( ("${#MOBILE_IP}" == 0) == ("${HAS_MOBILE_NAT}" == 0) )); then
    echo NAT for mobile already setuped
 else
    if [[ ${HAS_MOBILE_NAT} != 0 ]]; then
