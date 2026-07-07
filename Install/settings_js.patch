@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..058d1ab 100644
+index 5b64baa..e7f83ec 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -580,7 +580,7 @@ index 5b64baa..058d1ab 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,171 @@ $(document).ready(function () {
+@@ -758,5 +947,1000 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -749,6 +749,835 @@ index 5b64baa..058d1ab 100644
 +        }
 +    })
 +
++
++    // ############### Wi-Fi manager ###############
++
++    var wifi = {
++        status: null,        // "wifi status" payload: capability/interfaces/country/channels/bands/occupied
++        list: null,          // "wifi list" payload: radio/country/role/ap_active/connected/saved/available
++        countriesLoaded: false,
++        updating: false,     // guard: programmatic form updates must not emit
++        scanning: false,     // a scan is in flight — show the "Scanning…" placeholder
++        busy: false,         // a blocking operation is running — status persists, controls locked
++        busyDone: '',        // message to flash (auto-hiding) when the current busy op finishes
++        busyTerminal: '',    // event that finishes the current busy op: 'result' | 'list' | 'ap'
++        cm: {mode: 'connect', ssid: '', profile: null, security: null}
++    };
++    var wifiToastTimer = null;
++    var wifiAutoScan = null;
++
++    // While the popup is open, silently re-scan periodically so networks that go off the air
++    // stop showing a stale signal (their bars age out). Skipped when it would disrupt: a
++    // blocking op running, radio off, AP mode, or an open dropdown/dialog.
++    function wifiStartAutoScan() {
++        clearInterval(wifiAutoScan);
++        wifiAutoScan = setInterval(function () {
++            if (wifi.busy || !(wifi.list && wifi.list.radio) || (wifi.list && wifi.list.role === 'ap')) return;
++            if ($('#wifi-net-list .dropdown-menu.show').length || $('#wifiConnectModal').is(':visible')) return;
++            socket.emit('wifi rescan');   // silent: no "Scanning…" placeholder, list updates on arrival
++        }, 15000);
++    }
++
++    function wifiEsc(s) {
++        return $('<span>').text(s == null ? '' : String(s)).html();
++    }
++
++    // Floating toast, bottom-center (prototype): info auto-hides, errors linger a bit longer.
++    function wifiToast(msg, isError) {
++        if (wifi.busy) return;   // a blocking operation owns the toast until it finishes
++        var t = $('#wifi-toast');
++        t.text(msg).toggleClass('wifi-toast-error', !!isError).show();
++        clearTimeout(wifiToastTimer);
++        wifiToastTimer = setTimeout(function () { t.hide(); }, isError ? 6000 : 2500);
++    }
++
++    // Long operation in progress: persistent spinner toast + block all controls so the user
++    // can't interrupt it mid-way (which would raise a confusing error). Cleared ONLY by the
++    // operation's own terminal event (`terminal`: 'result' | 'list' | 'ap') or 'wifi error' —
++    // an unrelated "wifi list" from the background rescan must NOT unlock a running connect.
++    function wifiSetBusy(on, msg, doneMsg, terminal) {
++        if (on) {
++            wifi.busy = true;
++            wifi.busyDone = doneMsg || '';
++            wifi.busyTerminal = terminal || 'list';
++            $('#wifiModal').addClass('wifi-busy');
++            clearTimeout(wifiToastTimer);
++            $('#wifi-toast').html('<span class="spinner-border spinner-border-sm"></span>' + wifiEsc(msg || 'Working…'))
++                .removeClass('wifi-toast-error').show();
++        } else {
++            if (!wifi.busy) return;
++            wifi.busy = false;
++            wifi.busyTerminal = '';
++            $('#wifiModal').removeClass('wifi-busy');
++            $('#wifi-toast').hide();
++            var done = wifi.busyDone; wifi.busyDone = '';
++            if (done) wifiToast(done);               // auto-hiding confirmation
++        }
++    }
++    function wifiBusyDoneIf(terminal) {              // clear busy only when its terminal event arrives
++        if (wifi.busy && wifi.busyTerminal === terminal) wifiSetBusy(false);
++    }
++
++    // Password rules per security kind. Returns an error string or null.
++    function wifiValidatePwd(sec, pwd) {
++        if (!sec || sec === 'open') return null;
++        pwd = pwd || '';
++        if (sec === 'wep') {
++            if (pwd.length === 5 || pwd.length === 13 ||
++                /^[0-9a-fA-F]{10}$/.test(pwd) || /^[0-9a-fA-F]{26}$/.test(pwd)) return null;
++            return 'WEP key must be 5 or 13 characters (or 10/26 hex digits)';
++        }
++        if (pwd.length < 8 || pwd.length > 63) return 'Password must be 8–63 characters';
++        return null;
++    }
++    function wifiShowPwdErr(msg) {
++        $('#wifi-cm-pwd-err').text(msg || '').toggle(!!msg);
++        $('#wifi-cm-pwd').css('border-color', msg ? '#dc3545' : '');
++        if (msg) $('#wifi-cm-pwd').focus();
++    }
++
++    function wifiBars(sig) {
++        sig = sig == null ? 0 : sig;
++        var n = sig >= 66 ? 4 : sig >= 40 ? 3 : sig >= 20 ? 2 : 1;
++        var col = sig >= 66 ? '#2e7d32' : sig >= 40 ? '#f9a825' : '#9e9e9e';
++        var s = '<svg width="22" height="18" viewBox="0 0 22 18" style="flex:none">';
++        for (var i = 0; i < 4; i++) {
++            var h = 5 + i * 4, x = i * 5 + 1, y = 16 - h;
++            s += '<rect x="' + x + '" y="' + y + '" width="3.4" height="' + h + '" rx="1" fill="' + (i < n ? col : '#dee2e6') + '"/>';
++        }
++        return s + '</svg>';
++    }
++
++    // ---- IPv4 helpers (live validation) ----
++    function wifiIpToInt(ip) {
++        var p = (ip || '').trim().split('.');
++        if (p.length !== 4) return null;
++        var n = 0;
++        for (var i = 0; i < p.length; i++) {
++            if (!/^\d{1,3}$/.test(p[i])) return null;
++            var v = +p[i];
++            if (v > 255) return null;
++            n = n * 256 + v;
++        }
++        return n >>> 0;
++    }
++    function wifiNetAddr(ipInt, prefix) {
++        var mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
++        return (ipInt & mask) >>> 0;
++    }
++    function wifiPrefixToMask(p) {
++        var m = [];
++        for (var i = 0; i < 4; i++) {
++            var b = Math.max(0, Math.min(8, p - i * 8));
++            m.push(256 - Math.pow(2, 8 - b));
++        }
++        return m.join('.');
++    }
++    function wifiMaskOptions(sel) {
++        var o = '';
++        for (var p = 8; p <= 30; p++) {
++            o += '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + wifiPrefixToMask(p) + ' (/' + p + ')</option>';
++        }
++        return o;
++    }
++    // first overlapping occupied ethernet subnet (from NM via backend) or null
++    function wifiOccupiedConflict(ipInt, prefix) {
++        var occ = (wifi.status && wifi.status.occupied) || [];
++        for (var i = 0; i < occ.length; i++) {
++            var parts = occ[i].net.split('/');
++            var oIp = wifiIpToInt(parts[0]), oPrefix = +parts[1];
++            if (oIp === null) continue;
++            var mp = Math.min(prefix, oPrefix);
++            if (wifiNetAddr(ipInt, mp) === wifiNetAddr(oIp, mp)) return occ[i];
++        }
++        return null;
++    }
++    // shared IPv4 validation; ids = {ip, mask, gw?, dns?, err}
++    function wifiValidateStatic(ids) {
++        var errEl = $('#' + ids.err), ipEl = $('#' + ids.ip);
++        var prefix = +$('#' + ids.mask).val();
++        function fail(el, m) {
++            errEl.text('⚠ ' + m).show();
++            if (el) el.css('border-color', '#dc3545');
++            return false;
++        }
++        function good() {
++            errEl.hide();
++            ipEl.css('border-color', '');
++            if (ids.gw) $('#' + ids.gw).css('border-color', '');
++            return true;
++        }
++        var ip = wifiIpToInt(ipEl.val());
++        if (ip === null) return fail(ipEl, 'Invalid IP address.');
++        var net = wifiNetAddr(ip, prefix);
++        var host = (prefix === 0 ? 0xFFFFFFFF : (~((0xFFFFFFFF << (32 - prefix)) >>> 0)) >>> 0);
++        var bcast = (net | host) >>> 0;
++        if (ip === net || ip === bcast) return fail(ipEl, 'This is a network or broadcast address — use a host address.');
++        var conf = wifiOccupiedConflict(ip, prefix);
++        if (conf) return fail(ipEl, 'Subnet overlaps ' + conf.net + ' (' + conf.conn + '). Choose a different subnet.');
++        // exact clash with an address already assigned to this device (header interfaces
++        // list; skip wlan0 — re-using its own current address is fine)
++        var ifs = (wifi.status && wifi.status.interfaces) || [];
++        for (var k = 0; k < ifs.length; k++) {
++            if (ifs[k].device === 'wlan0' || !ifs[k].ipv4) continue;
++            for (var m = 0; m < ifs[k].ipv4.length; m++) {
++                if (wifiIpToInt(ifs[k].ipv4[m]) === ip)
++                    return fail(ipEl, 'Address ' + ifs[k].ipv4[m] + ' is already used by this device (' + ifs[k].device + ').');
++            }
++        }
++        if (ids.gw) {
++            var gwVal = $('#' + ids.gw).val().trim();
++            if (gwVal) {
++                var gw = wifiIpToInt(gwVal);
++                if (gw === null) return fail($('#' + ids.gw), 'Invalid gateway address.');
++                if (wifiNetAddr(gw, prefix) !== net) return fail($('#' + ids.gw), 'Gateway is not in the same subnet as the IP address.');
++                if (gw === ip) return fail(ipEl, 'Address must differ from the gateway.');
++            }
++        }
++        if (ids.dns) {
++            var dnsVal = $('#' + ids.dns).val().trim();
++            if (dnsVal) {
++                var list = dnsVal.split(',');
++                for (var i = 0; i < list.length; i++) {
++                    var t = list[i].trim();
++                    if (t && wifiIpToInt(t) === null) return fail($('#' + ids.dns), 'Invalid DNS address: ' + t);
++                }
++            }
++        }
++        return good();
++    }
++
++    // ---- radio / channels (Mode -> width is derived) ----
++    function wifiModesFor(band) {
++        return band === '2.4' ? ['b', 'g', 'n', 'ax'] : (band === '5' ? ['a', 'n', 'ac', 'ax'] : []);
++    }
++    function wifiModeWidth(band, mode) {
++        if (band === '2.4') {
++            return {b: ['22', '22 MHz (b)'], g: ['20', '20 MHz (g)'], n: ['40', '40 MHz (n)'], ax: ['40', '40 MHz (ax)']}[mode] || ['20', '20 MHz'];
++        }
++        return {a: ['20', '20 MHz (a)'], n: ['40', '40 MHz (n)'], ac: ['80', '80 MHz (ac)'], ax: ['80', '80 MHz (ax)']}[mode] || ['20', '20 MHz'];
++    }
++    // usable AP channels for a band: from the kernel via backend, minus disabled/NO-IR/DFS,
++    // then narrowed by the derived channel width (wider -> fewer usable primaries)
++    function wifiApChannels(band, width) {
++        var all = ((wifi.status && wifi.status.channels) || {})[band] || [];
++        var chans = [];
++        for (var i = 0; i < all.length; i++) {
++            var e = all[i];
++            if (e.disabled || e.no_ir || e.dfs) continue;
++            chans.push(e.ch);
++        }
++        if (band === '2.4' && width === '40') chans = chans.filter(function (c) { return c <= 9; });
++        if (band === '5') {
++            if (width === '40') chans = chans.filter(function (c) { return [36, 44, 149, 157].indexOf(c) >= 0; });
++            if (width === '80') chans = chans.filter(function (c) { return [36, 149].indexOf(c) >= 0; });
++        }
++        return chans;
++    }
++    function wifiChanFreq(ch) {
++        return ch <= 14 ? (ch === 14 ? 2484 : 2407 + ch * 5) : 5000 + ch * 5;
++    }
++    function wifiRepopRadio() {
++        var band = $('#wifi-ap-band').val();
++        var mSel = $('#wifi-ap-mode'), cSel = $('#wifi-ap-channel'), wRef = $('#wifi-ap-width-ref');
++        if (band === 'all') {
++            mSel.prop('disabled', true).html('<option value="auto">Auto</option>');
++            cSel.prop('disabled', true).html('<option value="0">Auto</option>');
++            wRef.text('Channel width: auto (all bands)');
++            return;
++        }
++        mSel.prop('disabled', false);
++        cSel.prop('disabled', false);
++        var modes = wifiModesFor(band), prev = mSel.val();
++        var mode = modes.indexOf(prev) >= 0 ? prev : modes[modes.length - 1];
++        mSel.html(modes.map(function (m) {
++            return '<option value="' + m + '"' + (m === mode ? ' selected' : '') + '>802.11' + m + '</option>';
++        }).join(''));
++        var wv = wifiModeWidth(band, mode);
++        wRef.text('Channel width: ' + wv[1] + ' — derived from 802.11' + mode + ' (reference)');
++        var chans = wifiApChannels(band, wv[0]), prevCh = cSel.val();
++        cSel.html('<option value="0">Auto</option>' + chans.map(function (ch) {
++            return '<option value="' + ch + '"' + (String(ch) === prevCh ? ' selected' : '') + '>ch ' + ch + ' · ' + wifiChanFreq(ch) + ' MHz</option>';
++        }).join(''));
++    }
++
++    // ---- rendering ----
++    function wifiRenderIfaces() {
++        var ifaces = (wifi.status && wifi.status.interfaces) || null;
++        if (!ifaces) { $('#wifi-ifaces').html(''); return; }
++        var html = ifaces.map(function (itf) {
++            var mac = itf.hwaddr || '—';
++            var hasIp = itf.ipv4 && itf.ipv4.length;
++            var ipHtml = hasIp ? wifiEsc(itf.ipv4.join(', ')) : '<span class="text-muted">not connected</span>';
++            return wifiEsc(itf.device) + ': ' + ipHtml + ' · MAC ' + wifiEsc(mac);
++        }).join('<br>');
++        $('#wifi-ifaces').html(html);
++    }
++
++    function wifiLimitedMsg(entry) {
++        return entry.usable === 'disabled'
++            ? "This network's channel is not permitted in " + wifi.list.country + ' — switch Wi-Fi region to connect'
++            : 'This channel is not allowed without a Wi-Fi region — select a region to connect';
++    }
++
++    function wifiRowHTML(n, kind) {
++        var limited = kind !== 'connected' && n.usable && n.usable !== 'ok';
++        var right;
++        if (kind === 'connected') {
++            right = '<button class="btn btn-secondary btn-sm" type="button" data-wifi-act="disconnect">Disconnect</button>';
++        } else if (kind === 'saved') {
++            right = limited
++                ? '<button class="btn btn-secondary btn-sm" type="button" disabled style="opacity:.5">&#8942;</button>'
++                : '<div class="dropdown">' +
++                  '<button class="btn btn-secondary btn-sm" type="button" data-wifi-act="menu">&#8942;</button>' +
++                  '<div class="dropdown-menu dropdown-menu-right">' +
++                  '<a class="dropdown-item" href="#" data-wifi-act="connect">Connect</a>' +
++                  '<a class="dropdown-item" href="#" data-wifi-act="changepwd">Change password</a>' +
++                  '<a class="dropdown-item" href="#" data-wifi-act="ipconf">IP settings</a>' +
++                  '<a class="dropdown-item text-danger" href="#" data-wifi-act="forget">Forget</a>' +
++                  '</div></div>';
++        } else {
++            right = '<span class="text-muted">&#8250;</span>';
++        }
++        var badges = '';
++        if ((kind === 'saved' || kind === 'connected') && n.autoconnect === false && !n.onetime) {
++            badges += ' <span class="badge badge-warning wifi-badge" title="Saved, but NetworkManager will not connect to this network automatically">Auto-connect off</span>';
++        }
++        if (limited) {
++            badges += n.usable === 'disabled'
++                ? ' <span class="badge badge-danger wifi-badge" title="' + wifiEsc(wifiLimitedMsg(n)) + '">Unavailable in ' + wifiEsc(wifi.list.country) + '</span>'
++                : ' <span class="badge badge-secondary wifi-badge" title="' + wifiEsc(wifiLimitedMsg(n)) + '">Region required</span>';
++        }
++        var meta = [];
++        if (n.band) meta.push(n.band + ' GHz · ch ' + n.chan);
++        meta.push(n.security === 'open' ? 'open' : (n.security_label || n.security));
++        if (kind === 'connected') {
++            if (n.ip) meta.push(n.ip);
++            if (n.onetime) meta.push('not saved (one-time)');
++        }
++        var lock = n.security !== 'open' ? ' &#128274;' : '';
++        var clickable = kind === 'available' && !limited;
++        return '<div class="wifi-row' + (kind === 'connected' ? ' wifi-connected' : '') +
++            (limited ? ' wifi-limited' : '') + (clickable ? ' wifi-clickable' : '') + '"' +
++            ' data-kind="' + kind + '" data-ssid="' + wifiEsc(n.ssid) + '" data-profile="' + wifiEsc(n.profile || '') + '"' +
++            ' data-security="' + wifiEsc(n.security) + '" data-band="' + wifiEsc(n.band || '') + '" data-chan="' + (n.chan || '') + '"' +
++            ' data-limited="' + (limited ? 1 : 0) + '" data-usable="' + wifiEsc(n.usable || 'ok') + '">' +
++            wifiBars(n.signal) +
++            '<div class="wifi-grow"><div class="wifi-name">' + wifiEsc(n.ssid) + lock + badges + '</div>' +
++            '<div class="wifi-meta">' + wifiEsc(meta.join(' · ')) + '</div></div>' + right + '</div>';
++    }
++
++    function wifiRenderList() {
++        var el = $('#wifi-net-list');
++        if (wifi.scanning) {
++            el.html('<div class="text-muted text-center py-4"><span class="spinner-border spinner-border-sm"></span> Scanning networks…</div>');
++            return;
++        }
++        if (!wifi.list) { el.html(''); return; }
++        if (!wifi.list.radio) {
++            el.html('<div class="text-muted text-center py-4">Wi-Fi is off</div>');
++            return;
++        }
++        var h = '';
++        if (wifi.list.connected.length) {
++            h += '<div class="wifi-grp-title">Connected</div><div class="wifi-list">' +
++                 wifi.list.connected.map(function (n) { return wifiRowHTML(n, 'connected'); }).join('') + '</div>';
++        }
++        if (wifi.list.saved.length) {
++            h += '<div class="wifi-grp-title">Saved networks</div><div class="wifi-list">' +
++                 wifi.list.saved.map(function (n) { return wifiRowHTML(n, 'saved'); }).join('') + '</div>';
++        }
++        h += '<div class="wifi-grp-title">Available networks</div><div class="wifi-list">' +
++             (wifi.list.available.length
++                ? wifi.list.available.map(function (n) { return wifiRowHTML(n, 'available'); }).join('')
++                : '<div class="text-muted small text-center py-3">No networks found on channels allowed in this region.</div>') +
++             '</div>';
++        h += '<div class="wifi-list mt-2"><div class="wifi-add-row" data-wifi-act="hidden">＋ Add hidden network…</div></div>';
++        el.html(h);
++    }
++
++    function wifiApplyGates() {
++        var hasCountry = !!(wifi.list && wifi.list.country) || !!(wifi.status && wifi.status.country);
++        var radioOn = !!(wifi.list && wifi.list.radio);
++        var apOn = !!(wifi.list && wifi.list.role === 'ap');
++        $('#wifi-net-list').toggleClass('wifi-disabled-area', apOn);
++        $('#wifiApOnNote').toggle(apOn);
++        $('#wifi-ap-card').toggleClass('wifi-disabled-area', !hasCountry || !radioOn);
++        // natively disable the toggle too — pointer-events on the card is not enough
++        // (e.g. a stale status), and a disabled input can't open the form
++        $('#wifi-ap-switch').prop('disabled', !hasCountry || !radioOn);
++        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
++        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn);
++        $('#wifi-region-hint').toggle(!hasCountry);
++    }
++
++    function wifiRenderCountries(countries) {
++        var sel = $('#wifi-country');
++        var current = (wifi.status && wifi.status.country) || '';
++        var html = countries.map(function (c) {
++            return '<option value="' + c.code + '" data-tokens="' + c.code + '"' +
++                (c.code === current ? ' selected' : '') + '>' + wifiEsc(c.name) + ' (' + c.code + ')</option>';
++        }).join('');
++        sel.html(html);
++        if (!current) sel.val([]);
++        wifi.countriesLoaded = true;
++        if (sel.data('selectpicker')) sel.selectpicker('destroy');
++        sel.selectpicker({liveSearch: true, liveSearchStyle: 'startsWith', size: 8, width: '100%',
++                          title: 'Choose a Wi-Fi region…'});
++    }
++
++    function wifiSyncCountrySelect() {
++        if (!wifi.countriesLoaded) return;
++        wifi.updating = true;
++        var current = (wifi.status && wifi.status.country) || '';
++        $('#wifi-country').val(current || []).selectpicker('refresh');
++        wifi.updating = false;
++    }
++
++    function wifiRenderApForm(cfg) {
++        wifi.updating = true;
++        $('#wifi-ap-ssid').val(cfg.ssid);
++        $('#wifi-ap-sec').val(cfg.security);
++        $('#wifi-ap-pwd').val(cfg.password);
++        $('#wifi-ap-hidden').prop('checked', !!cfg.hidden);
++        $('#wifi-ap-band').val(cfg.band || 'all');
++        $('#wifi-ap-ip').val(cfg.ip);
++        $('#wifi-ap-mask').html(wifiMaskOptions(cfg.prefix || 24));
++        $('#wifi-ap-pwd-field').toggle(cfg.security !== 'open');
++        $('#wifi-ap-switch').prop('checked', !!cfg.enabled);
++        $('#wifi-ap-body').toggle(!!cfg.enabled);
++        wifiRepopRadio();
++        if (cfg.channel) $('#wifi-ap-channel').val(String(cfg.channel));
++        wifi.updating = false;
++    }
++
++    function wifiGatherApForm(enabled) {
++        return {
++            enabled: enabled,
++            ssid: $('#wifi-ap-ssid').val(),
++            security: $('#wifi-ap-sec').val(),
++            password: $('#wifi-ap-pwd').val(),
++            hidden: $('#wifi-ap-hidden').prop('checked'),
++            band: $('#wifi-ap-band').val(),
++            channel: +($('#wifi-ap-channel').val() || 0),
++            ip: $('#wifi-ap-ip').val().trim(),
++            prefix: +$('#wifi-ap-mask').val()
++        };
++    }
++
++    function wifiFindNet(profile) {
++        if (!wifi.list || !profile) return null;
++        var all = (wifi.list.connected || []).concat(wifi.list.saved || [], wifi.list.available || []);
++        for (var i = 0; i < all.length; i++) if (all[i].profile === profile) return all[i];
++        return null;
++    }
++
++    // ---- connect / hidden / change password / ip settings dialog ----
++    function wifiOpenConnect(opts) {
++        wifi.cm = opts;
++        var isHidden = opts.mode === 'hidden';
++        var isPwd = opts.mode === 'changepwd';
++        var isIp = opts.mode === 'ipconf';
++        wifiPwdSetMasked($('#wifi-cm-pwd').val(''), true);
++        $('#wifi-cm-eye').html(WIFI_EYEOFF);
++        wifiShowPwdErr('');
++        $('#wifi-cm-ssid').val('');
++        $('#wifi-cm-ip, #wifi-cm-gw, #wifi-cm-dns').val('').css('border-color', '');
++        $('#wifi-cm-mask').html(wifiMaskOptions(24));
++        $('#wifi-cm-ip-err').hide();
++        $('#wifi-cm-ipmode label').removeClass('active');
++        $('#wifi-cm-ipmode input[value="auto"]').prop('checked', true).closest('label').addClass('active');
++        $('#wifi-cm-static').hide();
++        $('#wifi-cm-save').prop('checked', true);
++        $('#wifi-cm-ssid-field').toggle(isHidden);
++        $('#wifi-cm-sec-field').toggle(isHidden);
++        $('#wifiHiddenNote').toggle(isHidden && !(wifi.status && wifi.status.country));
++        $('#wifi-cm-ipblock').toggle(!isPwd);
++        $('#wifi-cm-save').closest('.custom-control').toggle(!isPwd && !isIp);
++        $('#wifi-cm-pwd-field').toggle(!isIp && (isHidden || isPwd || opts.security !== 'open'));
++        if (isHidden) {
++            $('#wifi-cm-title').text('Add hidden network');
++            $('#wifi-cm-meta').text('Enter the network name, security and password.');
++            $('#wifi-cm-connect').text('Connect');
++        } else if (isPwd) {
++            $('#wifi-cm-title').text('Change password — “' + opts.ssid + '”');
++            $('#wifi-cm-meta').text('');
++            $('#wifi-cm-connect').text('Save');
++        } else if (isIp) {
++            $('#wifi-cm-title').text('IP settings — “' + opts.ssid + '”');
++            $('#wifi-cm-meta').text('Automatic (DHCP) or a manual static address for this saved network.');
++            $('#wifi-cm-connect').text('Save');
++            // pre-fill with the profile's CURRENT configuration (the reset above assumed DHCP)
++            var net = wifiFindNet(opts.profile), ipc = net && net.ipconf;
++            if (ipc && ipc.method === 'manual') {
++                $('#wifi-cm-ipmode label').removeClass('active');
++                $('#wifi-cm-ipmode input[value="manual"]').prop('checked', true).closest('label').addClass('active');
++                $('#wifi-cm-static').show();
++                $('#wifi-cm-ip').val(ipc.ip || '');
++                $('#wifi-cm-mask').html(wifiMaskOptions(ipc.prefix || 24));
++                $('#wifi-cm-gw').val(ipc.gateway || '');
++                $('#wifi-cm-dns').val(ipc.dns || '');
++            }
++        } else {
++            $('#wifi-cm-title').text('Connect to “' + opts.ssid + '”');
++            var open = opts.security === 'open';
++            $('#wifi-cm-meta').text('Security: ' + (open ? 'open' : (opts.securityLabel || opts.security)) +
++                (opts.band ? ' · ' + opts.band + ' GHz · channel ' + opts.chan : ''));
++            $('#wifi-cm-connect').text('Connect');
++        }
++        $('#wifiConnectModal').modal();
++    }
++
++    function wifiGatherIpconf() {
++        var mode = $('#wifi-cm-ipmode input:checked').val();
++        if (mode !== 'manual') return {method: 'auto'};
++        return {
++            method: 'manual',
++            ip: $('#wifi-cm-ip').val().trim(),
++            prefix: +$('#wifi-cm-mask').val(),
++            gateway: $('#wifi-cm-gw').val().trim(),
++            dns: $('#wifi-cm-dns').val().trim()
++        };
++    }
++
++    function wifiDoConnect() {
++        var m = wifi.cm;
++        if (m.mode === 'changepwd') {
++            var pw = $('#wifi-cm-pwd').val();
++            var pe = wifiValidatePwd(m.security, pw);
++            if (pe) { wifiShowPwdErr(pe); return; }
++            socket.emit('wifi change password', {profile: m.profile, password: pw});
++            $('#wifiConnectModal').modal('hide');
++            wifiSetBusy(true, 'Saving password…', 'Password saved');
++            return;
++        }
++        var ipconf = wifiGatherIpconf();
++        if (ipconf.method === 'manual' &&
++            !wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'})) {
++            return;
++        }
++        if (m.mode === 'ipconf') {
++            socket.emit('wifi set ipconf', {profile: m.profile, ipconf: ipconf});
++            $('#wifiConnectModal').modal('hide');
++            wifiSetBusy(true, 'Applying IP settings…', 'IP settings applied');
++            return;
++        }
++        var msg = {remember: $('#wifi-cm-save').prop('checked'), ipconf: ipconf};
++        if (m.mode === 'hidden') {
++            msg.ssid = $('#wifi-cm-ssid').val().trim();
++            if (!msg.ssid) { wifiToast('Enter the network name (SSID)', true); return; }
++            msg.security = $('#wifi-cm-sec').val();
++            msg.hidden = true;
++            if (msg.security === 'wep') msg.security = 'wep';
++        } else {
++            msg.ssid = m.ssid;
++            msg.security = null;   // resolved from the scan on the backend
++        }
++        msg.password = $('#wifi-cm-pwd').val();
++        // secured network needs a valid key (open sends none). m.security holds the network's
++        // security even when msg.security is null (the backend resolves it from the scan).
++        var sec = (m.mode === 'hidden') ? msg.security : m.security;
++        var pwdErr = wifiValidatePwd(sec, msg.password);
++        if (pwdErr) { wifiShowPwdErr(pwdErr); return; }
++        socket.emit('wifi connect', msg);
++        $('#wifiConnectModal').modal('hide');
++        wifiSetBusy(true, 'Connecting to ' + msg.ssid + '…', '', 'result');
++    }
++
++    // ---- socket handlers ----
++    socket.on('wifi status', function (status) {
++        wifi.status = status;
++        if (status.capability && !status.capability.nm) {
++            $('#wifiModal .modal-body').children().hide();
++            if (!$('#wifi-no-nm').length) {
++                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">Wi-Fi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
++            }
++            return;
++        }
++        wifiRenderIfaces();
++        wifi.updating = true;
++        $('#wifi-radio-switch').prop('checked', !!status.radio);
++        wifi.updating = false;
++        wifiSyncCountrySelect();
++        // adapter without 5 GHz (e.g. RPi Zero 2W): hide the 5 GHz AP band option
++        if (status.bands && status.bands.indexOf('5') < 0) {
++            $('#wifi-ap-band option[value="5"]').remove();
++        }
++        wifiRepopRadio();
++        wifiApplyGates();
++    });
++
++    socket.on('wifi countries', function (countries) {
++        wifiRenderCountries(countries);
++    });
++
++    socket.on('wifi list', function (list) {
++        wifiBusyDoneIf('list');   // a background-rescan list must NOT unlock a running connect
++        wifi.scanning = false;
++        wifi.list = list;
++        wifiRenderList();
++        wifiApplyGates();
++        $('#wifi-rescan-button').prop('disabled', !list.radio || list.role === 'ap');
++    });
++
++    socket.on('ap config', function (cfg) {
++        wifiBusyDoneIf('ap');
++        wifiRenderApForm(cfg);
++        wifiApplyGates();
++    });
++
++    socket.on('wifi error', function (err) {
++        wifi.busyDone = '';           // it failed — suppress any pending success confirmation
++        wifiSetBusy(false);
++        if (wifi.scanning) { wifi.scanning = false; wifiRenderList(); }
++        wifiToast((err.op ? err.op + ': ' : '') + err.message, true);
++    });
++
++    socket.on('wifi connect status', function (st) {
++        // progress updates during a blocking op: refresh the persistent spinner message
++        var map = {
++            connecting: 'Connecting to ' + (st.detail || '') + '…',
++            reconnecting: 'Re-connecting…',
++            connected: 'Connected',
++            starting: 'Starting access point…',
++            disconnected: 'Link dropped — trying an allowed channel…'
++        };
++        var m = map[st.stage] || st.detail || st.stage;
++        if (wifi.busy) wifiSetBusy(true, m, wifi.busyDone, wifi.busyTerminal);
++        else wifiToast(m, st.stage === 'failed' || st.stage === 'disconnected');
++    });
++
++    socket.on('wifi connect result', function (res) {
++        wifiSetBusy(false);
++        if (res.ok) wifiToast('Connected');
++        else wifiToast(res.message || 'Connection failed', true);
++    });
++
++    socket.on('wifi backup', function (data) {
++        var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
++        var a = document.createElement('a');
++        a.href = URL.createObjectURL(blob);
++        a.download = 'rtkbase_wifi_profiles.json';
++        a.click();
++        URL.revokeObjectURL(a.href);
++    });
++
++    socket.on('wifi restore result', function (res) {
++        if (res.ok) wifiToast('Imported ' + res.count + ' Wi-Fi profile(s)');
++        else wifiToast(res.message || 'Import failed', true);
++    });
++
++    // ---- UI events ----
++    $('#manage-wifi-button').on('click', function () {
++        // backend runs `nmcli radio wifi on` on "get wifi status"
++        socket.emit('get wifi status');
++        if (!wifi.countriesLoaded) socket.emit('get wifi countries');
++        socket.emit('get wifi list');   // backend forces a fresh scan (may take a few seconds)
++        socket.emit('get ap config');
++        wifi.scanning = true; wifiRenderList();   // list shows "Scanning…" while the initial scan runs
++        $('#wifiModal').modal();
++        wifiStartAutoScan();
++    });
++    $('#wifiModal').on('hidden.bs.modal', function () {
++        clearInterval(wifiAutoScan);
++        wifi.busyDone = '';
++        wifiSetBusy(false);          // popup closed — the op continues server-side; drop the toast
++        $('#wifi-toast').hide();
++    });
++
++    $('#wifi-rescan-button').on('click', function () {
++        // the list area shows the "Scanning…" placeholder — no separate status toast (would duplicate)
++        wifi.scanning = true; wifiRenderList();
++        socket.emit('wifi rescan');
++    });
++
++    $('#wifi-radio-switch').on('change', function () {
++        if (wifi.updating) return;
++        var on = $(this).prop('checked');
++        // power-on triggers a fresh scan on the backend; show the placeholder meanwhile
++        wifi.scanning = on; wifiRenderList();
++        socket.emit('wifi radio', {on: on});
++    });
++
++    $('#wifi-country').on('changed.bs.select', function () {
++        if (wifi.updating) return;
++        var code = $(this).val();
++        if (!code || (wifi.status && code === wifi.status.country)) return;
++        var connected = wifi.list && wifi.list.connected.length > 0;
++        var apOn = wifi.list && wifi.list.role === 'ap';
++        if (connected && !window.confirm('Changing the Wi-Fi region re-applies the regulatory domain to the adapter; the current connection may briefly drop and reconnect. Continue?')) {
++            wifiSyncCountrySelect();
++            return;
++        }
++        if (apOn && !window.confirm('Changing the Wi-Fi region may require restarting the hotspot on a valid channel; access point clients will briefly disconnect. Continue?')) {
++            wifiSyncCountrySelect();
++            return;
++        }
++        wifiSetBusy(true, 'Applying Wi-Fi region ' + code + '…', 'Wi-Fi region applied');
++        socket.emit('wifi set country', {country: code});
++    });
++
++    // network list actions (delegated: the list is re-rendered on every update)
++    $('#wifi-net-list').on('click', '[data-wifi-act]', function (e) {
++        e.preventDefault();
++        e.stopPropagation();
++        var act = $(this).data('wifi-act');
++        var row = $(this).closest('.wifi-row');
++        if (act === 'menu') {
++            var menu = $(this).siblings('.dropdown-menu');
++            $('#wifi-net-list .dropdown-menu').not(menu).removeClass('show');
++            menu.toggleClass('show');
++            return;
++        }
++        $('#wifi-net-list .dropdown-menu').removeClass('show');
++        if (act === 'hidden') { wifiOpenConnect({mode: 'hidden'}); return; }
++        if (act === 'disconnect') { socket.emit('wifi disconnect'); wifiSetBusy(true, 'Disconnecting…', 'Disconnected'); return; }
++        if (act === 'forget') {
++            socket.emit('wifi forget', {profile: row.data('profile')});
++            wifiSetBusy(true, 'Forgetting network…', 'Network forgotten');
++            return;
++        }
++        if (act === 'changepwd') {
++            wifiOpenConnect({mode: 'changepwd', ssid: row.data('ssid'), profile: row.data('profile'),
++                             security: row.data('security')});
++            return;
++        }
++        if (act === 'ipconf') {
++            wifiOpenConnect({mode: 'ipconf', ssid: row.data('ssid'), profile: row.data('profile')});
++            return;
++        }
++        if (act === 'connect') {
++            if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
++            var prof = row.data('profile');
++            if (prof) {   // saved network: password is stored — just re-activate, don't prompt
++                socket.emit('wifi activate', {profile: prof});
++                wifiSetBusy(true, 'Connecting to ' + row.data('ssid') + '…', '', 'result');
++            } else {      // fallback: no profile → treat as a fresh connection
++                wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), security: row.data('security'),
++                                 band: row.data('band'), chan: row.data('chan')});
++            }
++            return;
++        }
++    });
++
++    $('#wifi-net-list').on('click', '.wifi-row[data-kind="available"]', function () {
++        var row = $(this);
++        if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
++        wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), security: row.data('security'),
++                         band: row.data('band'), chan: row.data('chan')});
++    });
++
++    $(document).on('click', function (e) {
++        if (!$(e.target).closest('#wifi-net-list .dropdown').length) {
++            $('#wifi-net-list .dropdown-menu').removeClass('show');
++        }
++    });
++
++    // connect dialog events
++    $('#wifi-cm-connect').on('click', wifiDoConnect);
++    // simple line eye / eye-off icons (prototype), instead of the emoji glyph
++    var WIFI_EYE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="#495057"><path d="M8 3C3 3 0 8 0 8s3 5 8 5 8-5 8-5-3-5-8-5zm0 8a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/><circle cx="8" cy="8" r="1.5"/></svg>';
++    var WIFI_EYEOFF = '<svg width="16" height="16" viewBox="0 0 16 16" fill="#495057"><path d="M8 3C3 3 0 8 0 8a13 13 0 0 0 2.3 2.8L1 12l1 1 12-12-1-1-1.6 1.6A8 8 0 0 0 8 3zm5.7 2.2-1.2 1.2A11 11 0 0 1 14.7 8S12 11 8 11c-.5 0-1 0-1.4-.1l-1 1A8 8 0 0 0 8 13c5 0 8-5 8-5a13 13 0 0 0-2.3-2.8z"/></svg>';
++    $('.wifi-eye').html(WIFI_EYEOFF);
++    // Mask Wi-Fi keys with CSS on a type=text input where supported: the browser's password
++    // manager then never sees a password field, so it doesn't offer to save SSID+key as a
++    // login (autocomplete=off/new-password does not reliably stop that). Fallback: type=password.
++    var wifiPwdCssMask = window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc');
++    function wifiPwdSetMasked(inp, masked) {
++        if (wifiPwdCssMask) inp.attr('type', 'text').toggleClass('wifi-pwd-mask', masked);
++        else inp.attr('type', masked ? 'password' : 'text');
++    }
++    function wifiPwdIsMasked(inp) {
++        return wifiPwdCssMask ? inp.hasClass('wifi-pwd-mask') : inp.attr('type') === 'password';
++    }
++    wifiPwdSetMasked($('#wifi-cm-pwd'), true);
++    wifiPwdSetMasked($('#wifi-ap-pwd'), true);
++    $('#wifi-cm-eye').on('click', function () {
++        var inp = $('#wifi-cm-pwd'), show = wifiPwdIsMasked(inp);
++        wifiPwdSetMasked(inp, !show);
++        $(this).html(show ? WIFI_EYE : WIFI_EYEOFF);
++    });
++    $('#wifi-cm-pwd').on('input', function () { wifiShowPwdErr(''); });   // clear the inline error as the user types
++    $('#wifi-cm-sec').on('change', function () {
++        $('#wifi-cm-pwd-field').toggle($(this).val() !== 'open');
++    });
++    $('#wifi-cm-ipmode').on('change', 'input', function () {
++        $('#wifi-cm-static').toggle($(this).val() === 'manual');
++    });
++    $('#wifi-cm-ip, #wifi-cm-gw, #wifi-cm-dns').on('input', function () {
++        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'});
++    });
++    $('#wifi-cm-mask').on('change', function () {
++        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'});
++    });
++
++    // AP form events
++    $('#wifi-ap-band, #wifi-ap-mode').on('change', function () {
++        if (!wifi.updating) wifiRepopRadio();
++    });
++    $('#wifi-ap-sec').on('change', function () {
++        $('#wifi-ap-pwd-field').toggle($(this).val() !== 'open');
++    });
++    $('#wifi-ap-eye').on('click', function () {
++        var inp = $('#wifi-ap-pwd'), show = wifiPwdIsMasked(inp);
++        wifiPwdSetMasked(inp, !show);
++        $(this).html(show ? WIFI_EYE : WIFI_EYEOFF);
++    });
++    $('#wifi-ap-ip').on('input', function () {
++        wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'});
++    });
++    $('#wifi-ap-mask').on('change', function () {
++        wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'});
++    });
++
++    function wifiSubmitAp(enabled) {
++        if (enabled && !(wifi.status && wifi.status.country)) {
++            wifiToast('Select a Wi-Fi region (country) for the access point', true);
++            $('#wifi-ap-switch').prop('checked', false);
++            $('#wifi-ap-body').hide();   // the change handler already opened it — close it back
++            return;
++        }
++        if (!wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'})) {
++            wifiToast('Check the access point IP / mask', true);
++            return;
++        }
++        var cfg = wifiGatherApForm(enabled);
++        if (cfg.security !== 'open' && (cfg.password.length < 8 || cfg.password.length > 63)) {
++            wifiToast('AP password must be 8–63 characters', true);
++            return;
++        }
++        wifiSetBusy(true, enabled ? 'Saving and starting access point…' : 'Saving access point settings…',
++                    enabled ? 'Access point started' : 'Access point settings saved', 'ap');
++        socket.emit('wifi set ap', cfg);
++    }
++
++    $('#wifi-ap-switch').on('change', function () {
++        if (wifi.updating) return;
++        var on = $(this).prop('checked');
++        $('#wifi-ap-body').toggle(on);
++        wifiSubmitAp(on);
++    });
++    $('#wifi-ap-save').on('click', function () {
++        wifiSubmitAp($('#wifi-ap-switch').prop('checked'));
++    });
++
++    // optional Wi-Fi profiles backup/restore (JSON)
++    $('#wifi-backup-button').on('click', function () { socket.emit('wifi backup'); });
++    $('#wifi-import-button').on('click', function () { $('#wifi-restore-file').click(); });
++    $('#wifi-restore-file').on('change', function () {
++        var file = this.files[0];
++        this.value = '';
++        if (!file) return;
++        var reader = new FileReader();
++        reader.onload = function () {
++            try {
++                socket.emit('wifi restore', JSON.parse(reader.result));
++            } catch (err) {
++                wifiToast('Invalid JSON file', true);
++            }
++        };
++        reader.readAsText(file);
++    });
 +
      // end of document.ready
  });

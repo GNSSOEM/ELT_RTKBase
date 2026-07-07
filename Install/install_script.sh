@@ -10,6 +10,7 @@ RTKBASE_WEB=${RTKBASE_GIT}/web_app
 RTKBASE_UNIT=${RTKBASE_GIT}/unit
 RTKBASE_RECV=${RTKBASE_GIT}/receiver_cfg
 WEB_IMAGES=${RTKBASE_WEB}/static/images
+WEB_LIB=${RTKBASE_WEB}/static/lib
 BASEDIR=`realpath $(dirname $(readlink -f "$0"))`
 BASENAME=`basename $(readlink -f "$0")`
 ORIGDIR=`pwd`
@@ -21,6 +22,9 @@ UNICORE_CONFIGURE=UnicoreConfigure.sh
 TAILSCALE_GET_HREF=tailscale_get_href.sh
 SYSTEM_UPGRADE=system_upgrade.sh
 EXEC_UPDATE=exec_update.sh
+WIFI_MANAGER=wifi_manager.py
+BOOTSTRAP_SELECT_CSS=bootstrap-select-1.13.18.min.css
+BOOTSTRAP_SELECT_JS=bootstrap-select-1.13.18.min.js
 SETTINGS_NOW=${RTKBASE_GIT}/settings.conf
 SETTINGS_SAVE=${RTKBASE_GIT}/settings.save
 SETTINGS_DEFAULT=${RTKBASE_GIT}/settings.conf.default
@@ -1327,7 +1331,11 @@ configure_for_unicore(){
    copy_file "${CFGX20P}" "${RTKBASE_RECV}"
    copy_file "${CONFF9P}" "${RTKBASE_RECV}"
    copy_file "${CFGF9P}" "${RTKBASE_RECV}"
+
    copy_file "${FAVICON}" "${WEB_IMAGES}"
+   copy_root "${WIFI_MANAGER}" "${RTKBASE_WEB}"
+   copy_root "${BOOTSTRAP_SELECT_CSS}" "${WEB_LIB}"
+   copy_root "${BOOTSTRAP_SELECT_JS}" "${WEB_LIB}"
 
    copy_root_script "${SEPTENTRIO_NAT}" "${RTKBASE_GIT}"
    copy_root_script "${START_ELT0x33}" "${RTKBASE_PATH}"
@@ -1803,7 +1811,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${RAW2NMEA_SH_PATCH} ${NETWORK_INFOS_PATCH} ${CYPRESS_MODEM} \
               ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH} \
               ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
-              ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE}"
+              ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE} \
+              ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

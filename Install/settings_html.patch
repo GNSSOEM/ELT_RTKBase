@@ -1,8 +1,50 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..42eade4 100644
+index 9690796..1fc60cf 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
-@@ -28,6 +28,7 @@
+@@ -10,7 +10,40 @@
+ }
+ </style>
+ <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.css') }}">
+-
++<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.css') }}">
++<style>
++/* ---- Wi-Fi manager popup ---- */
++#wifiModal .wifi-ifaces { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 12px; color: #6c757d; font-size: .875rem; }
++#wifiModal .wifi-grp-title { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6c757d; margin: 14px 0 6px; }
++#wifiModal .wifi-list { border: 1px solid #e9ecef; border-radius: 8px; overflow: visible; }
++#wifiModal .wifi-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #f1f3f5; cursor: default; }
++#wifiModal .wifi-row:last-child { border-bottom: none; }
++#wifiModal .wifi-row.wifi-clickable { cursor: pointer; }
++#wifiModal .wifi-row.wifi-clickable:hover { background: #f8f9fa; }
++#wifiModal .wifi-row.wifi-connected { background: #f2fbf4; }
++#wifiModal .wifi-row.wifi-limited { opacity: .55; }
++#wifiModal .wifi-row .wifi-grow { flex: 1; min-width: 0; }
++#wifiModal .wifi-row .wifi-name { font-weight: 600; }
++#wifiModal .wifi-row .wifi-meta { font-size: .8rem; color: #6c757d; }
++#wifiModal .wifi-add-row { padding: 10px 12px; color: #007bff; cursor: pointer; }
++#wifiModal .wifi-add-row:hover { background: #f8f9fa; }
++#wifiModal .wifi-disabled-area { opacity: .45; pointer-events: none; }
++/* busy: a long operation is running — block all controls, keep the status line readable */
++#wifiModal.wifi-busy .modal-body { pointer-events: none; }
++#wifiModal.wifi-busy #wifi-net-list, #wifiModal.wifi-busy #wifi-ap-card { opacity: .5; }
++/* floating toast, bottom-center (prototype): info teal, error red, busy = persistent w/ spinner */
++#wifi-toast { display: none; position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
++  background: #17a2b8; color: #fff; padding: 10px 18px; border-radius: 8px;
++  box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 2000; max-width: 90vw; }
++#wifi-toast.wifi-toast-error { background: #dc3545; }
++#wifi-toast .spinner-border { vertical-align: -2px; margin-right: 6px; }
++/* Wi-Fi passwords are masked via CSS on a type=text input (when supported), so the browser's
++   password manager never sees a password field and doesn't offer to save SSID+key as a login. */
++#wifiModal .wifi-pwd-mask, #wifiConnectModal .wifi-pwd-mask { -webkit-text-security: disc; }
++#wifiModal .wifi-badge { font-size: .7rem; vertical-align: 2px; }
++#wifiModal .bootstrap-select .dropdown-menu { z-index: 1080; }
++#wifiApOnNote, #wifiHiddenNote { display: none; }
++</style>
+ {% endblock %}
+ 
+ {% block content %}
+@@ -28,6 +61,7 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -10,7 +52,7 @@ index 9690796..42eade4 100644
      </div>
    </div>
        <form id="{{ main_settings.pop(0).source_section }}" class="collapse was-validated">
-@@ -35,7 +36,7 @@
+@@ -35,7 +69,7 @@
          <div class="form-group row">
          <label for="position" class="col-sm-3 col-form-label">Base coordinates: </label>
          <div class="col-sm-9">
@@ -19,7 +61,7 @@ index 9690796..42eade4 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -72,6 +73,15 @@
+@@ -72,6 +106,15 @@
  
          </div>
      </div>
@@ -35,7 +77,7 @@ index 9690796..42eade4 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -113,7 +123,7 @@
+@@ -113,7 +156,7 @@
  
      </div>
            <div class="clearfix">
@@ -44,7 +86,7 @@ index 9690796..42eade4 100644
            </div>
        </form>
  
-@@ -123,19 +133,34 @@
+@@ -123,19 +166,34 @@
      <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
      <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
@@ -81,7 +123,7 @@ index 9690796..42eade4 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -146,11 +171,18 @@
+@@ -146,11 +204,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -102,7 +144,7 @@ index 9690796..42eade4 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -164,24 +196,24 @@
+@@ -164,24 +229,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -133,7 +175,7 @@ index 9690796..42eade4 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -197,19 +229,34 @@
+@@ -197,19 +262,34 @@
      <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
      <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
@@ -170,7 +212,7 @@ index 9690796..42eade4 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -220,11 +267,18 @@
+@@ -220,11 +300,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -191,7 +233,7 @@ index 9690796..42eade4 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -238,24 +292,24 @@
+@@ -238,24 +325,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -222,7 +264,7 @@ index 9690796..42eade4 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -265,6 +319,294 @@
+@@ -265,6 +352,294 @@
          </div>
      </form>
  
@@ -517,7 +559,7 @@ index 9690796..42eade4 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -291,7 +633,7 @@
+@@ -291,7 +666,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -526,7 +568,7 @@ index 9690796..42eade4 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -361,7 +703,7 @@
+@@ -361,7 +736,7 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -535,7 +577,7 @@ index 9690796..42eade4 100644
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -479,6 +821,46 @@
+@@ -479,6 +854,46 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -582,7 +624,7 @@ index 9690796..42eade4 100644
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +871,7 @@
+@@ -489,7 +904,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -591,7 +633,7 @@ index 9690796..42eade4 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +893,24 @@
+@@ -511,17 +926,24 @@
              </div>
            </div>
            -->      
@@ -618,7 +660,7 @@ index 9690796..42eade4 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -539,7 +928,7 @@
+@@ -539,7 +961,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -627,7 +669,19 @@ index 9690796..42eade4 100644
          {% endif %}
        </span>
      </div>
-@@ -621,11 +1010,32 @@
+@@ -600,8 +1022,9 @@
+     <div class="col-sm-4">
+       <span class="col-sm-3">Network:</span>
+     </div>
+-    <div class="col-sm-8" id="network_infos">
+-
++    <div class="col-sm-8">
++      <div id="network_infos"></div>
++      <button id="manage-wifi-button" class="btn btn-secondary" type="button">Manage Wi-Fi</button>
+     </div>
+   </div>
+   
+@@ -621,11 +1044,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -661,7 +715,7 @@ index 9690796..42eade4 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1043,7 @@
+@@ -633,6 +1077,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -669,7 +723,7 @@ index 9690796..42eade4 100644
        </div>
    </div>
      
-@@ -675,7 +1086,7 @@
+@@ -675,7 +1120,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -678,7 +732,7 @@ index 9690796..42eade4 100644
          </div>      
        </div>
      </div>
-@@ -794,6 +1205,47 @@
+@@ -794,12 +1239,261 @@
    </div>
  </div>
  
@@ -723,6 +777,221 @@ index 9690796..42eade4 100644
 +  </div>
 +</div>
 +
++<!-- ######## Wi-Fi manager popup ######## -->
++<div class="modal" id="wifiModal" data-backdrop="static">
++  <div class="modal-dialog modal-lg modal-dialog-scrollable">
++    <div class="modal-content">
++      <div class="modal-header">
++        <h4 class="modal-title">Wi-Fi</h4>
++        <button type="button" class="close" data-dismiss="modal">&times;</button>
++      </div>
++      <div class="modal-body">
++        <div class="wifi-ifaces" id="wifi-ifaces"></div>
++
++        <!-- Wi-Fi region: needed by both client (5 GHz/channels) and AP (mandatory) -->
++        <div class="form-group mb-2">
++          <label class="font-weight-bold mb-1" for="wifi-country">Wi-Fi region (country / regulatory domain)</label>
++          <select id="wifi-country" class="form-control" data-live-search="true"
++                  data-live-search-style="startsWith" data-size="8" data-width="100%"
++                  title="Choose a Wi-Fi region…"></select>
++          <small class="form-text text-muted" id="wifi-region-hint">Optional for connecting: without a region the
++            client uses a reduced world-safe channel set — networks on other channels are unavailable.
++            <b>Required</b> for Access Point mode.</small>
++        </div>
++
++        <div class="alert alert-warning py-2 px-3" id="wifiApOnNote">⚠ Wi-Fi networks are unavailable while
++          Access Point mode is on — the device has a single radio.</div>
++
++        <div id="wifi-client-area">
++          <div class="d-flex align-items-center justify-content-between mt-1">
++            <div class="custom-control custom-switch">
++              <input type="checkbox" class="custom-control-input" id="wifi-radio-switch" checked>
++              <label class="custom-control-label font-weight-bold" for="wifi-radio-switch">Wi-Fi</label>
++            </div>
++            <button class="btn btn-secondary btn-sm" type="button" id="wifi-rescan-button">&#x21bb; Refresh</button>
++          </div>
++          <div id="wifi-net-list" class="mt-2"></div>
++        </div>
++
++        <p class="text-warning mb-0 mt-2" id="wifi-ap-need-region" style="display:none">⚠ Access Point mode
++          requires a Wi-Fi region (country) — select it above.</p>
++
++        <!-- Access Point mode -->
++        <div class="card mt-2" id="wifi-ap-card">
++          <div class="card-body py-2 d-flex align-items-center justify-content-between">
++            <div class="custom-control custom-switch">
++              <input type="checkbox" class="custom-control-input" id="wifi-ap-switch">
++              <label class="custom-control-label font-weight-bold" for="wifi-ap-switch">Access Point mode</label>
++            </div>
++          </div>
++          <div class="card-body border-top" id="wifi-ap-body" style="display:none">
++            <div class="form-group">
++              <label class="mb-1" for="wifi-ap-ssid">SSID</label>
++              <input class="form-control" id="wifi-ap-ssid" value="RtkBase">
++            </div>
++            <div class="form-group">
++              <label class="mb-1" for="wifi-ap-sec">Security</label>
++              <select class="form-control" id="wifi-ap-sec">
++                <option value="mixed" selected>WPA2 + WPA3 (recommended)</option>
++                <option value="wpa3">WPA3-SAE</option>
++                <option value="wpa2">WPA2-PSK</option>
++                <option value="open">Open (no password)</option>
++              </select>
++            </div>
++            <div class="form-group" id="wifi-ap-pwd-field">
++              <label class="mb-1" for="wifi-ap-pwd">Password</label>
++              <div class="input-group">
++                <input class="form-control" type="password" id="wifi-ap-pwd" autocomplete="off">
++                <div class="input-group-append">
++                  <button class="btn btn-outline-secondary wifi-eye" type="button" id="wifi-ap-eye"></button>
++                </div>
++              </div>
++            </div>
++            <div class="custom-control custom-checkbox mb-2">
++              <input type="checkbox" class="custom-control-input" id="wifi-ap-hidden">
++              <label class="custom-control-label" for="wifi-ap-hidden">Hidden network (don't broadcast SSID)</label>
++            </div>
++            <div class="wifi-grp-title">Radio / frequency</div>
++            <small class="form-text text-muted mb-2">Uses the Wi-Fi region selected above. Mode = 802.11 standard;
++              channel width is derived (shown for reference).</small>
++            <div class="form-row">
++              <div class="form-group col-sm-4">
++                <label class="mb-1" for="wifi-ap-band">Band</label>
++                <select class="form-control" id="wifi-ap-band">
++                  <option value="all" selected>All</option>
++                  <option value="2.4">2.4 GHz</option>
++                  <option value="5">5 GHz</option>
++                </select>
++              </div>
++              <div class="form-group col-sm-4">
++                <label class="mb-1" for="wifi-ap-mode">Mode (802.11)</label>
++                <select class="form-control" id="wifi-ap-mode"></select>
++              </div>
++              <div class="form-group col-sm-4">
++                <label class="mb-1" for="wifi-ap-channel">Channel (frequency)</label>
++                <select class="form-control" id="wifi-ap-channel"></select>
++              </div>
++            </div>
++            <small class="form-text text-muted" id="wifi-ap-width-ref"></small>
++            <div class="wifi-grp-title">Network</div>
++            <div class="form-row">
++              <div class="form-group col-sm-7">
++                <label class="mb-1" for="wifi-ap-ip">AP IP address</label>
++                <input class="form-control" id="wifi-ap-ip" value="192.168.50.1" autocomplete="off">
++              </div>
++              <div class="form-group col-sm-5">
++                <label class="mb-1" for="wifi-ap-mask">Subnet mask</label>
++                <select class="form-control" id="wifi-ap-mask"></select>
++              </div>
++            </div>
++            <p class="text-danger mb-2" id="wifi-ap-ip-err" style="display:none"></p>
++            <div class="text-right">
++              <button class="btn btn-primary" type="button" id="wifi-ap-save">Save</button>
++            </div>
++          </div>
++        </div>
++      </div>
++      <div class="modal-footer">
++        <button class="btn btn-secondary" type="button" id="wifi-backup-button">Export</button>
++        <button class="btn btn-secondary mr-auto" type="button" id="wifi-import-button">Import</button>
++        <input type="file" id="wifi-restore-file" accept="application/json" hidden>
++        <button class="btn btn-primary" type="button" data-dismiss="modal">Close</button>
++      </div>
++    </div>
++  </div>
++</div>
++<div id="wifi-toast"></div>
++
++<!-- Wi-Fi connect / hidden network / change password dialog -->
++<div class="modal" id="wifiConnectModal" data-backdrop="static">
++  <div class="modal-dialog">
++    <div class="modal-content">
++      <div class="modal-header">
++        <h4 class="modal-title" id="wifi-cm-title">Connect</h4>
++        <button type="button" class="close" data-dismiss="modal">&times;</button>
++      </div>
++      <div class="modal-body">
++        <p class="text-muted small mb-2" id="wifi-cm-meta"></p>
++        <div class="alert alert-warning py-2 px-3" id="wifiHiddenNote">⚠ Without a Wi-Fi region a hidden network
++          may be unreachable: finding it needs active probing, which is blocked on world-domain (NO-IR)
++          channels — especially 5 GHz. Select a Wi-Fi region for reliable discovery.</div>
++        <div class="form-group" id="wifi-cm-ssid-field" style="display:none">
++          <label class="mb-1" for="wifi-cm-ssid">Network name (SSID)</label>
++          <input class="form-control" id="wifi-cm-ssid" autocomplete="off" placeholder="Enter SSID">
++        </div>
++        <div class="form-group" id="wifi-cm-sec-field" style="display:none">
++          <label class="mb-1" for="wifi-cm-sec">Security</label>
++          <select class="form-control" id="wifi-cm-sec">
++            <option value="mixed23">WPA2 / WPA3</option>
++            <option value="wpa2">WPA2-PSK</option>
++            <option value="wpa3">WPA3-SAE</option>
++            <option value="wep">WEP / WPA (legacy)</option>
++            <option value="open">Open (no password)</option>
++          </select>
++        </div>
++        <div class="form-group" id="wifi-cm-pwd-field">
++          <label class="mb-1" for="wifi-cm-pwd">Password</label>
++          <div class="input-group">
++            <input class="form-control" type="password" id="wifi-cm-pwd" placeholder="Enter network password" autocomplete="off">
++            <div class="input-group-append">
++              <button class="btn btn-outline-secondary wifi-eye" type="button" id="wifi-cm-eye"></button>
++            </div>
++          </div>
++          <small class="text-danger" id="wifi-cm-pwd-err" style="display:none"></small>
++        </div>
++        <div id="wifi-cm-ipblock">
++          <div class="form-group mb-2">
++            <label class="mb-1 d-block">IP configuration</label>
++            <div class="btn-group btn-group-toggle" data-toggle="buttons" id="wifi-cm-ipmode">
++              <label class="btn btn-secondary btn-sm active">
++                <input type="radio" name="wifi-cm-ipmode" value="auto" checked> Automatic (DHCP)</label>
++              <label class="btn btn-secondary btn-sm">
++                <input type="radio" name="wifi-cm-ipmode" value="manual"> Manual (static)</label>
++            </div>
++          </div>
++          <div id="wifi-cm-static" style="display:none">
++            <div class="form-row">
++              <div class="form-group col-sm-7">
++                <label class="mb-1" for="wifi-cm-ip">IP address</label>
++                <input class="form-control" id="wifi-cm-ip" placeholder="192.168.1.50" autocomplete="off">
++              </div>
++              <div class="form-group col-sm-5">
++                <label class="mb-1" for="wifi-cm-mask">Subnet mask</label>
++                <select class="form-control" id="wifi-cm-mask"></select>
++              </div>
++            </div>
++            <p class="text-danger mb-2" id="wifi-cm-ip-err" style="display:none"></p>
++            <div class="form-group">
++              <label class="mb-1" for="wifi-cm-gw">Gateway</label>
++              <input class="form-control" id="wifi-cm-gw" placeholder="192.168.1.1" autocomplete="off">
++            </div>
++            <div class="form-group">
++              <label class="mb-1" for="wifi-cm-dns">DNS servers <span class="text-muted">(comma-separated, optional)</span></label>
++              <input class="form-control" id="wifi-cm-dns" placeholder="192.168.1.1, 8.8.8.8" autocomplete="off">
++            </div>
++          </div>
++        </div>
++        <div class="custom-control custom-checkbox">
++          <input type="checkbox" class="custom-control-input" id="wifi-cm-save" checked>
++          <label class="custom-control-label" for="wifi-cm-save">Remember this network (save password)</label>
++        </div>
++      </div>
++      <div class="modal-footer">
++        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
++        <button class="btn btn-success" type="button" id="wifi-cm-connect">Connect</button>
++      </div>
++    </div>
++  </div>
++</div>
++
  {% endblock %}
  
  
+ {% block scripts %}
+ {{super()}}
+ <script type="text/javascript" src="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.js') }}" charset="utf-8"></script>
++<script type="text/javascript" src="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.js') }}" charset="utf-8"></script>
+ <script type="text/javascript" src="{{ url_for('static', filename='lib/snarkdown.js') }}" charset="utf-8"></script>
+ <script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=g.version) }}" charset="utf-8"></script>
+ {% endblock %}
+\ No newline at end of file

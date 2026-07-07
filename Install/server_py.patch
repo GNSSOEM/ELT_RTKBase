@@ -1,18 +1,19 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..8a06d29
+index e36bbc4..eeba2b1
 --- a/web_app/server.py
 +++ b/web_app/server.py
-@@ -46,6 +46,7 @@ from RTKLIB import RTKLIB
+@@ -46,6 +46,8 @@ from RTKLIB import RTKLIB
  from ServiceController import ServiceController
  from RTKBaseConfigManager import RTKBaseConfigManager
  import network_infos
++import wifi_manager
 +import platform
  
  #print("Installing all required packages")
  #provisioner.provision_reach()
-@@ -99,9 +100,12 @@ rtk = RTKLIB(socketio,
+@@ -99,9 +101,12 @@ rtk = RTKLIB(socketio,
              log_path=app.config["DOWNLOAD_FOLDER"],
              )
  
@@ -28,7 +29,7 @@ index e36bbc4..8a06d29
                   {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
                   {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
                   {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
-@@ -109,12 +113,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -109,12 +114,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
                   {'service_unit' : 'rtkbase_archive.timer', "name" : "archive_timer"},
                   {'service_unit' : 'rtkbase_archive.service', "name" : "archive_service"},
                   {'service_unit' : 'rtkbase_raw2nmea.service', "name" : "raw2nmea"},
@@ -45,7 +46,7 @@ index e36bbc4..8a06d29
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
      def __init__(self, app, options=None):
-@@ -217,9 +223,21 @@ def repaint_services_button(services_list):
+@@ -217,9 +224,21 @@ def repaint_services_button(services_list):
          result = exit-code or signal => red button (danger)
      """ 
      for service in services_list:
@@ -70,7 +71,7 @@ index e36bbc4..8a06d29
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_color"] = "warning"
-@@ -233,9 +251,8 @@ def repaint_services_button(services_list):
+@@ -233,9 +252,8 @@ def repaint_services_button(services_list):
          if service.get("state_ok") == False:
              service["btn_off_color"] = "outline-danger"
          elif service.get("state_ok") == True:
@@ -81,7 +82,7 @@ index e36bbc4..8a06d29
          if service.get("status") == "running":
              service["btn_color"] = "success"
          elif service.get("status") == "auto-restart":
-@@ -244,6 +261,10 @@ def repaint_services_button(services_list):
+@@ -244,6 +262,10 @@ def repaint_services_button(services_list):
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_off_color"] = "danger"
@@ -92,7 +93,7 @@ index e36bbc4..8a06d29
  
      return services_list
  
-@@ -407,13 +428,114 @@ def download_update(update_path):
+@@ -407,13 +429,114 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -208,7 +209,7 @@ index e36bbc4..8a06d29
      g.sbc_model = get_sbc_model()
  
  @login.user_loader
-@@ -442,7 +564,7 @@ def settings_page():
+@@ -442,7 +565,7 @@ def settings_page():
      if request.method == 'POST':
          uploaded_file = request.files['file']
          if uploaded_file.filename != '':
@@ -217,7 +218,7 @@ index e36bbc4..8a06d29
          else:
              print("wrong update file")
          return ('', 204)
-@@ -453,11 +575,20 @@ def settings_page():
+@@ -453,11 +576,20 @@ def settings_page():
                                              path=host_url.path,
                                              params=host_url.params, query=host_url.query,
                                              fragment=host_url.fragment)
@@ -238,7 +239,7 @@ index e36bbc4..8a06d29
      local_ntripc_settings = rtkbaseconfig.get_local_ntripc_settings()
      rtcm_svr_settings = rtkbaseconfig.get_rtcm_svr_settings()
      rtcm_client_settings = rtkbaseconfig.get_rtcm_client_settings()
-@@ -465,10 +596,14 @@ def settings_page():
+@@ -465,10 +597,14 @@ def settings_page():
      rtcm_udp_client_settings = rtkbaseconfig.get_rtcm_udp_client_settings()
      rtcm_serial_settings = rtkbaseconfig.get_rtcm_serial_settings()
      file_settings = rtkbaseconfig.get_file_settings()
@@ -253,7 +254,7 @@ index e36bbc4..8a06d29
                                              local_ntripc_settings = local_ntripc_settings,
                                              rtcm_svr_settings = rtcm_svr_settings,
                                              rtcm_client_settings = rtcm_client_settings,
-@@ -476,7 +611,8 @@ def settings_page():
+@@ -476,7 +612,8 @@ def settings_page():
                                              rtcm_udp_client_settings = rtcm_udp_client_settings,
                                              rtcm_serial_settings = rtcm_serial_settings,
                                              file_settings = file_settings,
@@ -263,7 +264,7 @@ index e36bbc4..8a06d29
  
  @app.route('/logs')
  @login_required
-@@ -528,13 +664,29 @@ def diagnostic():
+@@ -528,13 +665,29 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -295,7 +296,7 @@ index e36bbc4..8a06d29
                                   stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
-@@ -542,7 +694,14 @@ def diagnostic():
+@@ -542,7 +695,14 @@ def diagnostic():
          #Replace carrier return to <br> for html view
          sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
          journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
@@ -311,7 +312,7 @@ index e36bbc4..8a06d29
          logs.append({'name' : service['service_unit'], 'active' : active_state, 'sysctl_status' : sysctl_status, 'journalctl' : journalctl})
          
      return render_template('diagnostic.html', logs = logs)
-@@ -553,7 +712,7 @@ def get_infos():
+@@ -553,7 +713,7 @@ def get_infos():
      """Small api route to get basic informations about the base station"""
  
      infos = {"app" : "RTKBase",
@@ -320,7 +321,7 @@ index e36bbc4..8a06d29
               "url" : html.escape(request.base_url),
               "fqdn" : socket.getfqdn(),
               "uptime" : get_uptime(),
-@@ -566,11 +725,12 @@ def get_infos():
+@@ -566,11 +726,12 @@ def get_infos():
  def clientConnect():
      global connected_clients
      connected_clients += 1
@@ -336,7 +337,7 @@ index e36bbc4..8a06d29
      rtk.sendState()
  
  @socketio.on("disconnect", namespace="/test")
-@@ -609,6 +769,13 @@ def startBase():
+@@ -609,6 +770,13 @@ def startBase():
          result = {"result" : "failed"}
          socketio.emit("base starting", json.dumps(result), namespace="/test")
          return
@@ -350,7 +351,7 @@ index e36bbc4..8a06d29
      # We must start rtkcv before trying to modify an option
      rtk.startBase()
      saved_input_path = "localhost" + ":" + rtkbaseconfig.get("main", "tcp_port").strip("'")
-@@ -618,6 +785,9 @@ def startBase():
+@@ -618,6 +786,9 @@ def startBase():
      if rtk.get_rtkcv_option("inpstr1-format") != saved_input_type:
          rtk.set_rtkcv_option("inpstr1-format", saved_input_type)
          rtk.set_rtkcv_pending_refresh(True)
@@ -360,7 +361,7 @@ index e36bbc4..8a06d29
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -645,16 +815,18 @@ def deleteLog(json_msg):
+@@ -645,16 +816,18 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -382,7 +383,7 @@ index e36bbc4..8a06d29
                        "firmware" : firmware,
                        "model" : model}
              result.update(json_msg)
-@@ -672,10 +844,19 @@ def detect_receiver(json_msg):
+@@ -672,10 +845,19 @@ def detect_receiver(json_msg):
  def apply_receiver_settings(json_msg):
      print("Applying gnss receiver new settings")
      print(json_msg)
@@ -404,7 +405,7 @@ index e36bbc4..8a06d29
  
      socketio.emit("gnss_settings_saved", json.dumps(json_msg), namespace="/test")
  
-@@ -693,8 +874,8 @@ def configure_receiver(brand="", model=""):
+@@ -693,8 +875,8 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -415,7 +416,7 @@ index e36bbc4..8a06d29
      #print("DEBUG - returncode: ", answer.returncode)
  
      if answer.returncode == 0: # and "Done" in answer.stdout:
-@@ -813,6 +994,11 @@ def rebootRtkbase():
+@@ -813,6 +995,11 @@ def rebootRtkbase():
      rtk.shutdown()
      #socketio.stop() hang. I disabled it
      #socketio.stop()
@@ -427,7 +428,7 @@ index e36bbc4..8a06d29
      subprocess.check_output("reboot")
  
  @socketio.on("shutdown device", namespace="/test")
-@@ -823,6 +1009,15 @@ def shutdownRtkbase():
+@@ -823,6 +1010,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -443,7 +444,7 @@ index e36bbc4..8a06d29
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -881,6 +1076,13 @@ def restartServices(restart_services_list=None):
+@@ -881,6 +1077,13 @@ def restartServices(restart_services_list=None):
                      rtk.stopBase()
                      service["unit"].restart()
                  else:
@@ -457,7 +458,7 @@ index e36bbc4..8a06d29
                      service["unit"].restart()
  
      #refresh service status
-@@ -904,7 +1106,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -904,7 +1107,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -471,7 +472,7 @@ index e36bbc4..8a06d29
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -913,7 +1120,10 @@ def getServicesStatus(emit_pingback=True):
+@@ -913,7 +1121,10 @@ def getServicesStatus(emit_pingback=True):
                  service["state_ok"] = None
  
          except Exception as e:
@@ -483,7 +484,7 @@ index e36bbc4..8a06d29
              pass
  
      services_status = []
-@@ -984,11 +1194,17 @@ def update_settings(json_msg):
+@@ -984,11 +1195,17 @@ def update_settings(json_msg):
  
          #Restart service if needed
          if source_section == "main":
@@ -502,7 +503,7 @@ index e36bbc4..8a06d29
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1220,31 @@ def update_settings(json_msg):
+@@ -1004,6 +1221,235 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -530,6 +531,210 @@ index e36bbc4..8a06d29
 +        if service["service_unit"] == 'rtkbase_modem_web_proxy.service':
 +           is_modem_active = service["unit"].isActive()
 +    socketio.emit("modem_available_result", is_modem_active, namespace="/test")
++
++#### Wi-Fi manager ####
++# Thin Socket.IO handlers over wifi_manager.py. Long operations (scan, connect,
++# hotspot start) run as background tasks so the gevent worker stays responsive.
++
++def wifi_emit_error(operation, exception):
++    print("wifi {}: {}".format(operation, exception))
++    socketio.emit("wifi error", {"op": operation, "message": str(exception)}, namespace="/test")
++
++def wifi_emit_list(rescan=False):
++    socketio.emit("wifi list", wifi_manager.list_networks(rescan=rescan), namespace="/test")
++
++def wifi_emit_status():
++    hide = rtkbaseconfig.get("general", "wifi_hide_countries", fallback="").strip("'\"")
++    status = wifi_manager.get_status()
++    status["hide_countries"] = [c for c in hide.split(",") if c.strip()]
++    socketio.emit("wifi status", status, namespace="/test")
++
++def wifi_status_refresh():
++    # interface addresses changed (connect/disconnect/IP/AP) — refresh the popup header
++    try:
++        wifi_emit_status()
++    except Exception as e:
++        print("wifi status refresh:", e)
++
++def wifi_connect_status(stage, detail):
++    socketio.emit("wifi connect status", {"stage": stage, "detail": detail}, namespace="/test")
++
++@socketio.on("get wifi status", namespace="/test")
++def get_wifi_status():
++    try:
++        # NM does not persist the radio state reliably — force it on
++        # when the popup opens.
++        wifi_manager.radio_wifi_on()
++    except Exception as e:
++        print("wifi radio on:", e)
++    try:
++        wifi_emit_status()
++    except Exception as e:
++        wifi_emit_error("status", e)
++
++@socketio.on("get wifi countries", namespace="/test")
++def get_wifi_countries():
++    try:
++        hide = rtkbaseconfig.get("general", "wifi_hide_countries", fallback="").strip("'\"")
++        countries = wifi_manager.get_countries(hide.split(",") if hide else ())
++        socketio.emit("wifi countries", countries, namespace="/test")
++    except Exception as e:
++        wifi_emit_error("countries", e)
++
++@socketio.on("get wifi list", namespace="/test")
++def get_wifi_list():
++    def task():
++        try:
++            # popup open: force a fresh scan (the cached one may be empty/stale)
++            wifi_emit_list(rescan=True)
++        except Exception as e:
++            wifi_emit_error("list", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi rescan", namespace="/test")
++def wifi_rescan():
++    def task():
++        try:
++            wifi_emit_list(rescan=True)   # `nmcli ... --rescan yes` blocks until the scan finishes
++        except Exception as e:
++            wifi_emit_error("rescan", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi radio", namespace="/test")
++def wifi_radio(json_msg):
++    on = bool(json_msg.get("on"))
++    try:
++        wifi_manager.set_radio(on)
++        wifi_emit_status()
++    except Exception as e:
++        wifi_emit_error("radio", e)
++        return
++    # After power-on the scan cache is empty; force a fresh (blocking) scan in a
++    # background task so the list isn't briefly shown as "No networks found".
++    def task():
++        try:
++            wifi_emit_list(rescan=on)
++        except Exception as e:
++            wifi_emit_error("radio", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi set country", namespace="/test")
++def wifi_set_country(json_msg):
++    def task():
++        try:
++            wifi_manager.set_country(json_msg.get("country"))
++            wifi_emit_status()
++            # regdomain re-applied: NM may drop and re-associate
++            wifi_manager.poll_reconnect(15, wifi_connect_status)
++            wifi_emit_list()
++        except Exception as e:
++            wifi_emit_error("set country", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi connect", namespace="/test")
++def wifi_connect(json_msg):
++    def task():
++        try:
++            networks = wifi_manager.connect(
++                ssid=json_msg.get("ssid", ""),
++                password=json_msg.get("password"),
++                security=json_msg.get("security"),
++                hidden=bool(json_msg.get("hidden")),
++                remember=bool(json_msg.get("remember", True)),
++                ipconf=json_msg.get("ipconf"),
++                status_cb=wifi_connect_status)
++            socketio.emit("wifi connect result", {"ok": True}, namespace="/test")
++            socketio.emit("wifi list", networks, namespace="/test")
++            wifi_status_refresh()
++        except wifi_manager.WifiError as e:
++            socketio.emit("wifi connect result", {"ok": False, "message": str(e)}, namespace="/test")
++        except Exception as e:
++            socketio.emit("wifi connect result", {"ok": False, "message": str(e)}, namespace="/test")
++    socketio.start_background_task(task)
++
++@socketio.on("wifi activate", namespace="/test")
++def wifi_activate(json_msg):
++    # Re-connect to an already-saved network: activate the stored profile, no password prompt.
++    def task():
++        try:
++            networks = wifi_manager.activate(json_msg.get("profile"), status_cb=wifi_connect_status)
++            socketio.emit("wifi connect result", {"ok": True}, namespace="/test")
++            socketio.emit("wifi list", networks, namespace="/test")
++            wifi_status_refresh()
++        except Exception as e:
++            socketio.emit("wifi connect result", {"ok": False, "message": str(e)}, namespace="/test")
++    socketio.start_background_task(task)
++
++@socketio.on("wifi disconnect", namespace="/test")
++def wifi_disconnect():
++    def task():
++        try:
++            socketio.emit("wifi list", wifi_manager.disconnect(), namespace="/test")
++            wifi_status_refresh()
++        except Exception as e:
++            wifi_emit_error("disconnect", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi forget", namespace="/test")
++def wifi_forget(json_msg):
++    try:
++        socketio.emit("wifi list", wifi_manager.forget(json_msg.get("profile")), namespace="/test")
++    except Exception as e:
++        wifi_emit_error("forget", e)
++
++@socketio.on("wifi change password", namespace="/test")
++def wifi_change_password(json_msg):
++    try:
++        networks = wifi_manager.change_password(json_msg.get("profile"), json_msg.get("password", ""))
++        socketio.emit("wifi list", networks, namespace="/test")
++    except Exception as e:
++        wifi_emit_error("change password", e)
++
++@socketio.on("wifi set ipconf", namespace="/test")
++def wifi_set_ipconf(json_msg):
++    def task():
++        try:
++            networks = wifi_manager.set_ip_config(json_msg.get("profile"), json_msg.get("ipconf"))
++            socketio.emit("wifi list", networks, namespace="/test")
++            wifi_status_refresh()
++        except Exception as e:
++            wifi_emit_error("set ipconf", e)
++    socketio.start_background_task(task)
++
++@socketio.on("get ap config", namespace="/test")
++def get_ap_config():
++    try:
++        socketio.emit("ap config", wifi_manager.get_ap_config(), namespace="/test")
++    except Exception as e:
++        wifi_emit_error("ap config", e)
++
++@socketio.on("wifi set ap", namespace="/test")
++def wifi_set_ap(json_msg):
++    def task():
++        try:
++            config = wifi_manager.set_ap(json_msg, status_cb=wifi_connect_status)
++            socketio.emit("ap config", config, namespace="/test")
++            wifi_emit_list()
++            wifi_status_refresh()
++        except Exception as e:
++            wifi_emit_error("set ap", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi backup", namespace="/test")
++def wifi_backup():
++    try:
++        socketio.emit("wifi backup", wifi_manager.backup_profiles(), namespace="/test")
++    except Exception as e:
++        wifi_emit_error("backup", e)
++
++@socketio.on("wifi restore", namespace="/test")
++def wifi_restore(json_msg):
++    try:
++        count = wifi_manager.restore_profiles(json_msg)
++        socketio.emit("wifi restore result", {"ok": True, "count": count}, namespace="/test")
++        wifi_emit_list()
++    except Exception as e:
++        socketio.emit("wifi restore result", {"ok": False, "message": str(e)}, namespace="/test")
 +
  def arg_parse():
      parser = argparse.ArgumentParser(
