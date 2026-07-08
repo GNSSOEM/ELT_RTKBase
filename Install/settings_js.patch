@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..e7f83ec 100644
+index 5b64baa..258d246 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -580,7 +580,7 @@ index 5b64baa..e7f83ec 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,1000 @@ $(document).ready(function () {
+@@ -758,5 +947,1036 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -761,6 +761,7 @@ index 5b64baa..e7f83ec 100644
 +        busy: false,         // a blocking operation is running — status persists, controls locked
 +        busyDone: '',        // message to flash (auto-hiding) when the current busy op finishes
 +        busyTerminal: '',    // event that finishes the current busy op: 'result' | 'list' | 'ap'
++        apHasPassword: false, // the AP profile has a stored key (the key itself never reaches the browser)
 +        cm: {mode: 'connect', ssid: '', profile: null, security: null}
 +    };
 +    var wifiToastTimer = null;
@@ -772,9 +773,14 @@ index 5b64baa..e7f83ec 100644
 +    function wifiStartAutoScan() {
 +        clearInterval(wifiAutoScan);
 +        wifiAutoScan = setInterval(function () {
-+            if (wifi.busy || !(wifi.list && wifi.list.radio) || (wifi.list && wifi.list.role === 'ap')) return;
-+            if ($('#wifi-net-list .dropdown-menu.show').length || $('#wifiConnectModal').is(':visible')) return;
-+            socket.emit('wifi rescan');   // silent: no "Scanning…" placeholder, list updates on arrival
++            if (wifi.busy || !(wifi.list && wifi.list.radio)) return;
++            // any open dropdown in the popup (row menu, country selectpicker) or the connect
++            // dialog: skip the tick — a re-render/refresh would snap it shut mid-use
++            if ($('#wifiModal .dropdown-menu.show').length || $('#wifiConnectModal').is(':visible')) return;
++            // silent: no "Scanning…" placeholder. Also ticks in AP mode — the backend skips
++            // the impossible scan there (single radio) and serves the cached list, but the
++            // status refresh keeps the header (AP IP, interfaces) up to date.
++            socket.emit('wifi rescan');
 +        }, 15000);
 +    }
 +
@@ -1007,8 +1013,11 @@ index 5b64baa..e7f83ec 100644
 +        if (!ifaces) { $('#wifi-ifaces').html(''); return; }
 +        var html = ifaces.map(function (itf) {
 +            var mac = itf.hwaddr || '—';
-+            var hasIp = itf.ipv4 && itf.ipv4.length;
-+            var ipHtml = hasIp ? wifiEsc(itf.ipv4.join(', ')) : '<span class="text-muted">not connected</span>';
++            var parts = (itf.ipv4 || []).map(wifiEsc);                     // v4 plain
++            (itf.ipv6 || []).forEach(function (a) {                        // v6 de-emphasized
++                parts.push('<span class="text-muted">' + wifiEsc(a) + '</span>');
++            });
++            var ipHtml = parts.length ? parts.join(' · ') : '<span class="text-muted">not connected</span>';
 +            return wifiEsc(itf.device) + ': ' + ipHtml + ' · MAC ' + wifiEsc(mac);
 +        }).join('<br>');
 +        $('#wifi-ifaces').html(html);
@@ -1097,15 +1106,24 @@ index 5b64baa..e7f83ec 100644
 +    }
 +
 +    function wifiApplyGates() {
++        // list arrives noticeably later than status (it may wait on a scan) — fall back to
++        // status so the AP card isn't gate-locked while the network list is still loading
 +        var hasCountry = !!(wifi.list && wifi.list.country) || !!(wifi.status && wifi.status.country);
-+        var radioOn = !!(wifi.list && wifi.list.radio);
-+        var apOn = !!(wifi.list && wifi.list.role === 'ap');
++        var radioOn = wifi.list ? !!wifi.list.radio : !!(wifi.status && wifi.status.radio);
++        var role = wifi.list ? wifi.list.role : (wifi.status && wifi.status.role);
++        var apOn = role === 'ap';
 +        $('#wifi-net-list').toggleClass('wifi-disabled-area', apOn);
 +        $('#wifiApOnNote').toggle(apOn);
-+        $('#wifi-ap-card').toggleClass('wifi-disabled-area', !hasCountry || !radioOn);
++        // Radio off suspends ALL Wi-Fi (NM deactivates a live hotspot too; radio on brings
++        // it back via autoconnect) — the whole AP card locks, nothing to manage meanwhile.
++        // The no-region gate only blocks TURNING THE AP ON: with the AP already running
++        // (e.g. enabled outside the web UI with no region set) the card stays usable so it
++        // can be turned OFF — otherwise the UI has no way out of that state.
++        var apGate = !radioOn || (!hasCountry && !apOn);
++        $('#wifi-ap-card').toggleClass('wifi-disabled-area', apGate);
 +        // natively disable the toggle too — pointer-events on the card is not enough
 +        // (e.g. a stale status), and a disabled input can't open the form
-+        $('#wifi-ap-switch').prop('disabled', !hasCountry || !radioOn);
++        $('#wifi-ap-switch').prop('disabled', apGate);
 +        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
 +        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn);
 +        $('#wifi-region-hint').toggle(!hasCountry);
@@ -1138,7 +1156,16 @@ index 5b64baa..e7f83ec 100644
 +        wifi.updating = true;
 +        $('#wifi-ap-ssid').val(cfg.ssid);
 +        $('#wifi-ap-sec').val(cfg.security);
-+        $('#wifi-ap-pwd').val(cfg.password);
++        // Show the stored key only under the CSS masking (type=text — invisible to the
++        // browser's password manager, so no save prompts). With the type=password fallback
++        // the field stays empty (•••• placeholder); an empty submit keeps the stored key.
++        wifi.apHasPassword = !!cfg.has_password;
++        if (wifiPwdCssMask) {
++            $('#wifi-ap-pwd').val(cfg.password || '').attr('placeholder', 'Enter AP password');
++        } else {
++            $('#wifi-ap-pwd').val('').attr('placeholder',
++                cfg.has_password ? '••••••••' : 'Enter AP password');
++        }
 +        $('#wifi-ap-hidden').prop('checked', !!cfg.hidden);
 +        $('#wifi-ap-band').val(cfg.band || 'all');
 +        $('#wifi-ap-ip').val(cfg.ip);
@@ -1531,23 +1558,32 @@ index 5b64baa..e7f83ec 100644
 +    });
 +
 +    function wifiSubmitAp(enabled) {
-+        if (enabled && !(wifi.status && wifi.status.country)) {
-+            wifiToast('Select a Wi-Fi region (country) for the access point', true);
-+            $('#wifi-ap-switch').prop('checked', false);
-+            $('#wifi-ap-body').hide();   // the change handler already opened it — close it back
-+            return;
-+        }
-+        if (!wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'})) {
-+            wifiToast('Check the access point IP / mask', true);
-+            return;
++        // Form validation gates turning the AP ON (and saving settings). Turning it OFF must
++        // always go through — even from an out-of-band state (AP brought up by hand, no
++        // region, odd key) — or the UI cannot leave that state. The backend then keeps the
++        // stored profile untouched when the submitted values are invalid.
++        if (enabled) {
++            if (!(wifi.status && wifi.status.country)) {
++                wifiToast('Select a Wi-Fi region (country) for the access point', true);
++                $('#wifi-ap-switch').prop('checked', false);
++                $('#wifi-ap-body').hide();   // the change handler already opened it — close it back
++                return;
++            }
++            if (!wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'})) {
++                wifiToast('Check the access point IP / mask', true);
++                return;
++            }
++            var pwd = $('#wifi-ap-pwd').val();
++            if ($('#wifi-ap-sec').val() !== 'open') {
++                if (pwd ? (pwd.length < 8 || pwd.length > 63) : !wifi.apHasPassword) {
++                    wifiToast('AP password must be 8–63 characters', true);
++                    return;
++                }
++            }
 +        }
 +        var cfg = wifiGatherApForm(enabled);
-+        if (cfg.security !== 'open' && (cfg.password.length < 8 || cfg.password.length > 63)) {
-+            wifiToast('AP password must be 8–63 characters', true);
-+            return;
-+        }
-+        wifiSetBusy(true, enabled ? 'Saving and starting access point…' : 'Saving access point settings…',
-+                    enabled ? 'Access point started' : 'Access point settings saved', 'ap');
++        wifiSetBusy(true, enabled ? 'Saving and starting access point…' : 'Turning access point off…',
++                    enabled ? 'Access point started' : 'Access point turned off', 'ap');
 +        socket.emit('wifi set ap', cfg);
 +    }
 +

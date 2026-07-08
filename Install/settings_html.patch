@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..1fc60cf 100644
+index 9690796..ea71574 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,40 @@
@@ -992,6 +992,7 @@ index 9690796..1fc60cf 100644
  <script type="text/javascript" src="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.js') }}" charset="utf-8"></script>
 +<script type="text/javascript" src="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.js') }}" charset="utf-8"></script>
  <script type="text/javascript" src="{{ url_for('static', filename='lib/snarkdown.js') }}" charset="utf-8"></script>
- <script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=g.version) }}" charset="utf-8"></script>
+-<script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=g.version) }}" charset="utf-8"></script>
++<script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=settings_js_v|default(g.version)) }}" charset="utf-8"></script>
  {% endblock %}
 \ No newline at end of file
