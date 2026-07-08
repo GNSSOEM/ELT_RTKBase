@@ -32,8 +32,8 @@ elif type dig >/dev/null 2>&1; then
    echo dig servers.onocoy.com
    dig servers.onocoy.com
 elif type getent >/dev/null 2>&1; then
-   echo getent servers.onocoy.com
-   getent servers.onocoy.com
+   echo getent hosts servers.onocoy.com
+   getent hosts servers.onocoy.com
 elif type host >/dev/null 2>&1; then
    echo host -t A servers.onocoy.com
    host -t A servers.onocoy.com
