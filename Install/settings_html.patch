@@ -1,8 +1,8 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..ea71574 100644
+index 9690796..9ed4ecf 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
-@@ -10,7 +10,40 @@
+@@ -10,7 +10,49 @@
  }
  </style>
  <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.css') }}">
@@ -10,7 +10,16 @@ index 9690796..ea71574 100644
 +<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.css') }}">
 +<style>
 +/* ---- Wi-Fi manager popup ---- */
-+#wifiModal .wifi-ifaces { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 12px; color: #6c757d; font-size: .875rem; }
++#wifiModal .wifi-ifaces { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 12px; }
++/* styling mirrors proposals/wifi-manager.html; table-layout:fixed + wrapping keeps a long
++   name/address without spaces inside its column instead of pushing the table past 100% */
++#wifiModal .wifi-if-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .83rem; color: #212529; }
++#wifiModal .wifi-if-table th { text-align: left; font-weight: 700; color: #adb5bd; text-transform: uppercase; font-size: .68rem; letter-spacing: .03em; padding: 0 12px 5px 0; }
++#wifiModal .wifi-if-table td { padding: 6px 12px 6px 0; vertical-align: top; word-break: break-all; }
++#wifiModal .wifi-if-table td.wifi-if-name { word-break: normal; overflow-wrap: anywhere; }
++#wifiModal .wifi-if-table tr > *:last-child { padding-right: 0; }
++#wifiModal .wifi-if-table .wifi-if-dev { font-weight: 700; }
++#wifiModal .wifi-if-table .wifi-if-conn { color: #6c757d; }
 +#wifiModal .wifi-grp-title { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6c757d; margin: 14px 0 6px; }
 +#wifiModal .wifi-list { border: 1px solid #e9ecef; border-radius: 8px; overflow: visible; }
 +#wifiModal .wifi-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #f1f3f5; cursor: default; }
@@ -44,7 +53,7 @@ index 9690796..ea71574 100644
  {% endblock %}
  
  {% block content %}
-@@ -28,6 +61,7 @@
+@@ -28,6 +70,7 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -52,7 +61,7 @@ index 9690796..ea71574 100644
      </div>
    </div>
        <form id="{{ main_settings.pop(0).source_section }}" class="collapse was-validated">
-@@ -35,7 +69,7 @@
+@@ -35,7 +78,7 @@
          <div class="form-group row">
          <label for="position" class="col-sm-3 col-form-label">Base coordinates: </label>
          <div class="col-sm-9">
@@ -61,7 +70,7 @@ index 9690796..ea71574 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -72,6 +106,15 @@
+@@ -72,6 +115,15 @@
  
          </div>
      </div>
@@ -77,7 +86,7 @@ index 9690796..ea71574 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -113,7 +156,7 @@
+@@ -113,7 +165,7 @@
  
      </div>
            <div class="clearfix">
@@ -86,7 +95,7 @@ index 9690796..ea71574 100644
            </div>
        </form>
  
-@@ -123,19 +166,34 @@
+@@ -123,19 +175,34 @@
      <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
      <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
@@ -123,7 +132,7 @@ index 9690796..ea71574 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -146,11 +204,18 @@
+@@ -146,11 +213,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -144,7 +153,7 @@ index 9690796..ea71574 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -164,24 +229,24 @@
+@@ -164,24 +238,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -175,7 +184,7 @@ index 9690796..ea71574 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -197,19 +262,34 @@
+@@ -197,19 +271,34 @@
      <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
      <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
@@ -212,7 +221,7 @@ index 9690796..ea71574 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -220,11 +300,18 @@
+@@ -220,11 +309,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -233,7 +242,7 @@ index 9690796..ea71574 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -238,24 +325,24 @@
+@@ -238,24 +334,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -264,7 +273,7 @@ index 9690796..ea71574 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -265,6 +352,294 @@
+@@ -265,6 +361,294 @@
          </div>
      </form>
  
@@ -559,7 +568,7 @@ index 9690796..ea71574 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -291,7 +666,7 @@
+@@ -291,7 +675,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -568,7 +577,7 @@ index 9690796..ea71574 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -361,7 +736,7 @@
+@@ -361,7 +745,7 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -577,7 +586,7 @@ index 9690796..ea71574 100644
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
              <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -479,6 +854,46 @@
+@@ -479,6 +863,46 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -624,7 +633,7 @@ index 9690796..ea71574 100644
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +904,7 @@
+@@ -489,7 +913,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -633,7 +642,7 @@ index 9690796..ea71574 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +926,24 @@
+@@ -511,17 +935,24 @@
              </div>
            </div>
            -->      
@@ -660,7 +669,7 @@ index 9690796..ea71574 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -539,7 +961,7 @@
+@@ -539,7 +970,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -669,19 +678,18 @@ index 9690796..ea71574 100644
          {% endif %}
        </span>
      </div>
-@@ -600,8 +1022,9 @@
+@@ -600,8 +1031,8 @@
      <div class="col-sm-4">
        <span class="col-sm-3">Network:</span>
      </div>
 -    <div class="col-sm-8" id="network_infos">
 -
 +    <div class="col-sm-8">
-+      <div id="network_infos"></div>
-+      <button id="manage-wifi-button" class="btn btn-secondary" type="button">Manage Wi-Fi</button>
++      <button id="manage-wifi-button" class="btn btn-secondary" type="button">Manage network</button>
      </div>
    </div>
    
-@@ -621,11 +1044,32 @@
+@@ -621,11 +1052,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -715,7 +723,7 @@ index 9690796..ea71574 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1077,7 @@
+@@ -633,6 +1085,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -723,7 +731,7 @@ index 9690796..ea71574 100644
        </div>
    </div>
      
-@@ -675,7 +1120,7 @@
+@@ -675,7 +1128,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -732,7 +740,7 @@ index 9690796..ea71574 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1239,261 @@
+@@ -794,12 +1247,261 @@
    </div>
  </div>
  
@@ -782,7 +790,7 @@ index 9690796..ea71574 100644
 +  <div class="modal-dialog modal-lg modal-dialog-scrollable">
 +    <div class="modal-content">
 +      <div class="modal-header">
-+        <h4 class="modal-title">Wi-Fi</h4>
++        <h4 class="modal-title">Network manager</h4>
 +        <button type="button" class="close" data-dismiss="modal">&times;</button>
 +      </div>
 +      <div class="modal-body">

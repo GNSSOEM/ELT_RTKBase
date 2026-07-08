@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..258d246 100644
+index 5b64baa..f0c5e3a 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -520,19 +520,43 @@ index 5b64baa..258d246 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -598,7 +765,10 @@ $(document).ready(function () {
+@@ -597,33 +764,9 @@ $(document).ready(function () {
+             volumeSpaceElt.style.color = "#212529";
          }
  
-         var networkElt = document.getElementById("network_infos");
+-        var networkElt = document.getElementById("network_infos");
 -        networkElt.innerHTML = createNetworkInterfacesList(sysInfos["network_infos"]);
-+        if (sysInfos["network_infos"] != null)
-+           networkElt.innerHTML = createNetworkInterfacesList(sysInfos["network_infos"]);
-+        else
-+           networkElt.innerHTML = '';
++        // Per-interface network details moved to the Network manager dialog header
++        // (wifiRenderIfaces); the settings page keeps only the "Manage" button.
      })
- 
-     function createNetworkInterfacesList(interfaces) {
-@@ -726,6 +896,22 @@ $(document).ready(function () {
+-
+-    function createNetworkInterfacesList(interfaces) {
+-        let html = '<dl>'
+-        interfaces.forEach(interface => {
+-        html += `<dt style="font-weight: initial;">${interface.device}`;
+-        if (interface.conn_name) {
+-            html += ` (${interface.conn_name})`;
+-        }
+-        html += '</dt>';
+-        html += '<dd><ul>';
+-        if (interface.ipv4) {
+-            html += `<li>IPv4: ${interface.ipv4.join(' - ')}</li>`;
+-        }
+-        if (interface.ipv6) {
+-            html += `<li>IPv6: ${interface.ipv6.join(' - ')}</li>`;
+-        }
+-        if (interface.hwaddr) {
+-            html += `<li>MAC: ${interface.hwaddr}</li>`;
+-        }
+-        html += '</ul></dd>';
+-        });
+-        html += '</dl>';
+-        return html;
+-    }
+     //source: https://stackoverflow.com/a/34270811
+     /**
+      * Translates seconds into human readable format of seconds, minutes, hours, days, and years
+@@ -726,6 +869,22 @@ $(document).ready(function () {
            };
        };
  
@@ -555,7 +579,7 @@ index 5b64baa..258d246 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +923,19 @@ $(document).ready(function () {
+@@ -737,16 +896,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -580,7 +604,7 @@ index 5b64baa..258d246 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +947,1036 @@ $(document).ready(function () {
+@@ -758,5 +920,1099 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -774,9 +798,14 @@ index 5b64baa..258d246 100644
 +        clearInterval(wifiAutoScan);
 +        wifiAutoScan = setInterval(function () {
 +            if (wifi.busy || !(wifi.list && wifi.list.radio)) return;
-+            // any open dropdown in the popup (row menu, country selectpicker) or the connect
-+            // dialog: skip the tick — a re-render/refresh would snap it shut mid-use
-+            if ($('#wifiModal .dropdown-menu.show').length || $('#wifiConnectModal').is(':visible')) return;
++            // Skip the tick while the user has something open that a re-render would snap shut:
++            // an open row menu (custom-toggled .show, lives in the net list), the country
++            // selectpicker, or the connect dialog. NOTE: bootstrap-select leaves .dropdown-menu.show
++            // on its (closed) menu with aria-expanded=false, so match the selectpicker by
++            // aria-expanded, not by the stale .show — otherwise the tick was skipped forever.
++            if ($('#wifi-net-list .dropdown-menu.show').length
++                || $('#wifiModal [aria-expanded="true"]').length
++                || $('#wifiConnectModal').is(':visible')) return;
 +            // silent: no "Scanning…" placeholder. Also ticks in AP mode — the backend skips
 +            // the impossible scan there (single radio) and serves the cached list, but the
 +            // status refresh keeps the header (AP IP, interfaces) up to date.
@@ -1010,17 +1039,30 @@ index 5b64baa..258d246 100644
 +    // ---- rendering ----
 +    function wifiRenderIfaces() {
 +        var ifaces = (wifi.status && wifi.status.interfaces) || null;
-+        if (!ifaces) { $('#wifi-ifaces').html(''); return; }
-+        var html = ifaces.map(function (itf) {
-+            var mac = itf.hwaddr || '—';
-+            var parts = (itf.ipv4 || []).map(wifiEsc);                     // v4 plain
-+            (itf.ipv6 || []).forEach(function (a) {                        // v6 de-emphasized
-+                parts.push('<span class="text-muted">' + wifiEsc(a) + '</span>');
-+            });
-+            var ipHtml = parts.length ? parts.join(' · ') : '<span class="text-muted">not connected</span>';
-+            return wifiEsc(itf.device) + ': ' + ipHtml + ' · MAC ' + wifiEsc(mac);
-+        }).join('<br>');
-+        $('#wifi-ifaces').html(html);
++        if (!ifaces || !ifaces.length) { $('#wifi-ifaces').html(''); return; }
++        var muted = function (s) { return '<span class="text-muted">' + s + '</span>'; };
++        var rows = ifaces.map(function (itf) {
++            var v4list = (itf.ipv4 || []).map(wifiEsc);
++            var v6list = (itf.ipv6 || []).map(wifiEsc);
++            var connected = v4list.length || v6list.length;
++            var v4 = connected ? (v4list.join('<br>') || muted('—')) : muted('not connected');
++            // dash leads each continuation line so a wrapped pair still reads as a range (a – b)
++            var v6 = v6list.length ? v6list.join('<br>– ') : muted('—');
++            // connection name under the device; when unset it falls back to the device name
++            var dev = '<span class="wifi-if-dev">' + wifiEsc(itf.device) + '</span>' +
++                '<br><span class="wifi-if-conn">' + wifiEsc(itf.conn_name || itf.device) + '</span>';
++            return '<tr>' +
++                '<td class="wifi-if-name">' + dev + '</td>' +
++                '<td>' + v4 + '</td>' +
++                '<td>' + v6 + '</td>' +
++                '<td>' + wifiEsc(itf.hwaddr || '—') + '</td>' +
++                '</tr>';
++        }).join('');
++        $('#wifi-ifaces').html(
++            '<table class="wifi-if-table">' +
++            '<colgroup><col style="width:22%"><col style="width:24%"><col style="width:36%"><col style="width:18%"></colgroup>' +
++            '<thead><tr><th>Interface</th><th>IPv4</th><th>IPv6</th><th>MAC</th></tr></thead>' +
++            '<tbody>' + rows + '</tbody></table>');
 +    }
 +
 +    function wifiLimitedMsg(entry) {
@@ -1060,6 +1102,9 @@ index 5b64baa..258d246 100644
 +        var meta = [];
 +        if (n.band) meta.push(n.band + ' GHz · ch ' + n.chan);
 +        meta.push(n.security === 'open' ? 'open' : (n.security_label || n.security));
++        // BSSID always shown: rows are one-per-access-point (a dual-band AP or several
++        // APs sharing an SSID are separate rows), the MAC is what tells them apart
++        if (n.bssid) meta.push(n.bssid);
 +        if (kind === 'connected') {
 +            if (n.ip) meta.push(n.ip);
 +            if (n.onetime) meta.push('not saved (one-time)');
@@ -1068,7 +1113,7 @@ index 5b64baa..258d246 100644
 +        var clickable = kind === 'available' && !limited;
 +        return '<div class="wifi-row' + (kind === 'connected' ? ' wifi-connected' : '') +
 +            (limited ? ' wifi-limited' : '') + (clickable ? ' wifi-clickable' : '') + '"' +
-+            ' data-kind="' + kind + '" data-ssid="' + wifiEsc(n.ssid) + '" data-profile="' + wifiEsc(n.profile || '') + '"' +
++            ' data-kind="' + kind + '" data-ssid="' + wifiEsc(n.ssid) + '" data-bssid="' + wifiEsc(n.bssid || '') + '" data-profile="' + wifiEsc(n.profile || '') + '"' +
 +            ' data-security="' + wifiEsc(n.security) + '" data-band="' + wifiEsc(n.band || '') + '" data-chan="' + (n.chan || '') + '"' +
 +            ' data-limited="' + (limited ? 1 : 0) + '" data-usable="' + wifiEsc(n.usable || 'ok') + '">' +
 +            wifiBars(n.signal) +
@@ -1099,7 +1144,7 @@ index 5b64baa..258d246 100644
 +        h += '<div class="wifi-grp-title">Available networks</div><div class="wifi-list">' +
 +             (wifi.list.available.length
 +                ? wifi.list.available.map(function (n) { return wifiRowHTML(n, 'available'); }).join('')
-+                : '<div class="text-muted small text-center py-3">No networks found on channels allowed in this region.</div>') +
++                : '<div class="text-muted small text-center py-3">No networks found, please refresh</div>') +
 +             '</div>';
 +        h += '<div class="wifi-list mt-2"><div class="wifi-add-row" data-wifi-act="hidden">＋ Add hidden network…</div></div>';
 +        el.html(h);
@@ -1111,7 +1156,11 @@ index 5b64baa..258d246 100644
 +        var hasCountry = !!(wifi.list && wifi.list.country) || !!(wifi.status && wifi.status.country);
 +        var radioOn = wifi.list ? !!wifi.list.radio : !!(wifi.status && wifi.status.radio);
 +        var role = wifi.list ? wifi.list.role : (wifi.status && wifi.status.role);
-+        var apOn = role === 'ap';
++        // "AP on" by actual runtime state, not just the autoconnect-derived role: a live AP
++        // whose autoconnect got cleared reads role "client", but must still count as on so the
++        // card stays usable (turn it off) instead of locking under the no-region gate.
++        var apActive = !!(wifi.list && wifi.list.ap_active) || !!(wifi.status && wifi.status.ap_active);
++        var apOn = role === 'ap' || apActive;
 +        $('#wifi-net-list').toggleClass('wifi-disabled-area', apOn);
 +        $('#wifiApOnNote').toggle(apOn);
 +        // Radio off suspends ALL Wi-Fi (NM deactivates a live hotspot too; radio on brings
@@ -1138,6 +1187,9 @@ index 5b64baa..258d246 100644
 +        }).join('');
 +        sel.html(html);
 +        if (!current) sel.val([]);
++        // selectpicker init below may fire changed.bs.select for the preselected option —
++        // record it as the programmatic value so the change handler doesn't emit for it
++        wifi.syncedCountry = current;
 +        wifi.countriesLoaded = true;
 +        if (sel.data('selectpicker')) sel.selectpicker('destroy');
 +        sel.selectpicker({liveSearch: true, liveSearchStyle: 'startsWith', size: 8, width: '100%',
@@ -1148,6 +1200,10 @@ index 5b64baa..258d246 100644
 +        if (!wifi.countriesLoaded) return;
 +        wifi.updating = true;
 +        var current = (wifi.status && wifi.status.country) || '';
++        // bootstrap-select can fire changed.bs.select asynchronously (after wifi.updating is
++        // reset), so also remember the value we set programmatically and ignore a change equal
++        // to it — otherwise a region sync (e.g. right after Import) re-emits "wifi set country".
++        wifi.syncedCountry = current;
 +        $('#wifi-country').val(current || []).selectpicker('refresh');
 +        wifi.updating = false;
 +    }
@@ -1249,7 +1305,8 @@ index 5b64baa..258d246 100644
 +            $('#wifi-cm-title').text('Connect to “' + opts.ssid + '”');
 +            var open = opts.security === 'open';
 +            $('#wifi-cm-meta').text('Security: ' + (open ? 'open' : (opts.securityLabel || opts.security)) +
-+                (opts.band ? ' · ' + opts.band + ' GHz · channel ' + opts.chan : ''));
++                (opts.band ? ' · ' + opts.band + ' GHz · channel ' + opts.chan : '') +
++                (opts.bssid ? ' · ' + opts.bssid : ''));
 +            $('#wifi-cm-connect').text('Connect');
 +        }
 +        $('#wifiConnectModal').modal();
@@ -1298,6 +1355,9 @@ index 5b64baa..258d246 100644
 +            if (msg.security === 'wep') msg.security = 'wep';
 +        } else {
 +            msg.ssid = m.ssid;
++            // pin the connection to the exact access point the user clicked — rows are
++            // one-per-BSSID, and a stationary station must not roam to a namesake AP
++            msg.bssid = m.bssid || null;
 +            msg.security = null;   // resolved from the scan on the backend
 +        }
 +        msg.password = $('#wifi-cm-pwd').val();
@@ -1344,7 +1404,7 @@ index 5b64baa..258d246 100644
 +        wifi.list = list;
 +        wifiRenderList();
 +        wifiApplyGates();
-+        $('#wifi-rescan-button').prop('disabled', !list.radio || list.role === 'ap');
++        $('#wifi-rescan-button').prop('disabled', !list.radio || list.role === 'ap' || list.ap_active);
 +    });
 +
 +    socket.on('ap config', function (cfg) {
@@ -1380,6 +1440,10 @@ index 5b64baa..258d246 100644
 +        else wifiToast(res.message || 'Connection failed', true);
 +    });
 +
++    socket.on('wifi country result', function () {
++        wifiBusyDoneIf('country');   // region apply finished; fresh status/list arrived just before
++    });
++
 +    socket.on('wifi backup', function (data) {
 +        var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
 +        var a = document.createElement('a');
@@ -1390,6 +1454,7 @@ index 5b64baa..258d246 100644
 +    });
 +
 +    socket.on('wifi restore result', function (res) {
++        wifiSetBusy(false);   // terminal for the 'restore' busy state
 +        if (res.ok) wifiToast('Imported ' + res.count + ' Wi-Fi profile(s)');
 +        else wifiToast(res.message || 'Import failed', true);
 +    });
@@ -1429,9 +1494,14 @@ index 5b64baa..258d246 100644
 +    $('#wifi-country').on('changed.bs.select', function () {
 +        if (wifi.updating) return;
 +        var code = $(this).val();
-+        if (!code || (wifi.status && code === wifi.status.country)) return;
++        // Skip only what the code itself put into the picker (wifi.syncedCountry): every
++        // programmatic sync records its value there, so anything else IS a user action.
++        // Deliberately NOT compared against wifi.status.country — that snapshot can be
++        // stale while a region change is applying, and matching it would silently swallow
++        // a legitimate change (the picker then "snaps back" once the real status lands).
++        if (!code || code === wifi.syncedCountry) return;
 +        var connected = wifi.list && wifi.list.connected.length > 0;
-+        var apOn = wifi.list && wifi.list.role === 'ap';
++        var apOn = wifi.list && (wifi.list.role === 'ap' || wifi.list.ap_active);
 +        if (connected && !window.confirm('Changing the Wi-Fi region re-applies the regulatory domain to the adapter; the current connection may briefly drop and reconnect. Continue?')) {
 +            wifiSyncCountrySelect();
 +            return;
@@ -1440,7 +1510,9 @@ index 5b64baa..258d246 100644
 +            wifiSyncCountrySelect();
 +            return;
 +        }
-+        wifiSetBusy(true, 'Applying Wi-Fi region ' + code + '…', 'Wi-Fi region applied');
++        // own terminal: a 'wifi list' from an unrelated scan (e.g. the popup-open scan
++        // finishing) must not unlock the dialog while the region is still being applied
++        wifiSetBusy(true, 'Applying Wi-Fi region ' + code + '…', 'Wi-Fi region applied', 'country');
 +        socket.emit('wifi set country', {country: code});
 +    });
 +
@@ -1477,10 +1549,12 @@ index 5b64baa..258d246 100644
 +            if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
 +            var prof = row.data('profile');
 +            if (prof) {   // saved network: password is stored — just re-activate, don't prompt
-+                socket.emit('wifi activate', {profile: prof});
++                // the row's BSSID rides along: a pre-BSSID profile gets pinned to this AP
++                socket.emit('wifi activate', {profile: prof, bssid: row.data('bssid') || null});
 +                wifiSetBusy(true, 'Connecting to ' + row.data('ssid') + '…', '', 'result');
 +            } else {      // fallback: no profile → treat as a fresh connection
-+                wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), security: row.data('security'),
++                wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), bssid: row.data('bssid'),
++                                 security: row.data('security'),
 +                                 band: row.data('band'), chan: row.data('chan')});
 +            }
 +            return;
@@ -1490,7 +1564,8 @@ index 5b64baa..258d246 100644
 +    $('#wifi-net-list').on('click', '.wifi-row[data-kind="available"]', function () {
 +        var row = $(this);
 +        if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
-+        wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), security: row.data('security'),
++        wifiOpenConnect({mode: 'connect', ssid: row.data('ssid'), bssid: row.data('bssid'),
++                         security: row.data('security'),
 +                         band: row.data('band'), chan: row.data('chan')});
 +    });
 +
@@ -1566,7 +1641,7 @@ index 5b64baa..258d246 100644
 +            if (!(wifi.status && wifi.status.country)) {
 +                wifiToast('Select a Wi-Fi region (country) for the access point', true);
 +                $('#wifi-ap-switch').prop('checked', false);
-+                $('#wifi-ap-body').hide();   // the change handler already opened it — close it back
++                $('#wifi-ap-body').hide();   // no region — revert the toggle and collapse the form
 +                return;
 +            }
 +            if (!wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err'})) {
@@ -1591,7 +1666,13 @@ index 5b64baa..258d246 100644
 +        if (wifi.updating) return;
 +        var on = $(this).prop('checked');
 +        $('#wifi-ap-body').toggle(on);
-+        wifiSubmitAp(on);
++        // Turning ON only reveals the form — the access point starts on Save. Turning OFF
++        // stops it immediately (always safe); skip the call if it wasn't actually running
++        // (e.g. the user flipped ON without saving, then back OFF) to avoid a spurious toast.
++        if (!on) {
++            var apRunning = !!(wifi.status && (wifi.status.ap_active || wifi.status.role === 'ap'));
++            if (apRunning) wifiSubmitAp(false);
++        }
 +    });
 +    $('#wifi-ap-save').on('click', function () {
 +        wifiSubmitAp($('#wifi-ap-switch').prop('checked'));
@@ -1606,11 +1687,17 @@ index 5b64baa..258d246 100644
 +        if (!file) return;
 +        var reader = new FileReader();
 +        reader.onload = function () {
++            var data;
 +            try {
-+                socket.emit('wifi restore', JSON.parse(reader.result));
++                data = JSON.parse(reader.result);
 +            } catch (err) {
 +                wifiToast('Invalid JSON file', true);
++                return;
 +            }
++            // lock the dialog until the import finishes (it can rewrite profiles and apply
++            // the region); cleared by the 'wifi restore result' handler
++            wifiSetBusy(true, 'Importing Wi-Fi settings…', '', 'restore');
++            socket.emit('wifi restore', data);
 +        };
 +        reader.readAsText(file);
 +    });

@@ -11,6 +11,7 @@ The wlan0 role derives from the profiles' autoconnect flags — no settings.conf
 """
 
 import ipaddress
+import json
 import logging
 import os
 import re
@@ -41,11 +42,36 @@ AP_DEFAULTS = {
     "prefix": 24,
 }
 
-# In-memory "last seen channel" per SSID, refreshed on every scan. Needed for the
-# `Unavailable in <CC>` badge on saved networks: a profile stores no channel, and a
-# network on a DISABLED channel is not scanned at all, so the last sighting is the
-# only channel source. Empty until the first scan of this server process.
-_seen_channels = {}
+# Per-SSID "last seen channel" (chan, freq), refreshed on every scan. Needed for the
+# region badges on saved networks: a client profile stores no channel, so the last
+# sighting is the only channel source. Persisted to disk so the badge survives a service
+# restart (and spells where a client scan is impossible — 5 GHz in world domain, or the
+# AP owning the single radio); in-memory alone it was lost on restart and the badge
+# silently vanished.
+_SEEN_CHANNELS_FILE = os.path.join(os.path.dirname(HOTSPOT_FLAG), "wifi_seen_channels.json")
+
+
+def _load_seen_channels():
+    try:
+        with open(_SEEN_CHANNELS_FILE) as f:
+            return {k: tuple(v) for k, v in json.load(f).items()
+                    if isinstance(v, (list, tuple)) and len(v) == 2}
+    except Exception:
+        return {}
+
+
+def _save_seen_channels():
+    try:
+        os.makedirs(os.path.dirname(_SEEN_CHANNELS_FILE), exist_ok=True)
+        tmp = _SEEN_CHANNELS_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({k: list(v) for k, v in _seen_channels.items()}, f)
+        os.replace(tmp, _SEEN_CHANNELS_FILE)
+    except Exception as e:
+        log.warning("could not persist seen-channels cache: %s", e)
+
+
+_seen_channels = _load_seen_channels()
 
 # Regdomain state for hosts without `iw` (x86 bench, some DIY): set_country() stores
 # the CC here so the UI flow still works; allowed channels come from _FALLBACK_REG.
@@ -270,21 +296,62 @@ def channel_usable(band, ch, chans, country):
     return "ok"
 
 
+REGDB_FILE = "/lib/firmware/regulatory.db"
+
+
+def _regdb_countries():
+    """Alpha2 codes the kernel regulatory database actually contains, or None.
+
+    `iw reg set XX` with a code the database doesn't know is silently ignored by the
+    kernel (the domain falls back to world '00'), so offering such a country in the
+    picker can only ever fail. Binary fwdb format: 8-byte header (magic 'RGDB',
+    version), then 4-byte records {alpha2[2], be16 pointer}; a zero pointer ends the
+    list. None (no/unreadable/unknown-format file) means "can't tell — don't filter".
+    """
+    try:
+        with open(REGDB_FILE, "rb") as f:
+            data = f.read()
+        if data[:4] != b"RGDB":
+            log.warning("%s: unexpected format, country list not filtered", REGDB_FILE)
+            return None
+        codes = set()
+        off = 8
+        while off + 4 <= len(data):
+            alpha2 = data[off:off + 2]
+            if not int.from_bytes(data[off + 2:off + 4], "big"):
+                break
+            if alpha2.isalpha():
+                codes.add(alpha2.decode("ascii").upper())
+            off += 4
+        return codes or None
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        log.warning("could not read %s: %s", REGDB_FILE, e)
+        return None
+
+
 def get_countries(hide_codes=()):
-    """Full ISO 3166 list, sorted by name, from the system tzdata file."""
+    """ISO 3166 names (from the system tzdata file) for the countries the kernel's
+    regulatory database supports, sorted by name."""
     if not os.path.exists(ISO3166_SYSTEM):
         raise WifiError("Country list unavailable: {} not found (tzdata not installed?)"
                         .format(ISO3166_SYSTEM))
     out = []
     hide = {c.strip().upper() for c in hide_codes if c.strip()}
+    supported = _regdb_countries()
     with open(ISO3166_SYSTEM, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
             cc, _, name = line.partition("\t")
-            if len(cc) == 2 and name and cc.upper() not in hide:
-                out.append({"code": cc.upper(), "name": name.strip()})
+            cc = cc.upper()
+            if len(cc) != 2 or not name or cc in hide:
+                continue
+            if supported is not None and cc not in supported:
+                continue
+            out.append({"code": cc, "name": name.strip()})
     out.sort(key=lambda c: c["name"].lower())
     return out
 
@@ -503,8 +570,11 @@ def list_networks(rescan=False):
     if my_mac and ap_live:
         _own_ap_bssids.add(my_mac)   # this is the BSSID our hotspot beacons with right now
 
-    # strongest AP per ssid; skip hidden (empty ssid) entries
-    by_ssid = {}
+    # One row per BSSID (access point), not per SSID: this is a stationary base station,
+    # so the user picks the exact AP — a dual-band AP shows as two rows (2.4 and 5 GHz),
+    # several APs sharing one SSID (roaming setup) each show separately. Skip hidden
+    # (empty ssid) entries.
+    by_bssid = {}
     for n in scan:
         if not n.ssid or n.ssid == "--":
             continue
@@ -516,32 +586,44 @@ def list_networks(rescan=False):
             continue
         if ap_live and n.in_use:
             continue
-        cur = by_ssid.get(n.ssid)
-        if cur is None or n.signal > cur.signal or n.in_use:
-            by_ssid[n.ssid] = n
-    for ssid, n in by_ssid.items():
-        _seen_channels[ssid] = (n.chan, n.freq)
+        by_bssid[bssid or n.ssid] = n
+    changed = False
+    for key, n in by_bssid.items():
+        val = (n.chan, n.freq)
+        if _seen_channels.get(key) != val:
+            _seen_channels[key] = val
+            changed = True
+    if changed:
+        _save_seen_channels()
 
-    # client profiles by ssid (skip AP profile); drop stale one-time profiles
-    client_profiles = {}
+    # client profiles (skip AP profile); drop stale one-time profiles. New profiles are
+    # pinned to an exact BSSID and matched to the scan by it; profiles saved before BSSID
+    # pinning (and hidden networks) carry only an SSID — those still match by SSID.
+    profs_by_bssid, profs_by_ssid = {}, {}
     for name, details in profiles.items():
         if _is_ap(details):
             continue
-        ssid = details.get("802-11-wireless.ssid") or name
         if name.endswith(ONETIME_SUFFIX) and details.get("GENERAL.STATE") != "activated":
             try:
                 nmcli.connection.delete(name)
             except Exception:
                 pass
             continue
-        client_profiles[ssid] = (name, details)
+        p_bssid = (details.get("802-11-wireless.bssid") or "").upper()
+        if p_bssid:
+            profs_by_bssid[p_bssid] = (name, details)
+        else:
+            ssid = details.get("802-11-wireless.ssid") or name
+            profs_by_ssid[ssid] = (name, details)
 
     def entry(ssid, scan_item, prof):
         name, details = prof if prof else (None, {})
+        bssid = ((scan_item.bssid if scan_item else None)
+                 or details.get("802-11-wireless.bssid") or "").upper()
         chan = scan_item.chan if scan_item else None
         freq = scan_item.freq if scan_item else None
-        if chan is None and ssid in _seen_channels:
-            chan, freq = _seen_channels[ssid]
+        if chan is None and (bssid or ssid) in _seen_channels:
+            chan, freq = _seen_channels[bssid or ssid]
         band = freq_to_band(freq) if freq else None
         kind, label = parse_security(scan_item.security if scan_item else None)
         if not scan_item and details:
@@ -551,6 +633,7 @@ def list_networks(rescan=False):
         usable = channel_usable(band, chan, chans, country) if chan and band else "ok"
         e = {
             "ssid": ssid,
+            "bssid": bssid or None,
             "signal": scan_item.signal if scan_item else None,
             "security": kind, "security_label": label,
             "band": band, "chan": chan, "freq": freq,
@@ -580,9 +663,13 @@ def list_networks(rescan=False):
         return e
 
     connected, saved, available = [], [], []
-    for ssid, n in sorted(by_ssid.items(), key=lambda kv: -kv[1].signal):
-        prof = client_profiles.pop(ssid, None)
-        e = entry(ssid, n, prof)
+    for key, n in sorted(by_bssid.items(), key=lambda kv: -(kv[1].signal or 0)):
+        prof = profs_by_bssid.pop((n.bssid or "").upper(), None)
+        if prof is None:
+            # legacy profile without a BSSID pin: attach it to the strongest BSS of the
+            # SSID (list is signal-sorted, pop makes it match only once)
+            prof = profs_by_ssid.pop(n.ssid, None)
+        e = entry(n.ssid, n, prof)
         if e["in_use"]:
             connected.append(e)
         elif e["saved"]:
@@ -592,8 +679,11 @@ def list_networks(rescan=False):
             # if one still shows up, hide it from Available
             if not (country and e["usable"] == "disabled"):
                 available.append(e)
-    for ssid, prof in client_profiles.items():   # saved but not in scan
-        e = entry(ssid, None, prof)
+    # saved but not in scan (the pinned AP is out of range/off — strict BSSID matching
+    # deliberately does NOT fall back to a same-SSID sibling)
+    for name, details in list(profs_by_bssid.values()) + list(profs_by_ssid.values()):
+        ssid = details.get("802-11-wireless.ssid") or name
+        e = entry(ssid, None, (name, details))
         if e["in_use"]:
             connected.append(e)
         else:
@@ -604,7 +694,10 @@ def list_networks(rescan=False):
         "radio": nmcli.radio.wifi(),
         "country": country,
         "role": role,
-        "ap_active": role == "ap" and ap_live,
+        # actual runtime state, not the autoconnect-derived role: an AP can be live while
+        # its role reads "client" (Hotspot activated but autoconnect!=yes, e.g. NM blocked
+        # autoconnect after failures). The UI needs the real state to keep the card usable.
+        "ap_active": ap_live,
         "connected": connected, "saved": saved, "available": available,
     }
 
@@ -631,32 +724,6 @@ def _augment_wifi_iface(interfaces):
     return ifaces
 
 
-def augment_ipv6_linklocal(interfaces):
-    """Add link-local IPv6 (fe80::…) back to the interface list.
-
-    network_infos.get_interfaces_infos() drops link-local addresses, so on a host
-    with no global IPv6 (no IPv6 router — the common case) the Network Infos block
-    shows no IPv6 at all even though every up interface has one. Used by both the
-    Wi-Fi popup header and the page's sys_informations feed.
-    """
-    ifaces = interfaces or []
-    try:
-        import psutil
-        ll = {}
-        for name, addrs in psutil.net_if_addrs().items():
-            for a in addrs:
-                if a.family.name == "AF_INET6" and a.address.startswith("fe80"):
-                    # drop the %zone suffix — the interface is clear from the context
-                    ll.setdefault(name, []).append(a.address.split("%")[0])
-        for itf in ifaces:
-            extra = ll.get(itf.get("device"))
-            if extra:
-                itf["ipv6"] = (itf.get("ipv6") or []) + extra
-    except Exception as e:
-        log.warning("ipv6 link-local scan failed: %s", e)
-    return ifaces
-
-
 def get_status(hide_country_codes=()):
     """Header/status payload for the popup."""
     cap = capability()
@@ -670,13 +737,16 @@ def get_status(hide_country_codes=()):
     except Exception as e:
         # keep the last good list rather than blanking the header on a transient failure
         log.warning("network_infos failed (keeping last known): %s", e)
-    status["interfaces"] = augment_ipv6_linklocal(_augment_wifi_iface(_last_interfaces))
+    # link-local (fe80::) intentionally NOT added: the interface list mirrors the client's
+    # original Network Infos logic (network_infos.get_interfaces_infos strips link-local)
+    status["interfaces"] = _augment_wifi_iface(_last_interfaces)
     status.update({
         "radio": nmcli.radio.wifi(),
         "country": get_country(),
         "channels": allowed_channels(),
         "bands": available_bands(),
         "role": get_role(),
+        "ap_active": _ap_active(),
         "occupied": occupied_subnets(),
     })
     return status
@@ -699,13 +769,17 @@ def _ipv4_options(ipconf):
 
 
 def connect(ssid, password=None, security=None, hidden=False, remember=True,
-            ipconf=None, status_cb=None):
+            ipconf=None, bssid=None, status_cb=None):
     """Create/update the profile for ssid and activate it.
 
     security: explicit kind for hidden networks; otherwise resolved from the scan.
+    bssid: pin the profile to this exact access point (stationary station — the user
+    picks the AP/band; NetworkManager must not roam to a same-SSID sibling). Hidden
+    networks have no scan entry, so they connect by SSID only.
     Returns the final network list. Raises WifiError with a readable message on failure.
     """
     notify = status_cb or (lambda *a: None)
+    bssid = (bssid or "").strip().upper() or None
     if get_role() == "ap":
         raise WifiError("Client connection is not available while Access Point mode is on")
 
@@ -718,7 +792,8 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
 
     if security is None:
         for n in nmcli.device.wifi():
-            if n.ssid == ssid:
+            # with a BSSID pin resolve security from that exact BSS, not a namesake
+            if ((n.bssid or "").upper() == bssid) if bssid else (n.ssid == ssid):
                 security, _ = parse_security(n.security)
                 break
         else:
@@ -731,10 +806,18 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     if security == "wep" and not (password or ""):
         raise WifiError("This network needs a WEP key")
 
-    name = sanitize_profile_name(ssid) + ("" if remember else ONETIME_SUFFIX)
+    name = sanitize_profile_name(ssid)
+    if bssid:
+        # one profile per access point: two APs (or two bands of one AP) share an SSID,
+        # so a plain WiFi_<SSID> name would overwrite the other's settings — tag the
+        # name with the last three octets of the BSSID
+        name += "_" + bssid.replace(":", "")[-6:]
+    name += "" if remember else ONETIME_SUFFIX
     key_mgmt = _key_mgmt_for(security)
 
     options = {"802-11-wireless.ssid": ssid}
+    if bssid:
+        options["802-11-wireless.bssid"] = bssid
     if hidden:
         options["802-11-wireless.hidden"] = "yes"
     if security == "wep":
@@ -769,23 +852,43 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     return list_networks()
 
 
-def activate(profile, status_cb=None):
-    """Bring up an already-saved client profile without touching it.
+def activate(profile, bssid=None, status_cb=None):
+    """Bring up an already-saved client profile without touching its credentials.
 
     The password is stored in the profile (psk-flags=0), so reconnecting
     must NOT prompt for it again — just activate. (connect() can't be reused here: with
     no password it would rewrite the stored psk to empty.)
+
+    bssid: the access point of the row the user clicked. A profile saved before BSSID
+    pinning carries only an SSID — pin it now, so joining targets exactly that AP and
+    the pin appears in the profile (and therefore in export) from here on.
     """
     notify = status_cb or (lambda *a: None)
-    _guard_client_profile(profile)
+    details = _guard_client_profile(profile)
     if get_role() == "ap":
         raise WifiError("Client connection is not available while Access Point mode is on")
-    # user-facing name: the SSID, not the internal WiFi_<SSID> profile name
-    disp = profile[len(CLIENT_PREFIX):] if profile.startswith(CLIENT_PREFIX) else profile
+    bssid = (bssid or "").strip().upper() or None
+    pinned_now = False
+    if bssid and (details.get("802-11-wireless.bssid") or "") in ("", "--"):
+        try:
+            nmcli.connection.modify(profile, {"802-11-wireless.bssid": bssid})
+            pinned_now = True
+        except Exception as e:   # best-effort: an unpinnable profile must still connect
+            log.warning("could not pin '%s' to %s: %s", profile, bssid, e)
+    # user-facing name: the SSID, not the internal WiFi_<SSID>[_<bssid tag>] profile name
+    disp = (details.get("802-11-wireless.ssid")
+            or (profile[len(CLIENT_PREFIX):] if profile.startswith(CLIENT_PREFIX) else profile))
     notify("connecting", disp)
     try:
         nmcli.connection.up(profile, wait=45)
     except Exception as e:
+        if pinned_now:
+            # don't leave the profile pinned to an AP it never actually joined — that
+            # would also block its autoconnect to the AP it used before
+            try:
+                nmcli.connection.modify(profile, {"802-11-wireless.bssid": ""})
+            except Exception:
+                pass
         log.warning("wifi activate '%s' failed: %s", profile, _err_detail(e))
         notify("failed", _readable_error(e))
         raise WifiError(_readable_error(e))
@@ -867,6 +970,7 @@ def _guard_client_profile(profile):
         raise WifiError("No such Wi-Fi profile: {}".format(profile))
     if details.get("connection.type") not in ("802-11-wireless", "wifi") or _is_ap(details):
         raise WifiError("Not a Wi-Fi client profile: {}".format(profile))
+    return details
 
 
 def wifi_state():
@@ -884,6 +988,7 @@ def poll_reconnect(seconds, status_cb, interval=1.0):
     """Emit wlan0 state changes for `seconds` — used after a country change
     re-applies the regdomain and NM may re-associate."""
     last = None
+    idle = 0
     deadline = time.time() + seconds
     while time.time() < deadline:
         cur = wifi_state()
@@ -892,6 +997,17 @@ def poll_reconnect(seconds, status_cb, interval=1.0):
             last = cur
         if cur["state"] == "connected":
             break
+        # NM starts a re-association within a couple of seconds if it's going to at all.
+        # A device sitting in a settled state (disconnected, no candidate profile,
+        # unavailable) has nothing to wait for — exit early instead of stalling the
+        # caller (and the UI busy lock) for the full window. NB: substring checks like
+        # "connect" would also match "DISconnectED" — use an explicit settled-state list.
+        if (cur["state"] or "") in ("disconnected", "unavailable", "unmanaged", "failed"):
+            idle += 1
+            if idle >= 4:
+                break
+        else:
+            idle = 0
         time.sleep(interval)
 
 
@@ -944,7 +1060,9 @@ def get_ap_config():
         "band": band,
         "channel": int(chan) if chan and chan.isdigit() else 0,
         "ip": ip, "prefix": int(prefix) if prefix.isdigit() else 24,
-        "enabled": get_role() == "ap",
+        # "on" if the role says AP OR the profile is actually activated right now — so a live
+        # AP whose autoconnect got cleared still shows the toggle as on (and thus off-able)
+        "enabled": get_role() == "ap" or details.get("GENERAL.STATE") == "activated",
         "configured": True,
     }
 
@@ -1065,39 +1183,46 @@ def _set_hotspot_flag(up):
 # optional JSON backup/restore
 # --------------------------------------------------------------------------
 
-# Exact property keys to replicate. A curated allowlist (not a prefix match) — nmcli exposes
-# dozens of sibling props whose `show` value is a display artifact ("-1 (default)", "auto",
-# per-secret *-flags) that is not valid `nmcli add/modify` input and would break restore.
+# Exact property keys to replicate — only the ones connect()/set_ap() actually write. A
+# curated allowlist (not a prefix match): nmcli show emits dozens of sibling props whose
+# value is a display artifact ("-1 (default)", "auto", per-secret *-flags) or an NM-negotiated
+# default (proto/pairwise/group ciphers, auth-alg) that the configurator never sets — those
+# are neither needed to restore state nor valid `nmcli add/modify` input, and would break
+# restore. WPA3 stores its key in .psk (not .sae-password); WEP uses .wep-key-type=key.
 _BACKUP_KEYS = frozenset({
     "connection.id", "connection.autoconnect",
-    "802-11-wireless.ssid", "802-11-wireless.hidden", "802-11-wireless.mode",
-    "802-11-wireless.band", "802-11-wireless.channel",
+    "802-11-wireless.ssid", "802-11-wireless.bssid", "802-11-wireless.hidden",
+    "802-11-wireless.mode", "802-11-wireless.band", "802-11-wireless.channel",
     "802-11-wireless-security.key-mgmt", "802-11-wireless-security.psk",
-    "802-11-wireless-security.sae-password", "802-11-wireless-security.pmf",
-    "802-11-wireless-security.proto", "802-11-wireless-security.pairwise",
-    "802-11-wireless-security.group", "802-11-wireless-security.auth-alg",
+    "802-11-wireless-security.pmf",
     "802-11-wireless-security.wep-key0", "802-11-wireless-security.wep-key-type",
-    "802-11-wireless-security.wep-tx-keyidx",
-    "802-11-wireless-security.leap-username", "802-11-wireless-security.leap-password",
     "ipv4.method", "ipv4.addresses", "ipv4.gateway", "ipv4.dns",
 })
 
 
-def _backup_value(v):
-    """Clean an nmcli-show value for export; None to drop it. nmcli annotates defaults as
-    'value (default)', which is not valid input — such fields are dropped (the target uses
-    the same default)."""
+# Per-key "unset" sentinels: nmcli show emits a placeholder for unconfigured props that is
+# NOT valid `nmcli add/modify` input (channel 0 = auto; wep-* left over on a WPA profile).
+# Dropping them lets the target fall back to the same default.
+_BACKUP_UNSET = {
+    "802-11-wireless.channel": {"0"},
+    "802-11-wireless-security.wep-key-type": {"0", "unknown"},
+}
+
+
+def _backup_value(k, v):
+    """Clean an nmcli-show value for export; None to drop it. Drops display defaults
+    ('value (default)') and per-key unset sentinels — the target uses the same default."""
     if v is None:
         return None
     v = str(v).strip()
-    if not v or v.endswith("(default)"):
+    if not v or v.endswith("(default)") or v in _BACKUP_UNSET.get(k, ()):
         return None
     return v
 
 
 def backup_profiles():
-    """Export Wi-Fi profiles (with secrets) for replication to identical stations."""
-    out = {"version": 1, "profiles": []}
+    """Export Wi-Fi profiles (with secrets) + the regulatory region for replication."""
+    out = {"version": 1, "country": get_country(), "profiles": []}
     for conn in nmcli.connection():
         if conn.conn_type != "wifi":
             continue
@@ -1108,7 +1233,7 @@ def backup_profiles():
         keep = {}
         for k, v in details.items():
             if k in _BACKUP_KEYS:
-                cv = _backup_value(v)
+                cv = _backup_value(k, v)
                 if cv is not None:
                     keep[k] = cv
         out["profiles"].append(keep)
@@ -1118,6 +1243,14 @@ def backup_profiles():
 def restore_profiles(data):
     if not isinstance(data, dict) or data.get("version") != 1:
         raise WifiError("Unsupported Wi-Fi backup format")
+    # restore the regulatory region first (best-effort — a missing/invalid code or a host
+    # without iw must not abort the profile import)
+    country = (data.get("country") or "").strip().upper()
+    if country:
+        try:
+            set_country(country)
+        except Exception as e:
+            log.warning("restore: could not apply region '%s': %s", country, e)
     count = 0
     for prof in data.get("profiles", []):
         name = prof.get("connection.id")
@@ -1128,12 +1261,11 @@ def restore_profiles(data):
         # keep only the curated replication keys, cleaned
         options = {}
         for k, v in prof.items():
-            if k == "connection.id" or k not in _BACKUP_KEYS or v is None:
+            if k == "connection.id" or k not in _BACKUP_KEYS:
                 continue
-            v = str(v).strip()
-            if not v or v.endswith("(default)"):
-                continue
-            options[k] = v
+            cv = _backup_value(k, v)
+            if cv is not None:
+                options[k] = cv
         autoconnect = options.pop("connection.autoconnect", "yes") == "yes"
         try:
             nmcli.connection.delete(name)

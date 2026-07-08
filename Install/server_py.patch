@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..ace5c97
+index e36bbc4..c603d99
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,8 @@ from RTKLIB import RTKLIB
@@ -46,19 +46,7 @@ index e36bbc4..ace5c97
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
      def __init__(self, app, options=None):
-@@ -184,7 +191,10 @@ def manager():
-                 #print("service status", services_status)
- 
-             try:
--                interfaces_infos = network_infos.get_interfaces_infos()
-+                # add link-local IPv6 back: get_interfaces_infos() drops fe80::… addresses,
-+                # leaving the Network Infos block with no IPv6 on hosts without global IPv6
-+                interfaces_infos = wifi_manager.augment_ipv6_linklocal(
-+                    network_infos.get_interfaces_infos())
-             except Exception:
-                 # network-manager not installed ?
-                 interfaces_infos = None
-@@ -217,9 +227,21 @@ def repaint_services_button(services_list):
+@@ -217,9 +224,21 @@ def repaint_services_button(services_list):
          result = exit-code or signal => red button (danger)
      """ 
      for service in services_list:
@@ -83,7 +71,7 @@ index e36bbc4..ace5c97
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_color"] = "warning"
-@@ -233,9 +255,8 @@ def repaint_services_button(services_list):
+@@ -233,9 +252,8 @@ def repaint_services_button(services_list):
          if service.get("state_ok") == False:
              service["btn_off_color"] = "outline-danger"
          elif service.get("state_ok") == True:
@@ -94,7 +82,7 @@ index e36bbc4..ace5c97
          if service.get("status") == "running":
              service["btn_color"] = "success"
          elif service.get("status") == "auto-restart":
-@@ -244,6 +265,10 @@ def repaint_services_button(services_list):
+@@ -244,6 +262,10 @@ def repaint_services_button(services_list):
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_off_color"] = "danger"
@@ -105,7 +93,7 @@ index e36bbc4..ace5c97
  
      return services_list
  
-@@ -407,13 +432,114 @@ def download_update(update_path):
+@@ -407,13 +429,114 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -221,7 +209,7 @@ index e36bbc4..ace5c97
      g.sbc_model = get_sbc_model()
  
  @login.user_loader
-@@ -442,7 +568,7 @@ def settings_page():
+@@ -442,7 +565,7 @@ def settings_page():
      if request.method == 'POST':
          uploaded_file = request.files['file']
          if uploaded_file.filename != '':
@@ -230,7 +218,7 @@ index e36bbc4..ace5c97
          else:
              print("wrong update file")
          return ('', 204)
-@@ -453,11 +579,20 @@ def settings_page():
+@@ -453,11 +576,20 @@ def settings_page():
                                              path=host_url.path,
                                              params=host_url.params, query=host_url.query,
                                              fragment=host_url.fragment)
@@ -251,7 +239,7 @@ index e36bbc4..ace5c97
      local_ntripc_settings = rtkbaseconfig.get_local_ntripc_settings()
      rtcm_svr_settings = rtkbaseconfig.get_rtcm_svr_settings()
      rtcm_client_settings = rtkbaseconfig.get_rtcm_client_settings()
-@@ -465,10 +600,21 @@ def settings_page():
+@@ -465,10 +597,21 @@ def settings_page():
      rtcm_udp_client_settings = rtkbaseconfig.get_rtcm_udp_client_settings()
      rtcm_serial_settings = rtkbaseconfig.get_rtcm_serial_settings()
      file_settings = rtkbaseconfig.get_file_settings()
@@ -273,7 +261,7 @@ index e36bbc4..ace5c97
                                              local_ntripc_settings = local_ntripc_settings,
                                              rtcm_svr_settings = rtcm_svr_settings,
                                              rtcm_client_settings = rtcm_client_settings,
-@@ -476,7 +622,9 @@ def settings_page():
+@@ -476,7 +619,9 @@ def settings_page():
                                              rtcm_udp_client_settings = rtcm_udp_client_settings,
                                              rtcm_serial_settings = rtcm_serial_settings,
                                              file_settings = file_settings,
@@ -284,7 +272,7 @@ index e36bbc4..ace5c97
  
  @app.route('/logs')
  @login_required
-@@ -528,13 +676,29 @@ def diagnostic():
+@@ -528,13 +673,29 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -316,7 +304,7 @@ index e36bbc4..ace5c97
                                   stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
-@@ -542,7 +706,14 @@ def diagnostic():
+@@ -542,7 +703,14 @@ def diagnostic():
          #Replace carrier return to <br> for html view
          sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
          journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
@@ -332,7 +320,7 @@ index e36bbc4..ace5c97
          logs.append({'name' : service['service_unit'], 'active' : active_state, 'sysctl_status' : sysctl_status, 'journalctl' : journalctl})
          
      return render_template('diagnostic.html', logs = logs)
-@@ -553,7 +724,7 @@ def get_infos():
+@@ -553,7 +721,7 @@ def get_infos():
      """Small api route to get basic informations about the base station"""
  
      infos = {"app" : "RTKBase",
@@ -341,7 +329,7 @@ index e36bbc4..ace5c97
               "url" : html.escape(request.base_url),
               "fqdn" : socket.getfqdn(),
               "uptime" : get_uptime(),
-@@ -566,11 +737,12 @@ def get_infos():
+@@ -566,11 +734,12 @@ def get_infos():
  def clientConnect():
      global connected_clients
      connected_clients += 1
@@ -357,7 +345,7 @@ index e36bbc4..ace5c97
      rtk.sendState()
  
  @socketio.on("disconnect", namespace="/test")
-@@ -609,6 +781,13 @@ def startBase():
+@@ -609,6 +778,13 @@ def startBase():
          result = {"result" : "failed"}
          socketio.emit("base starting", json.dumps(result), namespace="/test")
          return
@@ -371,7 +359,7 @@ index e36bbc4..ace5c97
      # We must start rtkcv before trying to modify an option
      rtk.startBase()
      saved_input_path = "localhost" + ":" + rtkbaseconfig.get("main", "tcp_port").strip("'")
-@@ -618,6 +797,9 @@ def startBase():
+@@ -618,6 +794,9 @@ def startBase():
      if rtk.get_rtkcv_option("inpstr1-format") != saved_input_type:
          rtk.set_rtkcv_option("inpstr1-format", saved_input_type)
          rtk.set_rtkcv_pending_refresh(True)
@@ -381,7 +369,7 @@ index e36bbc4..ace5c97
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -645,16 +827,18 @@ def deleteLog(json_msg):
+@@ -645,16 +824,18 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -403,7 +391,7 @@ index e36bbc4..ace5c97
                        "firmware" : firmware,
                        "model" : model}
              result.update(json_msg)
-@@ -672,10 +856,19 @@ def detect_receiver(json_msg):
+@@ -672,10 +853,19 @@ def detect_receiver(json_msg):
  def apply_receiver_settings(json_msg):
      print("Applying gnss receiver new settings")
      print(json_msg)
@@ -425,7 +413,7 @@ index e36bbc4..ace5c97
  
      socketio.emit("gnss_settings_saved", json.dumps(json_msg), namespace="/test")
  
-@@ -693,8 +886,8 @@ def configure_receiver(brand="", model=""):
+@@ -693,8 +883,8 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -436,7 +424,7 @@ index e36bbc4..ace5c97
      #print("DEBUG - returncode: ", answer.returncode)
  
      if answer.returncode == 0: # and "Done" in answer.stdout:
-@@ -813,6 +1006,11 @@ def rebootRtkbase():
+@@ -813,6 +1003,11 @@ def rebootRtkbase():
      rtk.shutdown()
      #socketio.stop() hang. I disabled it
      #socketio.stop()
@@ -448,7 +436,7 @@ index e36bbc4..ace5c97
      subprocess.check_output("reboot")
  
  @socketio.on("shutdown device", namespace="/test")
-@@ -823,6 +1021,15 @@ def shutdownRtkbase():
+@@ -823,6 +1018,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -464,7 +452,7 @@ index e36bbc4..ace5c97
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -881,6 +1088,13 @@ def restartServices(restart_services_list=None):
+@@ -881,6 +1085,13 @@ def restartServices(restart_services_list=None):
                      rtk.stopBase()
                      service["unit"].restart()
                  else:
@@ -478,7 +466,7 @@ index e36bbc4..ace5c97
                      service["unit"].restart()
  
      #refresh service status
-@@ -904,7 +1118,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -904,7 +1115,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -492,7 +480,7 @@ index e36bbc4..ace5c97
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -913,7 +1132,10 @@ def getServicesStatus(emit_pingback=True):
+@@ -913,7 +1129,10 @@ def getServicesStatus(emit_pingback=True):
                  service["state_ok"] = None
  
          except Exception as e:
@@ -504,7 +492,7 @@ index e36bbc4..ace5c97
              pass
  
      services_status = []
-@@ -984,11 +1206,17 @@ def update_settings(json_msg):
+@@ -984,11 +1203,17 @@ def update_settings(json_msg):
  
          #Restart service if needed
          if source_section == "main":
@@ -523,7 +511,7 @@ index e36bbc4..ace5c97
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1232,254 @@ def update_settings(json_msg):
+@@ -1004,6 +1229,270 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -652,15 +640,27 @@ index e36bbc4..ace5c97
 +            wifi_manager.set_country(requested)
 +            # regdomain re-applied: NM may drop and re-associate
 +            wifi_manager.poll_reconnect(15, wifi_connect_status)
-+            # if the kernel couldn't settle on the requested country (e.g. it intersected
-+            # with the connected AP's 802.11d country → pseudo-domain), say why the region
-+            # didn't stick — otherwise the picker just silently blanks
++            # if the kernel couldn't settle on the requested country, say why the region
++            # didn't stick — otherwise the picker just silently blanks. Two known causes,
++            # told apart by the link state: associated → the AP's 802.11d country IE
++            # intersects the domain; otherwise the kernel itself rejected the code (its
++            # regulatory database has no entry for it — shouldn't happen with the picker
++            # filtered by that database, but imports carry free-form codes).
 +            if requested and wifi_manager.get_country() != requested:
-+                wifi_emit_error("region", "Region {} could not be fully applied — the connected "
-+                                "network enforces a different regulatory domain. Disconnect to "
-+                                "change the region.".format(requested))
++                state = (wifi_manager.wifi_state().get("state") or "")
++                if state.startswith("connected"):
++                    wifi_emit_error("region", "Region {} could not be fully applied — the "
++                                    "connected network enforces a different regulatory domain. "
++                                    "Disconnect to change the region.".format(requested))
++                else:
++                    wifi_emit_error("region", "Region {} was not accepted by the system — the "
++                                    "Wi-Fi regulatory database has no rules for this country. "
++                                    "Please pick another region.".format(requested))
 +            wifi_emit_status()
 +            wifi_emit_list()
++            # terminal event LAST (like "wifi connect result"): the dialog stays locked
++            # until the status/list it will show alongside the confirmation are fresh
++            socketio.emit("wifi country result", {"ok": True}, namespace="/test")
 +        except Exception as e:
 +            wifi_emit_error("set country", e)
 +    socketio.start_background_task(task)
@@ -676,6 +676,7 @@ index e36bbc4..ace5c97
 +                hidden=bool(json_msg.get("hidden")),
 +                remember=bool(json_msg.get("remember", True)),
 +                ipconf=json_msg.get("ipconf"),
++                bssid=json_msg.get("bssid"),
 +                status_cb=wifi_connect_status)
 +            # terminal event ("wifi connect result") goes LAST: the UI stays busy until
 +            # the header and list it will show alongside the final toast are fresh
@@ -693,7 +694,9 @@ index e36bbc4..ace5c97
 +    # Re-connect to an already-saved network: activate the stored profile, no password prompt.
 +    def task():
 +        try:
-+            networks = wifi_manager.activate(json_msg.get("profile"), status_cb=wifi_connect_status)
++            networks = wifi_manager.activate(json_msg.get("profile"),
++                                             bssid=json_msg.get("bssid"),
++                                             status_cb=wifi_connect_status)
 +            wifi_status_refresh()
 +            socketio.emit("wifi list", networks, namespace="/test")
 +            socketio.emit("wifi connect result", {"ok": True}, namespace="/test")
@@ -771,6 +774,7 @@ index e36bbc4..ace5c97
 +    try:
 +        count = wifi_manager.restore_profiles(json_msg)
 +        socketio.emit("wifi restore result", {"ok": True, "count": count}, namespace="/test")
++        wifi_emit_status()   # the region may have changed
 +        wifi_emit_list()
 +    except Exception as e:
 +        socketio.emit("wifi restore result", {"ok": False, "message": str(e)}, namespace="/test")
