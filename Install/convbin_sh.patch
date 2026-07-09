@@ -1,5 +1,5 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..44e1f0a 100755
+index 91a8020..ddb1c24 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
 @@ -5,12 +5,23 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -74,7 +74,7 @@ index 91a8020..44e1f0a 100755
          -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 1 -tt 0                    \
-@@ -88,15 +99,66 @@ filedate=$(echo ${1:0:10})
+@@ -88,15 +99,76 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -97,13 +97,23 @@ index 91a8020..44e1f0a 100755
 +file_extension="${RAW_ARCHIVE##*.}"
 +
 +iso3() {
-+    local code2
-+    code2=$(curl -s "http://ip-api.com/json/$ip?fields=countryCode"  | jq -r '.countryCode')
-+    jq -r --arg code "$code2" \
-+       '."3166-1"[]
-+        | select(.alpha_2 == $code)
-+        | .alpha_3' \
-+       /usr/share/iso-codes/json/iso_3166-1.json
++    local code2="$(iw reg get | sed -n "0,/country/s/^country \(.\+\):.*$/\1/p")"
++    if [[ "${code2}" == "00" ]]; then
++       code2=$(curl -s "http://ip-api.com/json/?fields=countryCode"  | jq -r '.countryCode')
++       #echo code2=${code2}
++    fi
++    if [[ "${#code2}" == "2" ]]; then
++       local code3="$(jq -r --arg code "${code2}" '."3166-1"[] | select(.alpha_2 == $code) | .alpha_3' /usr/share/iso-codes/json/iso_3166-1.json)"
++       local lastcode=$?
++       #echo code3=${code3} lastcode=${lastcode}
++       if [[ "${#code3}" == "3" ]] && [[ "${lastcode}" == "0" ]]; then
++          echo ${code3}
++       else
++          echo ${code2}_
++       fi
++    else
++       echo "UNK"
++    fi
 +}
 +
 +num2letter() {
@@ -146,7 +156,7 @@ index 91a8020..44e1f0a 100755
  if [[ $file_extension == 'zip' ]]
    then
      extract_raw_file
-@@ -105,6 +167,10 @@ if [[ $file_extension == 'zip' ]]
+@@ -105,6 +177,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?
