@@ -1,8 +1,20 @@
 diff --git a/archive_and_clean.sh b/archive_and_clean.sh
-index 07b02f5..1c6f897 100755
+index 07b02f5..2a4dd05 100755
 --- a/archive_and_clean.sh
 +++ b/archive_and_clean.sh
-@@ -30,7 +30,7 @@ done
+@@ -4,7 +4,10 @@
+ 
+ BASEDIR=$(dirname "$0")
+ source <( grep '=' ${BASEDIR}/settings.conf )
+-cd ${datadir}
++if [[ ! -d "${datadir}" ]]; then
++   mkdir -p "${datadir}"
++fi
++cd "${datadir}"
+ 
+ check_space(){
+   df -mP ${datadir} | tail -n1 | awk '{ print $4 }'
+@@ -30,7 +33,7 @@ done
  
  #archive and compress previous day's gnss data.
  #find . -maxdepth 1 -type f -mtime -1 -mmin +60 -name "*.ubx*" -exec tar -jcvf ${archive_name} --remove-files {} +;

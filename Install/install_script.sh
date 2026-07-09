@@ -1613,6 +1613,13 @@ start_rtkbase_services(){
   fi
   delete_from_service_list modem_check.timer
 
+  source <( grep '^datadir=' "${SETTINGS_NOW}" ) #import settings
+  if [[ ! -d "${datadir}" ]]; then
+     #echo mkdir -p "${datadir}"
+     mkdir -p "${datadir}"
+     ExitCodeCheck $?
+  fi
+
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
   ExitCodeCheck $?
   #echo receiver=${receiver}
