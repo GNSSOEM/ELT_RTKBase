@@ -64,6 +64,20 @@ WPS() {
         fi
      fi
   fi
+  if [[ "${HAVE_INTERNET}" == "full" ]]; then
+     REGDOMAIN="$(iw reg get | sed -n "0,/country/s/^country \(.\+\):.*$/\1/p")"
+     #echo REGDOMAIN=${REGDOMAIN}
+     if [[ "${REGDOMAIN}" == "00" ]]; then
+        code2=$(curl -s "http://ip-api.com/json/?fields=countryCode"  | jq -r '.countryCode')
+        #echo code2=${code2}
+        if [[ "${#code2}" == "2" ]]; then
+           #echo iw reg set "${code2}"
+           iw reg set "${code2}"
+           ExitCodeCheck $?
+           echo Wifi country temporaly set to ${code2} -- code ${exitcode}
+        fi
+     fi
+  fi
   HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
   if [[ -n "${HAVE_HOTSPOT}" ]]; then
      echo Hotspot Started >${HOTSPOT_FLAG}
