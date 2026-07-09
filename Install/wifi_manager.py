@@ -287,12 +287,16 @@ def available_bands():
 
 def channel_usable(band, ch, chans, country):
     """Gating -> 'ok' | 'no_region' | 'disabled'."""
+    if not country:
+        # No region selected: don't trust the kernel's CURRENT channel flags — a
+        # self-managed phy (e.g. brcmfmac on a Pi) or an 802.11d intersection can leave
+        # the kernel in a permissive domain that allows e.g. 5 GHz ch 100 while the UI
+        # says "no region". Gate by the world-safe set instead (what the dialog
+        # promises): only 2.4 GHz ch 1-11 beacons everywhere.
+        return "ok" if band == "2.4" and 1 <= (ch or 0) <= 11 else "no_region"
     entry = next((e for e in chans.get(band, []) if e["ch"] == ch), None)
     if entry is None or entry.get("disabled"):
-        # unknown to / disabled in the current domain
-        return "no_region" if not country else "disabled"
-    if entry.get("no_ir") and not country:
-        return "no_region"
+        return "disabled"   # unknown to / disabled in the selected domain
     return "ok"
 
 

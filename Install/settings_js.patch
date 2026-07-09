@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..f0c5e3a 100644
+index 5b64baa..2ff384d 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -604,7 +604,7 @@ index 5b64baa..f0c5e3a 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +920,1099 @@ $(document).ready(function () {
+@@ -758,5 +920,1132 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1021,8 +1021,8 @@ index 5b64baa..f0c5e3a 100644
 +            wRef.text('Channel width: auto (all bands)');
 +            return;
 +        }
-+        mSel.prop('disabled', false);
-+        cSel.prop('disabled', false);
++        mSel.prop('disabled', !!wifi.apFormLock);
++        cSel.prop('disabled', !!wifi.apFormLock);
 +        var modes = wifiModesFor(band), prev = mSel.val();
 +        var mode = modes.indexOf(prev) >= 0 ? prev : modes[modes.length - 1];
 +        mSel.html(modes.map(function (m) {
@@ -1173,6 +1173,20 @@ index 5b64baa..f0c5e3a 100644
 +        // natively disable the toggle too — pointer-events on the card is not enough
 +        // (e.g. a stale status), and a disabled input can't open the form
 +        $('#wifi-ap-switch').prop('disabled', apGate);
++        // No region while the card itself stays usable (a live AP keeps beaconing on its
++        // old channel, or the form was opened before the region got unset): the form is
++        // VIEW-ONLY — an AP can't be (re)configured without a regulatory domain, so every
++        // field and Save are disabled. Deliberately left usable: the mode toggle (turning
++        // the AP off is the way out of this state) and the password eye (reading the key
++        // of the still-running AP). Applied on state CHANGE only, so the blanket
++        // enable/disable doesn't fight wifiRepopRadio's own Mode/Channel handling.
++        var apFormLock = !hasCountry;
++        if (apFormLock !== !!wifi.apFormLock) {
++            wifi.apFormLock = apFormLock;
++            $('#wifi-ap-body').find('input, select, button').not('#wifi-ap-eye')
++                .prop('disabled', apFormLock);
++            if (!apFormLock) wifiRepopRadio();   // restore the band-derived Auto states
++        }
 +        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
 +        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn);
 +        $('#wifi-region-hint').toggle(!hasCountry);
@@ -1583,7 +1597,9 @@ index 5b64baa..f0c5e3a 100644
 +    $('.wifi-eye').html(WIFI_EYEOFF);
 +    // Mask Wi-Fi keys with CSS on a type=text input where supported: the browser's password
 +    // manager then never sees a password field, so it doesn't offer to save SSID+key as a
-+    // login (autocomplete=off/new-password does not reliably stop that). Fallback: type=password.
++    // login (autocomplete=off/new-password does not reliably stop that). The inputs are
++    // ALREADY type=text in the HTML — a field that has ever been type=password stays on the
++    // password manager's radar even after switching to text. Fallback: type=password.
 +    var wifiPwdCssMask = window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc');
 +    function wifiPwdSetMasked(inp, masked) {
 +        if (wifiPwdCssMask) inp.attr('type', 'text').toggleClass('wifi-pwd-mask', masked);
@@ -1594,6 +1610,23 @@ index 5b64baa..f0c5e3a 100644
 +    }
 +    wifiPwdSetMasked($('#wifi-cm-pwd'), true);
 +    wifiPwdSetMasked($('#wifi-ap-pwd'), true);
++    // A backend restart while the page stays up still makes a fallback browser (no CSS
++    // masking, real type=password) take a password-save snapshot when the socket drops.
++    // Stash the connect-dialog key into JS — invisible to the password manager — blank the
++    // DOM field, and put it back on reconnect: nothing typed is lost. The AP password field
++    // is deliberately left untouched: it holds the STORED AP key (pre-filled from the
++    // server) that the user must still be able to reveal while the backend is down, and
++    // variant A (type=text + CSS mask) already keeps it off the password manager's radar in
++    // Chrome/Edge/Safari.
++    socket.on('disconnect', function () {
++        wifi.pwdStash = {cm: $('#wifi-cm-pwd').val()};
++        $('#wifi-cm-pwd').val('');
++    });
++    socket.on('connect', function () {
++        if (!wifi.pwdStash) return;
++        $('#wifi-cm-pwd').val(wifi.pwdStash.cm);
++        wifi.pwdStash = null;
++    });
 +    $('#wifi-cm-eye').on('click', function () {
 +        var inp = $('#wifi-cm-pwd'), show = wifiPwdIsMasked(inp);
 +        wifiPwdSetMasked(inp, !show);

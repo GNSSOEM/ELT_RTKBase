@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..9ed4ecf 100644
+index 9690796..ef2aa88 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,49 @@
@@ -740,7 +740,7 @@ index 9690796..9ed4ecf 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1247,261 @@
+@@ -794,12 +1247,266 @@
    </div>
  </div>
  
@@ -849,7 +849,11 @@ index 9690796..9ed4ecf 100644
 +            <div class="form-group" id="wifi-ap-pwd-field">
 +              <label class="mb-1" for="wifi-ap-pwd">Password</label>
 +              <div class="input-group">
-+                <input class="form-control" type="password" id="wifi-ap-pwd" autocomplete="off">
++                <!-- type=text from birth: a field that has EVER been type=password is tracked
++                     by the browser's password manager forever (save prompts with the SSID
++                     picked up as the login). Masking comes from the wifi-pwd-mask CSS;
++                     browsers without that support are switched to type=password by JS. -->
++                <input class="form-control wifi-pwd-mask" type="text" id="wifi-ap-pwd" autocomplete="off">
 +                <div class="input-group-append">
 +                  <button class="btn btn-outline-secondary wifi-eye" type="button" id="wifi-ap-eye"></button>
 +                </div>
@@ -940,7 +944,8 @@ index 9690796..9ed4ecf 100644
 +        <div class="form-group" id="wifi-cm-pwd-field">
 +          <label class="mb-1" for="wifi-cm-pwd">Password</label>
 +          <div class="input-group">
-+            <input class="form-control" type="password" id="wifi-cm-pwd" placeholder="Enter network password" autocomplete="off">
++            <!-- type=text + CSS mask for the same reason as the AP password field above -->
++            <input class="form-control wifi-pwd-mask" type="text" id="wifi-cm-pwd" placeholder="Enter network password" autocomplete="off">
 +            <div class="input-group-append">
 +              <button class="btn btn-outline-secondary wifi-eye" type="button" id="wifi-cm-eye"></button>
 +            </div>
