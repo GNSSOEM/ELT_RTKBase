@@ -1,9 +1,55 @@
 #!/bin/bash
 
+SEPTENTRIO_STANDART_IP="192.168.3.1"
+SEPTENTRIO_STANDART_NET="${SEPTENTRIO_STANDART_IP}/23"
+MOBILE_STANDART_IP="192.168.8.1"
+
+delete_by_ip(){
+   local ip=$1
+   table=''
+
+   iptables-save |
+   while IFS= read -r line; do
+       case "$line" in
+           \**)
+               table=${line#\*}
+               ;;
+           -A\ *"$ip"*)
+               iptables -t "$table" ${line/-A/-D}
+               ;;
+       esac
+   done
+}
+
+addIfNotExist()
+{
+   local rule="${1}"
+   #echo rule=${rule}
+   if ! /sbin/iptables -C ${rule} 2>/dev/null; then
+      #echo /sbin/iptables -A ${rule}
+      /sbin/iptables -A ${rule}
+   #else
+      #echo have ${rule}
+   fi
+}
+
+addIfNotExistNAT()
+{
+   local rule="${1}"
+   #echo rule=${rule}
+   if ! /sbin/iptables -t nat -C ${rule} 2>/dev/null; then
+      #echo /sbin/iptables -t nat -A ${rule}
+      /sbin/iptables -t nat -A ${rule}
+   #else
+      #echo have ${rule}
+   fi
+}
+
+
 nm-online -s >/dev/null
 SEPTENTRIO_UUID=`nmcli --fields UUID,DEVICE con show --active | grep septentrio | awk -F ' ' '{print $1}'`
 if [[ -n "${SEPTENTRIO_UUID}" ]]; then
-   SEPTENTRIO_IP="192.168.3.1"
+   SEPTENTRIO_IP="${SEPTENTRIO_STANDART_IP}"
    SEPTENTRIO_NET="${SEPTENTRIO_IP}/32"
    SEPTENTRIO_HOST="192.168.3.2/24"
    old_ip=`nmcli  --fields ipv4.addresses connection show uuid "${SEPTENTRIO_UUID}" | awk -F ' ' '{print $2}'`
@@ -49,35 +95,56 @@ fi
 
 needChange=NO
 
-HAS_SEPTENTRIO_NAT=0
-if [[ -n "${SEPTENTRIO_IP}" ]]; then
-   HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c "${SEPTENTRIO_IP}"`
-fi
+HAS_SEPTENTRIO_NAT=`/sbin/iptables -n -L -t nat | grep -c "${SEPTENTRIO_STANDART_IP}"`
 #echo SEPTENTRIO_IP=${SEPTENTRIO_IP} HAS_SEPTENTRIO_NAT=${HAS_SEPTENTRIO_NAT}
 if (( (${#SEPTENTRIO_IP} == 0) == (${HAS_SEPTENTRIO_NAT} == 0) )); then
    echo NAT for septentrio already setuped
 else
    if [[ ${HAS_SEPTENTRIO_NAT} != 0 ]]; then
       echo drop NAT for septentrio
+      delete_by_ip "${SEPTENTRIO_STANDART_IP}"
+      delete_by_ip "${SEPTENTRIO_STANDART_NET}"
    else
       echo setup NAT for septentrio
    fi
    needChange=YES
 fi
 
-HAS_MOBILE_NAT=0
-if [[ -n "${MOBILE_IP}" ]]; then
-   HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c "${MOBILE_IP}"`
-fi
+HAS_MOBILE_NAT=`/sbin/iptables -n -L -t nat | grep -c "${MOBILE_STANDART_IP}"`
 #echo MOBILE_IP=${MOBILE_IP} MOBILE_UUID=${MOBILE_UUID} HAS_MOBILE_NAT=${HAS_MOBILE_NAT}
 if (( ("${#MOBILE_IP}" == 0) == ("${HAS_MOBILE_NAT}" == 0) )); then
    echo NAT for mobile already setuped
 else
    if [[ ${HAS_MOBILE_NAT} != 0 ]]; then
       echo drop NAT for mobile
+      delete_by_ip "${MOBILE_STANDART_IP}"
    else
       echo setup NAT for mobile
    fi
+   needChange=YES
+fi
+
+HOTSPOT=Hotspot
+HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
+HAS_HOTSPOT=`iptables-save | grep -c "wlan0"`
+#echo HAVE_HOTSPOT=${HAVE_HOTSPOT} HAS_HOTSPOT=${HAS_HOTSPOT}
+if (( ("${#HAVE_HOTSPOT}" == 0) == ("${HAS_HOTSPOT}" == 0) )); then
+   echo NAT for hotspot already setuped
+else
+   if [[ ${HAS_HOTSPOT} != 0 ]]; then
+      echo drop NAT for hotspot
+      delete_by_ip "wlan0"
+   else
+      echo setup NAT for hotspot
+      delete_by_ip "${SEPTENTRIO_STANDART_NET}"
+   fi
+   needChange=YES
+fi
+
+if /sbin/iptables -C FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; then
+   echo NAT already intited
+else
+   echo NAT not yet intited
    needChange=YES
 fi
 
@@ -85,22 +152,30 @@ fi
 if [[ "${needChange}" == "YES" ]]; then
    echo -- Setting up redirections --
    echo 1 >/proc/sys/net/ipv4/ip_forward
-   /sbin/iptables -F
-   /sbin/iptables -X
-   /sbin/iptables -t nat -F
-   /sbin/iptables -t nat -X
+   #/sbin/iptables -F
+   #/sbin/iptables -X
+   #/sbin/iptables -t nat -F
+   #/sbin/iptables -t nat -X
    /sbin/iptables -P FORWARD DROP
-   #echo /sbin/iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
-   /sbin/iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+   addIfNotExist "FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT"
 else
    exit 0
 fi
 
-if [[ -n "${SEPTENTRIO_IP}" ]]; then
-   #echo /sbin/iptables -t nat -A POSTROUTING -s ${SEPTENTRIO_NET} -j MASQUERADE
-   /sbin/iptables -t nat -A POSTROUTING -s ${SEPTENTRIO_NET} -j MASQUERADE
-   #echo /sbin/iptables -A FORWARD -s ${SEPTENTRIO_NET} -j ACCEPT
-   /sbin/iptables -A FORWARD -s ${SEPTENTRIO_NET} -j ACCEPT
+if [[ -n "${HAVE_HOTSPOT}" ]]; then
+   if [[ -n "${SEPTENTRIO_IP}" ]]; then
+      addIfNotExistNAT "POSTROUTING ! -o wlan0 ! -d ${SEPTENTRIO_NET} -j MASQUERADE"
+      addIfNotExist "FORWARD -i wlan0 -d ${SEPTENTRIO_NET} -j ACCEPT"    # wlan0 -> Septentrio
+      addIfNotExist "FORWARD -s ${SEPTENTRIO_NET} ! -o wlan0 -j ACCEPT"  # Septentrio -> Internet
+   else
+      iptables -t nat -A POSTROUTING ! -o wlan0 -j MASQUERADE
+   fi
+   iptables -A FORWARD -i wlan0 ! -o wlan0 -j ACCEPT
+else
+   if [[ -n "${SEPTENTRIO_IP}" ]]; then
+      addIfNotExistNAT "POSTROUTING -s ${SEPTENTRIO_NET} -j MASQUERADE"
+      addIfNotExist "FORWARD -s ${SEPTENTRIO_NET} -j ACCEPT"
+   fi
 fi
 
 while read PROTO ORIGPORT NATTOADDR NATTOPORT COMMENT
@@ -108,9 +183,9 @@ do
   if ! ( echo "${PROTO}" | grep -Eq '(#.*)|(^$)' ) ; then
      if [[ "${NATTOPORT}" != "" ]]; then
         echo "    PROTO=${PROTO} ORIGPORT=${ORIGPORT} TOADDR=${NATTOADDR} TOPORT=${NATTOPORT}"
-        /sbin/iptables -t nat -A PREROUTING -p ${PROTO} --destination-port ${ORIGPORT} ! -s ${NATTOADDR}/32 -j DNAT --to-destination ${NATTOADDR}:${NATTOPORT}
-        /sbin/iptables -t nat -A POSTROUTING -d ${NATTOADDR} -p ${PROTO} --destination-port ${NATTOPORT} -j MASQUERADE
-        /sbin/iptables -A FORWARD -d ${NATTOADDR} -p ${PROTO} --destination-port ${NATTOPORT} -j ACCEPT
+        addIfNotExistNAT "PREROUTING -p ${PROTO} --destination-port ${ORIGPORT} ! -s ${NATTOADDR}/32 -j DNAT --to-destination ${NATTOADDR}:${NATTOPORT}"
+        addIfNotExistNAT "POSTROUTING -d ${NATTOADDR} -p ${PROTO} --destination-port ${NATTOPORT} -j MASQUERADE"
+        addIfNotExist "FORWARD -d ${NATTOADDR} -p ${PROTO} --destination-port ${NATTOPORT} -j ACCEPT"
      fi
   fi
 done <<EOF
@@ -130,7 +205,7 @@ udp 319 ${SEPTENTRIO_IP} 319
 udp 320 ${SEPTENTRIO_IP} 320
 
 # FTP server
-tcp 21 ${SEPTENTRIO_IP} 21
+#tcp 21 ${SEPTENTRIO_IP} 21
 
 # work tcp ports
 tcp 3000 ${SEPTENTRIO_IP} 3000

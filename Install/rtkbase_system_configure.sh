@@ -24,7 +24,7 @@ Ciao(){
 }
 
 DeleteHotSpots(){
-   HOTSPOT_LIST=$(nmcli --fields NAME connection show | grep ${HOTSPOT})
+   HOTSPOT_LIST=$(nmcli --get-values NAME connection show | grep ${HOTSPOT})
    #echo HOTSPOT_LIST=${HOTSPOT_LIST}
    for hotspot_name in ${HOTSPOT_LIST}; do
        nmcli connection delete id ${hotspot_name}
@@ -64,7 +64,7 @@ WPS() {
         fi
      fi
   fi
-  HAVE_HOTSPOT=`nmcli connection show --active | grep ${HOTSPOT}`
+  HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
   if [[ -n "${HAVE_HOTSPOT}" ]]; then
      echo Hotspot Started >${HOTSPOT_FLAG}
   fi

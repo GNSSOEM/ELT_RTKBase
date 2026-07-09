@@ -172,6 +172,15 @@ if [[ -n "${HAS_MOBILE}" ]]; then
    start_stop_service rtkbase_modem_web_proxy.service "${MOBILE_GOOD}"
 fi 
 
+HOTSPOT=Hotspot
+HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
+HAS_HOTSPOT=`iptables-save | grep -c "wlan0"`
+#echo HAVE_HOTSPOT=${HAVE_HOTSPOT} HAS_HOTSPOT=${HAS_HOTSPOT}
+if (( ("${#HAVE_HOTSPOT}" == 0) != ("${HAS_HOTSPOT}" == 0) )); then
+   echo hotspot changed
+   CHANGE=YES
+fi
+
 #echo CHANGE=${CHANGE}
 if [[ "${CHANGE}" == "YES" ]]; then
    echo systemctl restart rtkbase_septentrio_NAT.service
