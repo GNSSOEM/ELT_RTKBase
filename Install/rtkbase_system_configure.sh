@@ -211,70 +211,141 @@ then
    WORK=Y
 fi
 
-if [[ -n "${LOGIN}" ]]
-then
+if [[ -n "${LOGIN}" ]]; then
    USER_HOME=/home/"${LOGIN}"
    #echo sed 's/:.*//' /etc/passwd \| grep ${LOGIN}
    FOUND=`sed 's/:.*//' /etc/passwd | grep "${LOGIN}"`
-   #echo LOGIN=${LOGIN} PWD=${PWD} USER_HOME=${USER_HOME} FOUND=${FOUND}
+   #echo LOGIN=${LOGIN} PWD=${PWD} USER_HOME=${USER_HOME} FOUND=${FOUND} DATAUSER=${DATAUSER}
    #echo SSH=${SSH}
-   if [[ -z "${FOUND}" ]]
-   then
-      if [[ -n "${PWD}" ]]
-      then
+   if [[ -n "${DATAUSER}" ]]; then
+      SFTP=/srv/sftp
+      DATA=/data
+      SFTP_DATA="${SFTP}${DATA}"
+      if [[ ! -d "${SFTP_DATA}" ]]; then
+         #echo mkdir -p "${SFTP_DATA}"
+         mkdir -p "${SFTP_DATA}"
+         ExitCodeCheck $?
+         #echo chown root:root "${SFTP}"
+         chown root:root "${SFTP}"
+         ExitCodeCheck $?
+         #echo chmod 755 "${SFTP}"
+         chmod 755 "${SFTP}"
+         ExitCodeCheck $?
+      fi
+      if [[ ! -d "${DATA}" ]]; then
+         #echo mkdir -p "${DATA}"
+         mkdir -p "${DATA}"
+         ExitCodeCheck $?
+      fi
+      if ! getent group sftpusers >/dev/null; then
+         #echo groupadd sftpusers
+         groupadd sftpusers
+         ExitCodeCheck $?
+      fi
+      SETTINGS_NOW=${BASEDIR}/rtkbase/settings.conf
+      source <( grep '^datadir=' "${SETTINGS_NOW}" ) #import settings
+      FSTAB_LINE="${datadir} ${SFTP_DATA}  none  bind  0 0"
+      FSTAB=/etc/fstab
+      if ! grep -q "^${FSTAB_LINE}" "${FSTAB}"; then
+         #echo echo "${FSTAB_LINE}" \>\>"${FSTAB}"
+         echo "${FSTAB_LINE}" >>"${FSTAB}"
+         ExitCodeCheck $?
+         #echo systemctl daemon-reload
+         systemctl daemon-reload
+         ExitCodeCheck $?
+         #echo mount ${SFTP_DATA}
+         mount ${SFTP_DATA}
+         ExitCodeCheck $?
+      fi
+      AUTHORISED_KEYS_DIR=/etc/ssh/authorized_keys
+      if [[ ! -d "${AUTHORISED_KEYS_DIR}" ]]; then
+         #echo mkdir -p "${AUTHORISED_KEYS_DIR}"
+         mkdir -p "${AUTHORISED_KEYS_DIR}"
+         ExitCodeCheck $?
+         #echo chmod 755  "${AUTHORISED_KEYS_DIR}"
+         chmod 755  "${AUTHORISED_KEYS_DIR}"
+         ExitCodeCheck $?
+      fi
+      AUTHORISED_KEYS_FILE="${AUTHORISED_KEYS_DIR}/${LOGIN}"
+      AUTHORISED_KEYS_USER="root:root"
+      AUTHORISED_KEYS_MODE=644
+      SSHD_CONFIG=/etc/ssh/sshd_config
+      if ! grep -q "^Match Group sftpusers" "${SSHD_CONFIG}"; then
+         cat <<"EOF" >>"${SSHD_CONFIG}"
+Match Group sftpusers
+    ChrootDirectory /srv/sftp
+    ForceCommand internal-sftp
+    AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+    AllowTcpForwarding no
+    AllowAgentForwarding no
+    DisableForwarding yes
+    X11Forwarding no
+    PermitTunnel no
+    PasswordAuthentication yes
+EOF
+         #echo sshd -t
+         sshd -t
+         ExitCodeCheck $?
+         #echo systemctl reload ssh
+         systemctl reload ssh
+         ExitCodeCheck $?
+      fi
+      USER_KEY="--home-dir ${DATA} --no-create-home --shell /usr/sbin/nologin --groups rtkbase,sftpusers"
+   else
+      AUTHORISED_KEYS_DIR="${USER_HOME}"/.ssh
+      AUTHORISED_KEYS_FILE="${AUTHORISED_KEYS_DIR}"/authorized_keys
+      AUTHORISED_KEYS_USER="${LOGIN}:${LOGIN}"
+      AUTHORISED_KEYS_MODE=600
+      USER_KEY="--create-home --groups plugdev,dialout,gpio"
+   fi
+   if [[ -z "${FOUND}" ]]; then
+      if [[ -n "${PWD}" ]]; then
          # https://ru.stackoverflow.com/questions/1022068/ћожно-ли-создавать-пользовател€-одновременно-с-вводом-парол€-из-переменной
          #echo CRYPTO=\`openssl passwd -1 -salt xyz "${PWD}"\`
          CRYPTO=`openssl passwd -1 -salt xyz "${PWD}"`
          #echo CRYPTO=${CRYPTO}
          ExitCodeCheck $?
-         #echo useradd --comment "Added by system" --create-home --password "${CRYPTO}" "${LOGIN}"
-         useradd --comment "Added by rtkbase_system_configure" --create-home --password "${CRYPTO}" "${LOGIN}"
-         ExitCodeCheck $?
-         usermod -a -G plugdev,dialout,gpio "${LOGIN}"
+         #echo useradd --comment "Added by rtkbase_system_configure" ${USER_KEY} --user-group --password "${CRYPTO}" "${LOGIN}"
+         useradd --comment "Added by rtkbase_system_configure" ${USER_KEY} --user-group --password "${CRYPTO}" "${LOGIN}"
          ExitCodeCheck $?
          echo Added user ${LOGIN} with password -- code ${exitcode}
       else
-         #echo useradd --comment "Added by system" --create-home --disabled-password "${LOGIN}"
-         useradd --comment "Added by rtkbase_system_configure" --create-home "${LOGIN}"
+         #echo useradd --comment "Added by rtkbase_system_configure" ${USER_KEY} --user-group "${LOGIN}"
+         useradd --comment "Added by rtkbase_system_configure" ${USER_KEY} --user-group "${LOGIN}"
          ExitCodeCheck $?
          echo Added user ${LOGIN} without password -- code ${exitcode}
       fi
-      #echo ""${LOGIN}" ALL=NOPASSWD: ALL" \> /etc/sudoers.d/"${LOGIN}"
-      echo ""${LOGIN}" ALL=NOPASSWD: ALL" > /etc/sudoers.d/"${LOGIN}"
+      if [[ -z "${DATAUSER}" ]]; then
+         #echo ""${LOGIN}" ALL=NOPASSWD: ALL" \> /etc/sudoers.d/"${LOGIN}"
+         echo ""${LOGIN}" ALL=NOPASSWD: ALL" > /etc/sudoers.d/"${LOGIN}"
+         ExitCodeCheck $?
+      fi
    else
-      if [[ -n "${PWD}" ]]
-      then
+      if [[ -n "${PWD}" ]]; then
          echo User ${LOGIN} already present
       fi
    fi
-   if [[ -n "${SSH}" ]]
-   then
-      SSH_HOME="${USER_HOME}"/.ssh
-      if [[ ! -d "${SSH_HOME}" ]]
-      then
-          #echo install -o "${LOGIN}" -g "${LOGIN}" -m 700 -d "${SSH_HOME}"
-          install -o "${LOGIN}" -g "${LOGIN}" -m 700 -d "${SSH_HOME}"
+   if [[ -n "${SSH}" ]]; then
+      if [[ ! -d "${AUTHORISED_KEYS_DIR}" ]]; then
+          #echo install -o "${LOGIN}" -g "${LOGIN}" -m 700 -d "${AUTHORISED_KEYS_DIR}"
+          install -o "${LOGIN}" -g "${LOGIN}" -m 700 -d "${AUTHORISED_KEYS_DIR}"
           ExitCodeCheck $?
       fi
-      AUTHORISED_KEYS_FILE="${SSH_HOME}"/authorized_keys
-      if [[ -f "${AUTHORISED_KEYS_FILE}" ]]
-      then
+      if [[ -f "${AUTHORISED_KEYS_FILE}" ]]; then
          #echo grep "${SSH}" "${AUTHORISED_KEYS_FILE}"
          DOUBLE=`grep "${SSH}" "${AUTHORISED_KEYS_FILE}"`
          ExitCodeCheck $?
       fi
-      if [[ -z "${DOUBLE}" ]]
-      then
+      if [[ -z "${DOUBLE}" ]]; then
          #echo echo "${SSH}" '>>' "${AUTHORISED_KEYS_FILE}"
          echo "${SSH}" >> "${AUTHORISED_KEYS_FILE}"
          ExitCodeCheck $?
-         if [[ -f "${AUTHORISED_KEYS_FILE}" ]]
-         then
-           #echo chmod 600 "${AUTHORISED_KEYS_FILE}"
-           chmod 600 "${AUTHORISED_KEYS_FILE}"
+         if [[ -f "${AUTHORISED_KEYS_FILE}" ]]; then
+           #echo chmod ${AUTHORISED_KEYS_MODE} "${AUTHORISED_KEYS_FILE}"
+           chmod ${AUTHORISED_KEYS_MODE} "${AUTHORISED_KEYS_FILE}"
            ExitCodeCheck $?
            #echo chown "${LOGIN}:${LOGIN}" "${AUTHORISED_KEYS_FILE}"
-           chown "${LOGIN}:${LOGIN}" "${AUTHORISED_KEYS_FILE}"
+           chown "${AUTHORISED_KEYS_USER}" "${AUTHORISED_KEYS_FILE}"
            ExitCodeCheck $?
          fi
          echo Added ssh public key for ${LOGIN} -- code ${exitcode}

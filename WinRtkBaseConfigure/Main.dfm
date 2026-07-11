@@ -245,7 +245,7 @@ object fmMain: TfmMain
     Left = 200
     Top = 104
     Width = 185
-    Height = 105
+    Height = 129
     Caption = 'User'
     Enabled = False
     Font.Charset = DEFAULT_CHARSET
@@ -302,6 +302,18 @@ object fmMain: TfmMain
       TabOrder = 2
       OnClick = btnSSHClick
     end
+    object cbDataUser: TCheckBox
+      Left = 8
+      Top = 104
+      Width = 169
+      Height = 17
+      Anchors = [akLeft, akTop, akRight]
+      BiDiMode = bdLeftToRight
+      Caption = 'for GNSS data download'
+      Enabled = False
+      ParentBiDiMode = False
+      TabOrder = 3
+    end
   end
   object btnSave: TButton
     Left = 200
@@ -326,7 +338,7 @@ object fmMain: TfmMain
   end
   object gbIPeth: TGroupBox
     Left = 200
-    Top = 216
+    Top = 232
     Width = 185
     Height = 127
     Caption = 'Ethernet IP'

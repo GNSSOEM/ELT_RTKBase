@@ -867,8 +867,8 @@ add_rtkbase_user(){
       ExitCodeCheck $?
    fi
 
-   #echo chown rtkbase:rtkbase ${RTKBASE_PATH}
-   chown rtkbase:rtkbase ${RTKBASE_PATH}
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_PATH}
    ExitCodeCheck $?
    #echo chmod 755 ${RTKBASE_PATH}
    chmod 755 ${RTKBASE_PATH}
@@ -883,8 +883,9 @@ add_rtkbase_user(){
 
    if [[ -d "${RTKBASE_GIT}" ]]
    then
-      #echo chown -R rtkbase:rtkbase ${RTKBASE_GIT}
-      chown -R rtkbase:rtkbase ${RTKBASE_GIT}
+      #echo chown -R ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}
+      chown -R ${RTKBASE_USER}:${RTKBASE_USER} ${RTKBASE_GIT}
+      ExitCodeCheck $?
    fi
 
    echo ${NEW_VERSION} >${RTKBASE_PATH}/${VERSION_FILE}
@@ -1619,6 +1620,12 @@ start_rtkbase_services(){
      mkdir -p "${datadir}"
      ExitCodeCheck $?
   fi
+  echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${datadir}
+  chown ${RTKBASE_USER}:${RTKBASE_USER} ${datadir}
+  ExitCodeCheck $?
+  #echo chmod 2775 ${datadir}
+  chmod 2775 ${datadir}
+  ExitCodeCheck $?
 
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
   ExitCodeCheck $?

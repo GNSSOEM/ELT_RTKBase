@@ -172,6 +172,7 @@ void __fastcall TfmMain::cbUserClick(TObject *)
    lbPwd->Enabled = enabled;
    edPwd->Enabled = enabled;
    btnSSH->Enabled = enabled;
+   cbDataUser->Enabled = enabled;
    gbUser->Font->Color = enabled ? clWindowText : clGrayText;
    SaveChange(NULL);
 }
@@ -440,6 +441,8 @@ void __fastcall TfmMain::btnSaveClick(TObject *)
             fprintf(file,"PWD=%s\n", quoted(pwd).c_str());
          if (*sshkey)
             fprintf(file,"SSH=\"%s\"\n", sshkey);
+         if (cbDataUser->Checked)
+            fprintf(file,"DATAUSER=Y\n");
       }
       if (cbIPeth->Checked) {
          if (rbEthStatic->Checked) {

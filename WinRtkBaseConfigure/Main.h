@@ -62,6 +62,7 @@ __published:	// IDE-managed Components
         TRadioButton *rbWifiStatic;
         TRadioButton *rbWifiDHCP;
         TCheckBox *cbWifiAP;
+        TCheckBox *cbDataUser;
         void __fastcall cbWifiClick(TObject *Sender);
         void __fastcall cbCountryClick(TObject *Sender);
         void __fastcall cbUserClick(TObject *Sender);
