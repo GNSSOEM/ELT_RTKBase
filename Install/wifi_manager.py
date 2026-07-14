@@ -1,7 +1,7 @@
 #!/usr/bin/python
-"""Wi-Fi manager backend for the RTKBase configurator.
+"""WiFi manager backend for the RTKBase configurator.
 
-Implements the NetworkManager side of the Wi-Fi manager popup:
+Implements the NetworkManager side of the WiFi manager popup:
 scanning, client profile CRUD, access-point profile, regulatory domain,
 validation. server.py keeps only thin Socket.IO handlers on top of this
 module.
@@ -459,7 +459,7 @@ def occupied_subnets():
 
 
 def local_ip_addresses():
-    """IPv4 addresses currently assigned to this device's interfaces (except the Wi-Fi
+    """IPv4 addresses currently assigned to this device's interfaces (except the WiFi
     client iface itself and loopback) — a static client IP must not duplicate any of them."""
     ips = []
     try:
@@ -497,7 +497,7 @@ def validate_ip_config(ip, prefix, gateway=None, dns=None, occupied=None, local_
     if iface.ip == net.broadcast_address:
         return "Address is the broadcast address for this mask"
     # exact-address clash with another interface of THIS device (e.g. picking the AP/gateway
-    # address of a local radio). Subnet overlap with the target Wi-Fi network is fine — a
+    # address of a local radio). Subnet overlap with the target WiFi network is fine — a
     # static client address MUST be inside it — but a duplicate address never is.
     for item in local_ips or []:
         if str(iface.ip) == item.get("ip"):
@@ -707,10 +707,10 @@ def list_networks(rescan=False):
 
 
 def _augment_wifi_iface(interfaces):
-    """Always surface the Wi-Fi interface in the popup header, even with no IP.
+    """Always surface the WiFi interface in the popup header, even with no IP.
 
     network_infos.get_interfaces_infos() only lists interfaces that have an IP, so
-    a disconnected wlan0 never appears. Users expect to see the Wi-Fi adapter (with
+    a disconnected wlan0 never appears. Users expect to see the WiFi adapter (with
     its MAC) regardless, so add it when it's not already present.
     """
     ifaces = list(interfaces or [])
@@ -963,17 +963,17 @@ def set_ip_config(profile, ipconf):
 
 
 def _guard_client_profile(profile):
-    """Allow the operation only on a Wi-Fi CLIENT profile — judged by what the profile
+    """Allow the operation only on a WiFi CLIENT profile — judged by what the profile
     IS, not by its name: hand-made profiles (plain `nmcli device wifi connect`) lack our
     WiFi_ prefix but are legitimate saved networks the user must be able to manage."""
     if not profile or profile == AP_PROFILE:
-        raise WifiError("Not a Wi-Fi client profile: {}".format(profile))
+        raise WifiError("Not a WiFi client profile: {}".format(profile))
     try:
         details = nmcli.connection.show(profile)
     except nmcli.NotExistException:
-        raise WifiError("No such Wi-Fi profile: {}".format(profile))
+        raise WifiError("No such WiFi profile: {}".format(profile))
     if details.get("connection.type") not in ("802-11-wireless", "wifi") or _is_ap(details):
-        raise WifiError("Not a Wi-Fi client profile: {}".format(profile))
+        raise WifiError("Not a WiFi client profile: {}".format(profile))
     return details
 
 
@@ -1094,7 +1094,7 @@ def set_ap(config, status_cb=None):
 
     verr = None
     if not get_country():
-        verr = "Access Point mode requires a Wi-Fi region (country)"
+        verr = "Access Point mode requires a WiFi region (country)"
     security = config.get("security", AP_DEFAULTS["security"])
     if security not in _AP_KEY_MGMT:
         verr = verr or "Unsupported AP security: {}".format(security)
@@ -1225,7 +1225,7 @@ def _backup_value(k, v):
 
 
 def backup_profiles():
-    """Export Wi-Fi profiles (with secrets) + the regulatory region for replication."""
+    """Export WiFi profiles (with secrets) + the regulatory region for replication."""
     out = {"version": 1, "country": get_country(), "profiles": []}
     for conn in nmcli.connection():
         if conn.conn_type != "wifi":
@@ -1246,7 +1246,7 @@ def backup_profiles():
 
 def restore_profiles(data):
     if not isinstance(data, dict) or data.get("version") != 1:
-        raise WifiError("Unsupported Wi-Fi backup format")
+        raise WifiError("Unsupported WiFi backup format")
     # restore the regulatory region first (best-effort — a missing/invalid code or a host
     # without iw must not abort the profile import)
     country = (data.get("country") or "").strip().upper()

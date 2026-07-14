@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..f70d7e3 100644
+index 9690796..636a44d 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -10,7 +10,7 @@ index 9690796..f70d7e3 100644
 +<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.css') }}">
 +<link rel="stylesheet" href="{{ url_for('static', filename='lib/combobox.css') }}">
 +<style>
-+/* ---- Wi-Fi manager popup ---- */
++/* ---- WiFi manager popup ---- */
 +#wifiModal .wifi-ifaces { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 12px; }
 +/* styling mirrors proposals/wifi-manager.html; table-layout:fixed + wrapping keeps a long
 +   name/address without spaces inside its column instead of pushing the table past 100% */
@@ -44,7 +44,7 @@ index 9690796..f70d7e3 100644
 +  box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 2000; max-width: 90vw; }
 +#wifi-toast.wifi-toast-error { background: #dc3545; }
 +#wifi-toast .spinner-border { vertical-align: -2px; margin-right: 6px; }
-+/* Wi-Fi passwords are masked via CSS on a type=text input (when supported), so the browser's
++/* WiFi passwords are masked via CSS on a type=text input (when supported), so the browser's
 +   password manager never sees a password field and doesn't offer to save SSID+key as a login. */
 +#wifiModal .wifi-pwd-mask, #wifiConnectModal .wifi-pwd-mask { -webkit-text-security: disc; }
 +#wifiModal .wifi-badge { font-size: .7rem; vertical-align: 2px; }
@@ -817,7 +817,7 @@ index 9690796..f70d7e3 100644
 +  </div>
 +</div>
 +
-+<!-- ######## Wi-Fi manager popup ######## -->
++<!-- ######## WiFi manager popup ######## -->
 +<div class="modal" id="wifiModal" data-backdrop="static">
 +  <div class="modal-dialog modal-lg modal-dialog-scrollable">
 +    <div class="modal-content">
@@ -828,25 +828,25 @@ index 9690796..f70d7e3 100644
 +      <div class="modal-body">
 +        <div class="wifi-ifaces" id="wifi-ifaces"></div>
 +
-+        <!-- Wi-Fi region: needed by both client (5 GHz/channels) and AP (mandatory) -->
++        <!-- WiFi region: needed by both client (5 GHz/channels) and AP (mandatory) -->
 +        <div class="form-group mb-2">
-+          <label class="font-weight-bold mb-1" for="wifi-country">Wi-Fi region (country / regulatory domain)</label>
++          <label class="font-weight-bold mb-1" for="wifi-country">WiFi region (country / regulatory domain)</label>
 +          <select id="wifi-country" class="form-control" data-live-search="true"
 +                  data-live-search-style="startsWith" data-size="8" data-width="100%"
-+                  title="Choose a Wi-Fi region…"></select>
++                  title="Choose a WiFi region…"></select>
 +          <small class="form-text text-muted" id="wifi-region-hint">Optional for connecting: without a region the
 +            client uses a reduced world-safe channel set — networks on other channels are unavailable.
 +            <b>Required</b> for Access Point mode.</small>
 +        </div>
 +
-+        <div class="alert alert-warning py-2 px-3" id="wifiApOnNote">⚠ Wi-Fi networks are unavailable while
++        <div class="alert alert-warning py-2 px-3" id="wifiApOnNote">⚠ WiFi networks are unavailable while
 +          Access Point mode is on — the device has a single radio.</div>
 +
 +        <div id="wifi-client-area">
 +          <div class="d-flex align-items-center justify-content-between mt-1">
 +            <div class="custom-control custom-switch">
 +              <input type="checkbox" class="custom-control-input" id="wifi-radio-switch" checked>
-+              <label class="custom-control-label font-weight-bold" for="wifi-radio-switch">Wi-Fi</label>
++              <label class="custom-control-label font-weight-bold" for="wifi-radio-switch">WiFi</label>
 +            </div>
 +            <button class="btn btn-secondary btn-sm" type="button" id="wifi-rescan-button">&#x21bb; Refresh</button>
 +          </div>
@@ -854,7 +854,7 @@ index 9690796..f70d7e3 100644
 +        </div>
 +
 +        <p class="text-warning mb-0 mt-2" id="wifi-ap-need-region" style="display:none">⚠ Access Point mode
-+          requires a Wi-Fi region (country) — select it above.</p>
++          requires a WiFi region (country) — select it above.</p>
 +
 +        <!-- Access Point mode -->
 +        <div class="card mt-2" id="wifi-ap-card">
@@ -896,7 +896,7 @@ index 9690796..f70d7e3 100644
 +              <label class="custom-control-label" for="wifi-ap-hidden">Hidden network (don't broadcast SSID)</label>
 +            </div>
 +            <div class="wifi-grp-title">Radio / frequency</div>
-+            <small class="form-text text-muted mb-2">Uses the Wi-Fi region selected above. Mode = 802.11 standard;
++            <small class="form-text text-muted mb-2">Uses the WiFi region selected above. Mode = 802.11 standard;
 +              channel width is derived (shown for reference).</small>
 +            <div class="form-row">
 +              <div class="form-group col-sm-4">
@@ -946,7 +946,7 @@ index 9690796..f70d7e3 100644
 +</div>
 +<div id="wifi-toast"></div>
 +
-+<!-- Wi-Fi connect / hidden network / change password dialog -->
++<!-- WiFi connect / hidden network / change password dialog -->
 +<div class="modal" id="wifiConnectModal" data-backdrop="static">
 +  <div class="modal-dialog">
 +    <div class="modal-content">
@@ -956,9 +956,9 @@ index 9690796..f70d7e3 100644
 +      </div>
 +      <div class="modal-body">
 +        <p class="text-muted small mb-2" id="wifi-cm-meta"></p>
-+        <div class="alert alert-warning py-2 px-3" id="wifiHiddenNote">⚠ Without a Wi-Fi region a hidden network
++        <div class="alert alert-warning py-2 px-3" id="wifiHiddenNote">⚠ Without a WiFi region a hidden network
 +          may be unreachable: finding it needs active probing, which is blocked on world-domain (NO-IR)
-+          channels — especially 5 GHz. Select a Wi-Fi region for reliable discovery.</div>
++          channels — especially 5 GHz. Select a WiFi region for reliable discovery.</div>
 +        <div class="form-group" id="wifi-cm-ssid-field" style="display:none">
 +          <label class="mb-1" for="wifi-cm-ssid">Network name (SSID)</label>
 +          <input class="form-control" id="wifi-cm-ssid" autocomplete="off" placeholder="Enter SSID">

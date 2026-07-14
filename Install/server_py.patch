@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..c603d99
+index e36bbc4..c2c4a5e
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,8 @@ from RTKLIB import RTKLIB
@@ -540,7 +540,7 @@ index e36bbc4..c603d99
 +           is_modem_active = service["unit"].isActive()
 +    socketio.emit("modem_available_result", is_modem_active, namespace="/test")
 +
-+#### Wi-Fi manager ####
++#### WiFi manager ####
 +# Thin Socket.IO handlers over wifi_manager.py. Long operations (scan, connect,
 +# hotspot start) run as background tasks so the gevent worker stays responsive.
 +
@@ -654,7 +654,7 @@ index e36bbc4..c603d99
 +                                    "Disconnect to change the region.".format(requested))
 +                else:
 +                    wifi_emit_error("region", "Region {} was not accepted by the system — the "
-+                                    "Wi-Fi regulatory database has no rules for this country. "
++                                    "WiFi regulatory database has no rules for this country. "
 +                                    "Please pick another region.".format(requested))
 +            wifi_emit_status()
 +            wifi_emit_list()

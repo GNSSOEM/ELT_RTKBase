@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..91f32cb 100644
+index 5b64baa..689d938 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -604,7 +604,7 @@ index 5b64baa..91f32cb 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +920,1148 @@ $(document).ready(function () {
+@@ -758,5 +920,1150 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -790,7 +790,7 @@ index 5b64baa..91f32cb 100644
 +    })
 +
 +
-+    // ############### Wi-Fi manager ###############
++    // ############### WiFi manager ###############
 +
 +    var wifi = {
 +        status: null,        // "wifi status" payload: capability/interfaces/country/channels/bands/occupied
@@ -1083,8 +1083,8 @@ index 5b64baa..91f32cb 100644
 +
 +    function wifiLimitedMsg(entry) {
 +        return entry.usable === 'disabled'
-+            ? "This network's channel is not permitted in " + wifi.list.country + ' — switch Wi-Fi region to connect'
-+            : 'This channel is not allowed without a Wi-Fi region — select a region to connect';
++            ? "This network's channel is not permitted in " + wifi.list.country + ' — switch WiFi region to connect'
++            : 'This channel is not allowed without a WiFi region — select a region to connect';
 +    }
 +
 +    function wifiRowHTML(n, kind) {
@@ -1145,7 +1145,7 @@ index 5b64baa..91f32cb 100644
 +        }
 +        if (!wifi.list) { el.html(''); return; }
 +        if (!wifi.list.radio) {
-+            el.html('<div class="text-muted text-center py-4">Wi-Fi is off</div>');
++            el.html('<div class="text-muted text-center py-4">WiFi is off</div>');
 +            return;
 +        }
 +        var h = '';
@@ -1179,7 +1179,7 @@ index 5b64baa..91f32cb 100644
 +        var apOn = role === 'ap' || apActive;
 +        $('#wifi-net-list').toggleClass('wifi-disabled-area', apOn);
 +        $('#wifiApOnNote').toggle(apOn);
-+        // Radio off suspends ALL Wi-Fi (NM deactivates a live hotspot too; radio on brings
++        // Radio off suspends ALL WiFi (NM deactivates a live hotspot too; radio on brings
 +        // it back via autoconnect) — the whole AP card locks, nothing to manage meanwhile.
 +        // The no-region gate only blocks TURNING THE AP ON: with the AP already running
 +        // (e.g. enabled outside the web UI with no region set) the card stays usable so it
@@ -1223,7 +1223,7 @@ index 5b64baa..91f32cb 100644
 +        wifi.countriesLoaded = true;
 +        if (sel.data('selectpicker')) sel.selectpicker('destroy');
 +        sel.selectpicker({liveSearch: true, liveSearchStyle: 'startsWith', size: 8, width: '100%',
-+                          title: 'Choose a Wi-Fi region…'});
++                          title: 'Choose a WiFi region…'});
 +    }
 +
 +    function wifiSyncCountrySelect() {
@@ -1407,7 +1407,7 @@ index 5b64baa..91f32cb 100644
 +        if (status.capability && !status.capability.nm) {
 +            $('#wifiModal .modal-body').children().hide();
 +            if (!$('#wifi-no-nm').length) {
-+                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">Wi-Fi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
++                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">WiFi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
 +            }
 +            return;
 +        }
@@ -1485,7 +1485,7 @@ index 5b64baa..91f32cb 100644
 +
 +    socket.on('wifi restore result', function (res) {
 +        wifiSetBusy(false);   // terminal for the 'restore' busy state
-+        if (res.ok) wifiToast('Imported ' + res.count + ' Wi-Fi profile(s)');
++        if (res.ok) wifiToast('Imported ' + res.count + ' WiFi profile(s)');
 +        else wifiToast(res.message || 'Import failed', true);
 +    });
 +
@@ -1532,17 +1532,17 @@ index 5b64baa..91f32cb 100644
 +        if (!code || code === wifi.syncedCountry) return;
 +        var connected = wifi.list && wifi.list.connected.length > 0;
 +        var apOn = wifi.list && (wifi.list.role === 'ap' || wifi.list.ap_active);
-+        if (connected && !window.confirm('Changing the Wi-Fi region re-applies the regulatory domain to the adapter; the current connection may briefly drop and reconnect. Continue?')) {
++        if (connected && !window.confirm('Changing the WiFi region re-applies the regulatory domain to the adapter; the current connection may briefly drop and reconnect. Continue?')) {
 +            wifiSyncCountrySelect();
 +            return;
 +        }
-+        if (apOn && !window.confirm('Changing the Wi-Fi region may require restarting the hotspot on a valid channel; access point clients will briefly disconnect. Continue?')) {
++        if (apOn && !window.confirm('Changing the WiFi region may require restarting the hotspot on a valid channel; access point clients will briefly disconnect. Continue?')) {
 +            wifiSyncCountrySelect();
 +            return;
 +        }
 +        // own terminal: a 'wifi list' from an unrelated scan (e.g. the popup-open scan
 +        // finishing) must not unlock the dialog while the region is still being applied
-+        wifiSetBusy(true, 'Applying Wi-Fi region ' + code + '…', 'Wi-Fi region applied', 'country');
++        wifiSetBusy(true, 'Applying WiFi region ' + code + '…', 'WiFi region applied', 'country');
 +        socket.emit('wifi set country', {country: code});
 +    });
 +
@@ -1607,11 +1607,13 @@ index 5b64baa..91f32cb 100644
 +
 +    // connect dialog events
 +    $('#wifi-cm-connect').on('click', wifiDoConnect);
-+    // simple line eye / eye-off icons (prototype), instead of the emoji glyph
-+    var WIFI_EYE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="#495057"><path d="M8 3C3 3 0 8 0 8s3 5 8 5 8-5 8-5-3-5-8-5zm0 8a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/><circle cx="8" cy="8" r="1.5"/></svg>';
-+    var WIFI_EYEOFF = '<svg width="16" height="16" viewBox="0 0 16 16" fill="#495057"><path d="M8 3C3 3 0 8 0 8a13 13 0 0 0 2.3 2.8L1 12l1 1 12-12-1-1-1.6 1.6A8 8 0 0 0 8 3zm5.7 2.2-1.2 1.2A11 11 0 0 1 14.7 8S12 11 8 11c-.5 0-1 0-1.4-.1l-1 1A8 8 0 0 0 8 13c5 0 8-5 8-5a13 13 0 0 0-2.3-2.8z"/></svg>';
++    // Bootstrap Icons eye / eye-slash — the same glyphs the settings-page password fields
++    // (Caster password etc.) use, so the WiFi show/hide button matches them. EYE = revealed,
++    // EYEOFF (slash) = masked.
++    var WIFI_EYE = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>';
++    var WIFI_EYEOFF = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/></svg>';
 +    $('.wifi-eye').html(WIFI_EYEOFF);
-+    // Mask Wi-Fi keys with CSS on a type=text input where supported: the browser's password
++    // Mask WiFi keys with CSS on a type=text input where supported: the browser's password
 +    // manager then never sees a password field, so it doesn't offer to save SSID+key as a
 +    // login (autocomplete=off/new-password does not reliably stop that). The inputs are
 +    // ALREADY type=text in the HTML — a field that has ever been type=password stays on the
@@ -1688,7 +1690,7 @@ index 5b64baa..91f32cb 100644
 +        // stored profile untouched when the submitted values are invalid.
 +        if (enabled) {
 +            if (!(wifi.status && wifi.status.country)) {
-+                wifiToast('Select a Wi-Fi region (country) for the access point', true);
++                wifiToast('Select a WiFi region (country) for the access point', true);
 +                $('#wifi-ap-switch').prop('checked', false);
 +                $('#wifi-ap-body').hide();   // no region — revert the toggle and collapse the form
 +                return;
@@ -1727,7 +1729,7 @@ index 5b64baa..91f32cb 100644
 +        wifiSubmitAp($('#wifi-ap-switch').prop('checked'));
 +    });
 +
-+    // optional Wi-Fi profiles backup/restore (JSON)
++    // optional WiFi profiles backup/restore (JSON)
 +    $('#wifi-backup-button').on('click', function () { socket.emit('wifi backup'); });
 +    $('#wifi-import-button').on('click', function () { $('#wifi-restore-file').click(); });
 +    $('#wifi-restore-file').on('change', function () {
@@ -1745,7 +1747,7 @@ index 5b64baa..91f32cb 100644
 +            }
 +            // lock the dialog until the import finishes (it can rewrite profiles and apply
 +            // the region); cleared by the 'wifi restore result' handler
-+            wifiSetBusy(true, 'Importing Wi-Fi settings…', '', 'restore');
++            wifiSetBusy(true, 'Importing WiFi settings…', '', 'restore');
 +            socket.emit('wifi restore', data);
 +        };
 +        reader.readAsText(file);
