@@ -1,13 +1,14 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..c1f4da9 100644
+index 9690796..f70d7e3 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
-@@ -10,7 +10,49 @@
+@@ -10,7 +10,50 @@
  }
  </style>
  <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.css') }}">
 -
 +<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.css') }}">
++<link rel="stylesheet" href="{{ url_for('static', filename='lib/combobox.css') }}">
 +<style>
 +/* ---- Wi-Fi manager popup ---- */
 +#wifiModal .wifi-ifaces { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 12px; }
@@ -53,7 +54,7 @@ index 9690796..c1f4da9 100644
  {% endblock %}
  
  {% block content %}
-@@ -28,6 +70,7 @@
+@@ -28,6 +71,7 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -61,7 +62,7 @@ index 9690796..c1f4da9 100644
      </div>
    </div>
        <form id="{{ main_settings.pop(0).source_section }}" class="collapse was-validated">
-@@ -35,7 +78,7 @@
+@@ -35,7 +79,7 @@
          <div class="form-group row">
          <label for="position" class="col-sm-3 col-form-label">Base coordinates: </label>
          <div class="col-sm-9">
@@ -70,7 +71,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -72,6 +115,15 @@
+@@ -72,6 +116,15 @@
  
          </div>
      </div>
@@ -86,7 +87,7 @@ index 9690796..c1f4da9 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -113,7 +165,7 @@
+@@ -113,7 +166,7 @@
  
      </div>
            <div class="clearfix">
@@ -95,7 +96,7 @@ index 9690796..c1f4da9 100644
            </div>
        </form>
  
-@@ -123,19 +175,34 @@
+@@ -123,19 +176,34 @@
      <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
      <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
@@ -132,7 +133,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -146,11 +213,18 @@
+@@ -146,11 +214,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -153,7 +154,7 @@ index 9690796..c1f4da9 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -164,24 +238,24 @@
+@@ -164,24 +239,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -171,7 +172,7 @@ index 9690796..c1f4da9 100644
          <label for="rtcm_msg_A" class="col-sm-3 col-form-label">Rtcm messages: </label>
          <div class="col-sm-9">
 -            <input id="rtcm_msg_A" type="text" name="rtcm_msg_A" class="form-control" aria-describedby="rtcm_msg_AHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_A_settings[4].rtcm_msg_A }}" pattern="[0-9,\(\).]+" required>
-+            <input id="rtcm_msg_A" type="text" name="rtcm_msg_A" class="form-control" aria-describedby="rtcm_msg_AHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_A_settings[6].rtcm_msg_A }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_msg_A" type="text" name="rtcm_msg_A" class="form-control" aria-describedby="rtcm_msg_AHelp" placeholder="1005(30),1033(30),1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ ntrip_A_settings[6].rtcm_msg_A }}" pattern="[0-9,\(\).]+" required>
              <small class="form-text text-muted" id="rtcm_msg_AHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
@@ -184,7 +185,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -197,19 +271,34 @@
+@@ -197,19 +272,34 @@
      <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
      <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
@@ -221,7 +222,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -220,11 +309,18 @@
+@@ -220,11 +310,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -242,7 +243,7 @@ index 9690796..c1f4da9 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -238,24 +334,24 @@
+@@ -238,24 +335,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -260,7 +261,7 @@ index 9690796..c1f4da9 100644
          <label for="rtcm_msg_B" class="col-sm-3 col-form-label">Rtcm messages: </label>
          <div class="col-sm-9">
 -            <input id="rtcm_msg_B" type="text" name="rtcm_msg_B" class="form-control" aria-describedby="rtcm_msg_BHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_B_settings[4].rtcm_msg_B }}" pattern="[0-9,\(\).]+" required>
-+            <input id="rtcm_msg_B" type="text" name="rtcm_msg_B" class="form-control" aria-describedby="rtcm_msg_BHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_B_settings[6].rtcm_msg_B }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_msg_B" type="text" name="rtcm_msg_B" class="form-control" aria-describedby="rtcm_msg_BHelp" placeholder="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ ntrip_B_settings[6].rtcm_msg_B }}" pattern="[0-9,\(\).]+" required>
              <small class="form-text text-muted" id="rtcm_msg_BHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
@@ -273,7 +274,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -265,6 +361,294 @@
+@@ -265,6 +362,294 @@
          </div>
      </form>
  
@@ -356,7 +357,7 @@ index 9690796..c1f4da9 100644
 +      <div class="form-group row" id="rtcm_msg_C_group">
 +        <label for="rtcm_msg_C" class="col-sm-3 col-form-label">Rtcm messages: </label>
 +        <div class="col-sm-9">
-+            <input id="rtcm_msg_C" type="text" name="rtcm_msg_C" class="form-control" aria-describedby="rtcm_msg_CHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_C_settings[6].rtcm_msg_C }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_msg_C" type="text" name="rtcm_msg_C" class="form-control" aria-describedby="rtcm_msg_CHelp" placeholder="1005(10),1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ ntrip_C_settings[6].rtcm_msg_C }}" pattern="[0-9,\(\).]+" required>
 +            <small class="form-text text-muted" id="rtcm_msg_CHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
 +        </div>
 +      </div>
@@ -452,7 +453,7 @@ index 9690796..c1f4da9 100644
 +      <div class="form-group row" id="rtcm_msg_D_group">
 +        <label for="rtcm_msg_D" class="col-sm-3 col-form-label">Rtcm messages: </label>
 +        <div class="col-sm-9">
-+            <input id="rtcm_msg_D" type="text" name="rtcm_msg_D" class="form-control" aria-describedby="rtcm_msg_DHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_D_settings[6].rtcm_msg_D }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_msg_D" type="text" name="rtcm_msg_D" class="form-control" aria-describedby="rtcm_msg_DHelp" placeholder="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ ntrip_D_settings[6].rtcm_msg_D }}" pattern="[0-9,\(\).]+" required>
 +            <small class="form-text text-muted" id="rtcm_msg_DHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
 +        </div>
 +      </div>
@@ -548,7 +549,7 @@ index 9690796..c1f4da9 100644
 +      <div class="form-group row" id="rtcm_msg_E_group">
 +        <label for="rtcm_msg_E" class="col-sm-3 col-form-label">Rtcm messages: </label>
 +        <div class="col-sm-9">
-+            <input id="rtcm_msg_E" type="text" name="rtcm_msg_E" class="form-control" aria-describedby="rtcm_msg_EHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ ntrip_E_settings[6].rtcm_msg_E }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_msg_E" type="text" name="rtcm_msg_E" class="form-control" aria-describedby="rtcm_msg_EHelp" placeholder="1005(10),1033(10),1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ ntrip_E_settings[6].rtcm_msg_E }}" pattern="[0-9,\(\).]+" required>
 +            <small class="form-text text-muted" id="rtcm_msg_EHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
 +        </div>
 +      </div>
@@ -568,7 +569,7 @@ index 9690796..c1f4da9 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -291,7 +675,7 @@
+@@ -291,7 +676,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -577,7 +578,16 @@ index 9690796..c1f4da9 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -361,7 +745,7 @@
+@@ -322,7 +707,7 @@
+       <div class="form-group row">
+         <label for="local_ntripc_msg" class="col-sm-3 col-form-label">Local caster rtcm messages: </label>
+         <div class="col-sm-9">
+-            <input id="local_ntripc_msg" type="text" name="local_ntripc_msg" class="form-control" aria-describedby="local_ntripc_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ local_ntripc_settings[4].local_ntripc_msg }}" pattern="[0-9,\(\).]+" required>
++            <input id="local_ntripc_msg" type="text" name="local_ntripc_msg" class="form-control" aria-describedby="local_ntripc_msgHelp" placeholder="1005(10),1006(30),1007(30),1013(30),1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ local_ntripc_settings[4].local_ntripc_msg }}" pattern="[0-9,\(\).]+" required>
+             <small class="form-text text-muted" id="local_ntripc_msgHelp">Local caster Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
+         </div>
+       </div>
+@@ -361,10 +746,10 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -585,8 +595,21 @@ index 9690796..c1f4da9 100644
 +      <div class="form-group row" id="rtcm_svr_msg_group" hidden>
          <label for="rtcm_svr_msg" class="col-sm-3 col-form-label">Rtcm server messages: </label>
          <div class="col-sm-9">
-             <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
-@@ -448,7 +832,7 @@
+-            <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_svr_msg" type="text" name="rtcm_svr_msg" class="form-control" aria-describedby="rtcm_svr_msgHelp" placeholder="1005(10),1006(30),1007(30),1013(30),1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ rtcm_svr_settings[1].rtcm_svr_msg }}" pattern="[0-9,\(\).]+" required>
+             <small class="form-text text-muted" id="rtcm_svr_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
+         </div>
+       </div>
+@@ -413,7 +798,7 @@
+       <div class="form-group row">
+         <label for="rtcm_serial_msg" class="col-sm-3 col-form-label">Serial Rtcm messages: </label>
+         <div class="col-sm-9">
+-            <input id="rtcm_serial_msg" type="text" name="rtcm_serial_msg" class="form-control" aria-describedby="rtcm_serial_receiver_optionsHelp" placeholder="1004,1005(10),1006,1008(10),1012,1019,1020,1033(10),1042,1045,1046,1077,1087,1097,1107,1127,1230" value="{{ rtcm_serial_settings[2].rtcm_serial_msg }}" pattern="[0-9,\(\).]+" required>
++            <input id="rtcm_serial_msg" type="text" name="rtcm_serial_msg" class="form-control" aria-describedby="rtcm_serial_receiver_optionsHelp" placeholder="1005(10),1006(30),1007(30),1013(30),1033(10),1019,1020,1041,1042,1044,1045,1046,1048,1077,1087,1097,1107,1117,1127,1137,1230(30)" value="{{ rtcm_serial_settings[2].rtcm_serial_msg }}" pattern="[0-9,\(\).]+" required>
+             <small class="form-text text-muted" id="rtcm_serial_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
+         </div>
+       </div>
+@@ -448,7 +833,7 @@
        <div class="form-group row">
          <label for="datadir" class="col-sm-3 col-form-label">Data directory: </label>
          <div class="col-sm-9">
@@ -595,7 +618,7 @@ index 9690796..c1f4da9 100644
              <small class="form-text text-muted" id="datadirHelp">Absolute path to the directory where the data will be stored</small>
          </div>
        </div>
-@@ -479,6 +863,46 @@
+@@ -479,6 +864,46 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -642,7 +665,7 @@ index 9690796..c1f4da9 100644
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +913,7 @@
+@@ -489,7 +914,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -651,7 +674,7 @@ index 9690796..c1f4da9 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +935,24 @@
+@@ -511,17 +936,24 @@
              </div>
            </div>
            -->      
@@ -678,7 +701,7 @@ index 9690796..c1f4da9 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -539,7 +970,7 @@
+@@ -539,7 +971,7 @@
      <div class="col-sm-8">
        <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
@@ -687,7 +710,7 @@ index 9690796..c1f4da9 100644
          {% endif %}
        </span>
      </div>
-@@ -600,8 +1031,8 @@
+@@ -600,8 +1032,8 @@
      <div class="col-sm-4">
        <span class="col-sm-3">Network:</span>
      </div>
@@ -698,7 +721,7 @@ index 9690796..c1f4da9 100644
      </div>
    </div>
    
-@@ -621,11 +1052,32 @@
+@@ -621,11 +1053,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -732,7 +755,7 @@ index 9690796..c1f4da9 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1085,7 @@
+@@ -633,6 +1086,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -740,7 +763,7 @@ index 9690796..c1f4da9 100644
        </div>
    </div>
      
-@@ -675,7 +1128,7 @@
+@@ -675,7 +1129,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -749,7 +772,7 @@ index 9690796..c1f4da9 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1247,266 @@
+@@ -794,12 +1248,267 @@
    </div>
  </div>
  
@@ -1015,6 +1038,7 @@ index 9690796..c1f4da9 100644
 +<script type="text/javascript" src="{{ url_for('static', filename='lib/bootstrap-select-1.13.18.min.js') }}" charset="utf-8"></script>
  <script type="text/javascript" src="{{ url_for('static', filename='lib/snarkdown.js') }}" charset="utf-8"></script>
 -<script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=g.version) }}" charset="utf-8"></script>
++<script type="text/javascript" src="{{ url_for('static', filename='lib/combobox.js') }}"></script>
 +<script type="text/javascript" src="{{ url_for('static', filename='settings.js', v=settings_js_v|default(g.version)) }}" charset="utf-8"></script>
  {% endblock %}
 \ No newline at end of file

@@ -25,6 +25,8 @@ EXEC_UPDATE=exec_update.sh
 WIFI_MANAGER=wifi_manager.py
 BOOTSTRAP_SELECT_CSS=bootstrap-select-1.13.18.min.css
 BOOTSTRAP_SELECT_JS=bootstrap-select-1.13.18.min.js
+CONBOBOX_CSS=combobox.css
+CONBOBOX_JS=combobox.js
 SETTINGS_NOW=${RTKBASE_GIT}/settings.conf
 SETTINGS_SAVE=${RTKBASE_GIT}/settings.save
 SETTINGS_DEFAULT=${RTKBASE_GIT}/settings.conf.default
@@ -1337,6 +1339,8 @@ configure_for_unicore(){
    copy_root "${WIFI_MANAGER}" "${RTKBASE_WEB}"
    copy_root "${BOOTSTRAP_SELECT_CSS}" "${WEB_LIB}"
    copy_root "${BOOTSTRAP_SELECT_JS}" "${WEB_LIB}"
+   copy_root "${CONBOBOX_CSS}" "${WEB_LIB}"
+   copy_root "${CONBOBOX_JS}" "${WEB_LIB}"
 
    copy_root_script "${SEPTENTRIO_NAT}" "${RTKBASE_GIT}"
    copy_root_script "${START_ELT0x33}" "${RTKBASE_PATH}"
@@ -1826,7 +1830,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${LOGMANAGER_PATCH} ${GLOBAL_DNS_CONF} ${SERVICE_CONTROLLER_PATCH} \
               ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
               ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE} \
-              ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS}"
+              ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS} \
+              ${CONBOBOX_CSS} ${CONBOBOX_JS}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

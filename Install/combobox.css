@@ -1,0 +1,15 @@
+/*!
+ * combobox.css — доработка фокуса для combobox.js поверх Bootstrap 4.
+ * По умолчанию Bootstrap подсвечивает при фокусе только сам .form-control,
+ * а кнопка-стрелка в .input-group-append остаётся без подсветки. Здесь
+ * подсветка (border + box-shadow) переносится на всю группу целиком.
+ */
+.combobox .input-group:focus-within {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+  border-radius: .25rem;
+}
+.combobox .input-group:focus-within .form-control,
+.combobox .input-group:focus-within .btn {
+  border-color: #80bdff;
+  box-shadow: none;
+}
