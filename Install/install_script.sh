@@ -1597,9 +1597,11 @@ start_rtkbase_services(){
   #echo sync
   sync
   ExitCodeCheck $?
-  #echo systemctl daemon-reload
-  systemctl daemon-reload
-  ExitCodeCheck $?
+  if ! ischroot; then
+     #echo systemctl daemon-reload
+     systemctl daemon-reload
+     ExitCodeCheck $?
+  fi
 
   #echo systemctl enable --now rtkbase_web.service
   systemctl enable --now rtkbase_web.service
@@ -1624,7 +1626,7 @@ start_rtkbase_services(){
      mkdir -p "${datadir}"
      ExitCodeCheck $?
   fi
-  echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${datadir}
+  #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${datadir}
   chown ${RTKBASE_USER}:${RTKBASE_USER} ${datadir}
   ExitCodeCheck $?
   #echo chmod 2775 ${datadir}
