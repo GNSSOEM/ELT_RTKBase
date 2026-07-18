@@ -1,7 +1,7 @@
 diff --git a/run_cast.sh b/run_cast.sh
 old mode 100755
 new mode 100644
-index e8f6f2d..a2d85df
+index e8f6f2d..c1f2c08
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -7,19 +7,165 @@
@@ -81,7 +81,7 @@ index e8f6f2d..a2d85df
 +  fi
 +  device_type=3
 +  if [[ "${receiver}" =~ "Unicore" ]]; then
-+     receive_type=1
++     receive_type=2
 +  elif [[ "${receiver}" =~ "u-blox" ]]; then
 +     receive_type=4
 +  elif [[ "${receiver}" =~ "Bynav" ]]; then
