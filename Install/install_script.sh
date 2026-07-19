@@ -1603,6 +1603,11 @@ start_rtkbase_services(){
      ExitCodeCheck $?
   fi
 
+  #echo systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
+  systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
+  ExitCodeCheck $?
+  delete_from_service_list ${START_SERVICE}
+
   #echo systemctl enable --now rtkbase_web.service
   systemctl enable --now rtkbase_web.service
   ExitCodeCheck $?
@@ -1722,11 +1727,6 @@ start_rtkbase_services(){
   delete_from_service_list gpsd.service
   delete_from_service_list chrony.service
   delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
-
-  #echo systemctl start "${START_SERVICE}"
-  systemctl start "${START_SERVICE}"
-  ExitCodeCheck $?
-  delete_from_service_list ${START_SERVICE}
 
   #echo systemctl start "${CHECK_INTERNET_SERVICE}"
   systemctl start "${CHECK_INTERNET_SERVICE}"
