@@ -772,6 +772,28 @@ def _ipv4_options(ipconf):
     return opts
 
 
+def _validate_psk(password):
+    """A usable WPA key is an 8–63 character passphrase or a 64-hex-digit raw PSK.
+    Reject anything else early, with a clear message instead of the cryptic nmcli
+    "802-11-wireless-security.psk: property is invalid"."""
+    if 8 <= len(password) <= 63:
+        return
+    if len(password) == 64 and re.fullmatch(r"[0-9a-fA-F]{64}", password):
+        return
+    raise WifiError("This network needs a password of 8–63 characters")
+
+
+def _drop_security(options):
+    """Modify-options for switching an existing profile to open. nmcli rejects clearing
+    key-mgmt with an empty value ("key-mgmt: property is missing"), and a leftover
+    key-mgmt/psk makes NM look for a secured BSS ("no suitable network found") — drop
+    the whole security setting instead (harmless when the profile never had one)."""
+    mod = {k: v for k, v in options.items()
+           if not k.startswith("802-11-wireless-security.")}
+    mod["remove"] = "802-11-wireless-security"
+    return mod
+
+
 def connect(ssid, password=None, security=None, hidden=False, remember=True,
             ipconf=None, bssid=None, status_cb=None):
     """Create/update the profile for ssid and activate it.
@@ -803,10 +825,8 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         else:
             security = "wpa2" if password else "open"
 
-    # A secured network needs a usable key. Reject early with a clear message instead of the
-    # cryptic nmcli "802-11-wireless-security.psk: property is invalid".
-    if security in ("wpa1", "wpa2", "wpa3", "mixed23") and not 8 <= len(password or "") <= 64:
-        raise WifiError("This network needs a password of 8–63 characters")
+    if security in ("wpa1", "wpa2", "wpa3", "mixed23"):
+        _validate_psk(password or "")
     if security == "wep" and not (password or ""):
         raise WifiError("This network needs a WEP key")
 
@@ -838,13 +858,9 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     notify("connecting", ssid)
     try:
         if existed:
-            mod_opts = dict(options)
-            if security == "open":
-                # the saved profile may carry an old key-mgmt/psk (the AP was secured
-                # before) — NM would then look for a secured BSS and fail with "no
-                # suitable network found"; drop the security setting (harmless when
-                # the profile never had one)
-                mod_opts["remove"] = "802-11-wireless-security"
+            # connecting to a now-open network: the saved profile may carry an old
+            # key-mgmt/psk (the AP was secured before)
+            mod_opts = _drop_security(options) if security == "open" else options
             nmcli.connection.modify(name, mod_opts)
         else:
             nmcli.connection.add("wifi", options, WIFI_IFACE, name,
@@ -938,13 +954,16 @@ def forget(profile):
 
 
 def change_password(profile, password):
-    _guard_client_profile(profile)
+    details = _guard_client_profile(profile)
+    if details.get("802-11-wireless-security.key-mgmt") == "none":
+        if not (password or ""):
+            raise WifiError("This network needs a WEP key")
+        opts = {"802-11-wireless-security.wep-key0": password}
+    else:
+        _validate_psk(password or "")
+        opts = {"802-11-wireless-security.psk": password}
     try:
-        details = nmcli.connection.show(profile)
-        if details.get("802-11-wireless-security.key-mgmt") == "none":
-            nmcli.connection.modify(profile, {"802-11-wireless-security.wep-key0": password})
-        else:
-            nmcli.connection.modify(profile, {"802-11-wireless-security.psk": password})
+        nmcli.connection.modify(profile, opts)
     except Exception as e:
         raise WifiError(_readable_error(e))
     return list_networks()
@@ -1004,7 +1023,11 @@ def poll_reconnect(seconds, status_cb, interval=1.0):
     while time.time() < deadline:
         cur = wifi_state()
         if cur != last:
-            status_cb("reconnecting" if "connect" in cur["state"] else cur["state"], cur)
+            # NM's transitional states all read "connecting (...)" — report them as one
+            # "reconnecting" stage. Terminal states must pass through verbatim: a
+            # substring test on "connect" would swallow "connected"/"disconnected" too.
+            status_cb("reconnecting" if (cur["state"] or "").startswith("connecting")
+                      else cur["state"], cur)
             last = cur
         if cur["state"] == "connected":
             break
@@ -1039,18 +1062,30 @@ _AP_KEY_MGMT = {
 }
 
 
+_ENUM_DISPLAY_RE = re.compile(r"\d+\s+\((\w[\w-]*)\)")
+
+
+def _nmcli_enum_word(v):
+    """nmcli shows enum properties in display form "N (word)" (e.g. pmf "2 (optional)"),
+    which `nmcli add/modify` rejects — return just the word; anything else unchanged."""
+    m = _ENUM_DISPLAY_RE.fullmatch(v)
+    return m.group(1) if m else v
+
+
 def get_ap_config():
     try:
         details = nmcli.connection.show(AP_PROFILE, show_secrets=True)
     except nmcli.NotExistException:
         return dict(AP_DEFAULTS, enabled=False, configured=False, has_password=False)
     km = details.get("802-11-wireless-security.key-mgmt")
-    # nmcli shows pmf in display form ("2 (optional)") — keep only the word/number
-    pmf = (details.get("802-11-wireless-security.pmf") or "").split("(")[-1].rstrip(")").strip()
+    pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
     if km == "sae":
         security = "wpa3"
     elif km == "wpa-psk":
-        security = "mixed" if pmf in ("2", "optional") else "wpa2"
+        # "1"/"disable": an earlier release wrote pmf=1 for the mixed choice (enum
+        # mix-up) — keep reporting those profiles as mixed so the stored intent
+        # survives an upgrade; re-saving writes the correct pmf=2
+        security = "mixed" if pmf in ("2", "optional", "1", "disable") else "wpa2"
     else:
         security = "open"
     band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
@@ -1149,15 +1184,9 @@ def set_ap(config, status_cb=None):
     else:
         try:
             if AP_PROFILE in profiles:
-                mod_opts = dict(options)
-                if security == "open":
-                    # nmcli rejects clearing key-mgmt with an empty value on an existing
-                    # profile ("key-mgmt: property is missing") — switching a secured AP
-                    # to Open must drop the whole security setting instead
-                    for k in list(mod_opts):
-                        if k.startswith("802-11-wireless-security."):
-                            del mod_opts[k]
-                    mod_opts["remove"] = "802-11-wireless-security"
+                # switching a secured AP to Open: the base options carry empty-string
+                # security keys (meant to clear values), which modify would reject
+                mod_opts = _drop_security(options) if security == "open" else options
                 nmcli.connection.modify(AP_PROFILE, mod_opts)
             else:
                 add_opts = {k: v for k, v in options.items() if v != ""}
@@ -1231,19 +1260,29 @@ _BACKUP_UNSET = {
 }
 
 
+# Only these keys hold enum values needing the "N (word)" display-form unwrap. The
+# unwrap must NOT run on free-text fields: a passphrase "12 (secret)" or SSID
+# "2 (guest)" has the same shape and must survive the round-trip verbatim.
+_BACKUP_ENUM_KEYS = frozenset({
+    "802-11-wireless-security.pmf",
+    "802-11-wireless-security.wep-key-type",
+})
+
+
 def _backup_value(k, v):
     """Clean an nmcli-show value for export; None to drop it. Drops display defaults
     ('value (default)') and per-key unset sentinels — the target uses the same default."""
     if v is None:
         return None
     v = str(v).strip()
+    if k in _BACKUP_ENUM_KEYS:
+        # unwrap before the sentinel check so "0 (unknown)" matches "unknown";
+        # "default" is the display word for enum 0 = property not set
+        v = _nmcli_enum_word(v)
+        if v == "default":
+            return None
     if not v or v.endswith("(default)") or v in _BACKUP_UNSET.get(k, ()):
         return None
-    # enum props come back in nmcli's display form "N (word)" (e.g. pmf "2 (optional)"),
-    # which `nmcli add/modify` rejects — keep only the word
-    m = re.fullmatch(r"\d+\s+\((\w[\w-]*)\)", v)
-    if m:
-        return m.group(1)
     return v
 
 
