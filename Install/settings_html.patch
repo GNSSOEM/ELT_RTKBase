@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..912bf58 100644
+index 9690796..59636d0 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -87,6 +87,24 @@ index 9690796..912bf58 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
+@@ -86,7 +139,7 @@
+ 
+       <label for="antenna_info" class="col-sm-3 col-form-label">Antenna info: </label>
+       <div class="col-sm-9">
+-          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\s]*" required>
++          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\r\n]*" required>
+           <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model,serial number) for IGS calibrated antenna</small>
+ 
+       </div>
+@@ -95,7 +148,7 @@
+ 
+     <div class="form-group row">
+ 
+-            <label for="tcp_host" class="col-sm-3 col-form-label">Tcp host addr: </label>
++            <label for="tcp_host-switch" class="col-sm-3 col-form-label">Tcp host addr: </label>
+             <div class="col-sm-9">
+               <input id="tcp_host-switch" type="text" name="host_addr" class="form-control" aria-describedby="tcp_hostHelp" placeholder="127.0.0.1" value="{{ main_settings[7].tcp_host_addr }}">
+               <small class="form-text text-muted" id="tcp_hostHelp">Empty value enable external access to the Gnss receiver from another computer. Default is 127.0.0.1 (no external access)</small>
 @@ -113,7 +166,7 @@
  
      </div>

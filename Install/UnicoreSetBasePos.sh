@@ -463,26 +463,12 @@ then
 fi
 
 if [[ ${SETANT} == Y ]]; then
-   if [[ "${antenna_info}" == "ELT0123" ]] || [[ "${antenna_info}" == "ELT0323" ]]; then
-      if [[ "${receiver}" =~ Unicore ]]; then
-         ANTINFO="HXCSX627A"
-      else
-         ANTINFO="HXCSX627A       NONE"
-      fi
-   else
-      ANTINFO="${antenna_info}"
-   fi
-   ANTNAME=`echo "${ANTINFO}" | awk -F ',' '{print $1}'`
-   ANTSERIAL=`echo "${ANTINFO}" | awk -F ',' '{print $2}'`
-   ANTSETUP=`echo "${ANTINFO}" | awk -F ',' '{print $3}'`
-   if [[ "${ANTSETUP}" == "" ]]; then
-      ANTSETUP=0
-   fi
-   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP} ANTINFO=${ANTINFO}
+   ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
+   ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
+   ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
+   #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
    if [[ "${receiver}" =~ Unicore ]]; then
-      if [[ "${ANTSERIAL}" == "" ]]; then
-         ANTSERIAL=0
-      fi
+      ANTNAME=`echo "${ANTNAME}" | awk -F ' ' '{print $1}'`
       #ANTINFO="\"${ANTNAME}\" \"${ANTSERIAL}\" ${ANTSETUP}"
       ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}

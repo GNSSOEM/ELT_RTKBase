@@ -1,7 +1,7 @@
 diff --git a/run_cast.sh b/run_cast.sh
 old mode 100755
 new mode 100644
-index e8f6f2d..7f3fa3c
+index e8f6f2d..5698368
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -7,19 +7,168 @@
@@ -182,7 +182,7 @@ index e8f6f2d..7f3fa3c
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,72 +177,117 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,72 +177,127 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -198,11 +198,11 @@ index e8f6f2d..7f3fa3c
 +out_tcp="${out_tcp_msg} -out tcpsvr://${tcp_host_addr}:${tcp_port}${out_tcp_format}"
  
 -out_tcp="tcpsvr://${tcp_host_addr}:${tcp_port}"
--
--out_file="file://${datadir}/${file_name}.${receiver_format}::T::S=${file_rotate_time} -f ${file_overlap_time}"
 +out_file_out="file://${datadir}/${file_name}.${receiver_format}::T::S=${file_rotate_time}"
 +out_file="-out ${out_file_out} -f ${file_overlap_time}"
  
+-out_file="file://${datadir}/${file_name}.${receiver_format}::T::S=${file_rotate_time} -f ${file_overlap_time}"
+-
 -out_rtcm_svr="-msg ${rtcm_svr_msg} -out tcpsvr://:${rtcm_svr_port}#rtcm3 -p ${position}"
 +[[ "${receiver_format}" != "rtcm3" ]] && rtcm_out_format="#rtcm3"
 +[[ "${receiver_format}" == "ubx" ]] && rtcm_out_ub="-ub"
@@ -232,9 +232,19 @@ index e8f6f2d..7f3fa3c
 -mkdir -p ${logdir}
 +[[ -n "${logdir}" ]] && mkdir -p ${logdir}
 +
-+if [[ "${antenna_info}" == "ELT0123" ]] || [[ "${antenna_info}" == "ELT0323" ]]; then
-+   antenna_info="HXCSX627A"
++ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
++ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
++ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
++if [[ "${ANTNAME}" == "ELT0123" ]] || [[ "${ANTNAME}" == "ELT0323" ]]; then
++   ANTNAME="HXCSX627A       NONE"
 +fi
++if [[ "${ANTSERIAL}" == "" ]]; then
++   ANTSERIAL=0000
++fi
++if [[ "${ANTSETUP}" == "" ]]; then
++   ANTSETUP=0
++fi
++antenna_info="${ANTNAME},${ANTSERIAL},${ANTSETUP}"
  
    case "$2" in
      out_tcp)
@@ -320,7 +330,7 @@ index e8f6f2d..7f3fa3c
      ;;
  
    out_file)
-@@ -103,8 +297,12 @@ mkdir -p ${logdir}
+@@ -103,8 +307,12 @@ mkdir -p ${logdir}
      if [ ${ret} -eq 0 ]
      then
        mkdir -p ${datadir}

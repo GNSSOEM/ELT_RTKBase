@@ -1,8 +1,8 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..ddb1c24 100755
+index 91a8020..1585c3c 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
-@@ -5,12 +5,23 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+@@ -5,18 +5,39 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
  source <( grep '=' "${SCRIPT_DIR}"/../settings.conf )
  RAW_ARCHIVE=$1
  DATA_DIR=$2
@@ -29,52 +29,77 @@ index 91a8020..ddb1c24 100755
  REC_VERSION="${receiver_firmware}"
  REC_OPTION=''
  [[ -n $ntrip_a_receiver_options ]] && REC_OPTION="${ntrip_a_receiver_options}"
-@@ -29,7 +40,7 @@ extract_raw_file() {
+-ANT_TYPE="${antenna_info}"
+ RTKBASE_VERSION='RTKBase v'"${version}"
+ 
++ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
++ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
++if [[ "${ANTNAME}" == "ELT0123" ]] || [[ "${ANTNAME}" == "ELT0323" ]]; then
++   ANTNAME="HXCSX627A       NONE"
++fi
++if [[ "${ANTSERIAL}" == "" ]]; then
++   ANTSERIAL=0000
++fi
++ANT_INFO="${ANTSERIAL}/${ANTNAME}"
++#echo ANT_INFO=\"${ANT_INFO}\"
++
+ extract_raw_file() {
+   raw_file=$(unzip -l "${RAW_ARCHIVE}" "*.${RAW_TYPE}" | awk '/-----/ {p = ++p % 2; next} p {print $NF}')
+   test $(echo "${raw_file}" | wc -l) -gt 1 && echo 'Error: There is more than 1 file in this archive' 1>&2 && exit 1
+@@ -29,8 +50,8 @@ extract_raw_file() {
  convert_to_rinex_ign() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 2.11 -r "${RAW_TYPE}"       \
 -        -hc "${RTKBASE_VERSION}" -hm "${MOUNT_NAME}"    \
+-        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}" \
-         -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y R -y E -y J -y S -y C -y I             \
-@@ -40,7 +51,7 @@ convert_to_rinex_ign() {
+         -od -os -oi -ot -ti 30 -tt 0.005                   \
+@@ -40,7 +61,7 @@ convert_to_rinex_ign() {
  
  convert_to_rinex_ign_bis() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
 -  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MOUNT_NAME}"' -hp '"${ANT_POSITION}"' -ha 0000/'"${ANT_TYPE}"' -hr 0000/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
-+  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MARKER_NAME}"' -hn '"${MARKER_NUMBER}"' -ht '"${MARKER_TYPE}"' -hp '"${ANT_POSITION}"' -ha 0000/'"${ANT_TYPE}"' -hr 0000/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
++  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MARKER_NAME}"' -hn '"${MARKER_NUMBER}"' -ht '"${MARKER_TYPE}"' -hp '"${ANT_POSITION}"' -ha '"${ANT_INFO}"' -hr 0000/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
    "${CONVBIN_PATH}" "${args}"
      return $?
  }
-@@ -48,7 +59,7 @@ convert_to_rinex_ign_bis() {
+@@ -48,8 +69,8 @@ convert_to_rinex_ign_bis() {
  convert_to_rinex_nrcan() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
 -        -hc "${RTKBASE_VERSION}" -hm "${MOUNT_NAME}"   \
+-        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-         -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y J -y S -y C -y I                  \
-@@ -61,7 +72,7 @@ convert_to_rinex_nrcan() {
+         -od -os -oi -ot -ti 30 -tt 0                   \
+@@ -61,8 +82,8 @@ convert_to_rinex_nrcan() {
  convert_to_rinex_30s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
 -        -hc "${RTKBASE_VERSION}" -hm "${MOUNT_NAME}"   \
+-        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}"  -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-         -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 30 -tt 0                   \
-@@ -73,7 +84,7 @@ convert_to_rinex_30s_full() {
+         -ro "${REC_OPTION}" -o "${RINEX_FILE}"
+@@ -73,8 +94,8 @@ convert_to_rinex_30s_full() {
  convert_to_rinex_1s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
 -        -hc "${RTKBASE_VERSION}" -hm "${MOUNT_NAME}"   \
+-        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-         -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
          -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 1 -tt 0                    \
-@@ -88,15 +99,76 @@ filedate=$(echo ${1:0:10})
+         -ro "${REC_OPTION}" -o "${RINEX_FILE}"
+@@ -88,15 +109,76 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -156,7 +181,7 @@ index 91a8020..ddb1c24 100755
  if [[ $file_extension == 'zip' ]]
    then
      extract_raw_file
-@@ -105,6 +177,10 @@ if [[ $file_extension == 'zip' ]]
+@@ -105,6 +187,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?
