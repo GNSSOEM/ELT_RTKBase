@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..689d938 100644
+index 5b64baa..2ad1d08 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -556,16 +556,17 @@ index 5b64baa..689d938 100644
      //source: https://stackoverflow.com/a/34270811
      /**
       * Translates seconds into human readable format of seconds, minutes, hours, days, and years
-@@ -726,6 +869,22 @@ $(document).ready(function () {
+@@ -726,6 +869,23 @@ $(document).ready(function () {
            };
        };
  
 +    // ########################### HANDLE TAILSCALE ###########################
 +
-+    document.getElementById('tailscale-button').onclick = function (){
-+        document.body.style.cursor = 'wait';
-+        $('#tailscale-error').text('');
++    document.getElementById('tailscale-button').onclick = function (e){
 +        socket.emit("get tailscale href");
++        document.body.style.cursor = 'wait';
++        e.preventDefault();
++        $('#tailscale-error').text('');
 +    }
 +    socket.on("tailscale_href", function(msg) {
 +        window.open(msg, '_blank');
@@ -579,7 +580,7 @@ index 5b64baa..689d938 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +896,19 @@ $(document).ready(function () {
+@@ -737,16 +897,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -604,7 +605,7 @@ index 5b64baa..689d938 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +920,1150 @@ $(document).ready(function () {
+@@ -758,5 +921,1150 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  

@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..636a44d 100644
+index 9690796..912bf58 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -736,7 +736,7 @@ index 9690796..636a44d 100644
 +      <span class="col-sm-3">VPN:</span>
 +    </div>
 +    <div class="col-sm-8">
-+        <a id="tailscale-button" class="btn btn-secondary" role="button">Tailscale admin console</a>
++        <a href="https://login.tailscale.com" target="_blank"><button id="tailscale-button" class="btn btn-secondary" type="button">Tailscale admin console</button></a>
 +        <span id="tailscale-error" class="small"></span>
 +    </div>
 +  </div>
