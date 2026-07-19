@@ -1021,9 +1021,10 @@ def poll_reconnect(seconds, status_cb, interval=1.0):
 
 _AP_KEY_MGMT = {
     # WPA2+WPA3 mixed: NM has no dual key-mgmt; wpa-psk + pmf=optional is the
-    # compatible choice (WPA3 clients associate via WPA2). Verify on VM/Pi (план §4).
+    # compatible choice (WPA3 clients associate via WPA2). NM pmf enum:
+    # 0=default 1=disable 2=optional 3=required.
     "mixed": {"802-11-wireless-security.key-mgmt": "wpa-psk",
-              "802-11-wireless-security.pmf": "1"},
+              "802-11-wireless-security.pmf": "2"},
     "wpa3": {"802-11-wireless-security.key-mgmt": "sae",
              "802-11-wireless-security.pmf": "3"},
     "wpa2": {"802-11-wireless-security.key-mgmt": "wpa-psk"},
@@ -1037,11 +1038,12 @@ def get_ap_config():
     except nmcli.NotExistException:
         return dict(AP_DEFAULTS, enabled=False, configured=False, has_password=False)
     km = details.get("802-11-wireless-security.key-mgmt")
-    pmf = details.get("802-11-wireless-security.pmf") or ""
+    # nmcli shows pmf in display form ("2 (optional)") — keep only the word/number
+    pmf = (details.get("802-11-wireless-security.pmf") or "").split("(")[-1].rstrip(")").strip()
     if km == "sae":
         security = "wpa3"
     elif km == "wpa-psk":
-        security = "mixed" if pmf in ("1", "optional") else "wpa2"
+        security = "mixed" if pmf in ("2", "optional") else "wpa2"
     else:
         security = "open"
     band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
@@ -1140,7 +1142,16 @@ def set_ap(config, status_cb=None):
     else:
         try:
             if AP_PROFILE in profiles:
-                nmcli.connection.modify(AP_PROFILE, options)
+                mod_opts = dict(options)
+                if security == "open":
+                    # nmcli rejects clearing key-mgmt with an empty value on an existing
+                    # profile ("key-mgmt: property is missing") — switching a secured AP
+                    # to Open must drop the whole security setting instead
+                    for k in list(mod_opts):
+                        if k.startswith("802-11-wireless-security."):
+                            del mod_opts[k]
+                    mod_opts["remove"] = "802-11-wireless-security"
+                nmcli.connection.modify(AP_PROFILE, mod_opts)
             else:
                 add_opts = {k: v for k, v in options.items() if v != ""}
                 nmcli.connection.add("wifi", add_opts, WIFI_IFACE, AP_PROFILE,
@@ -1221,6 +1232,11 @@ def _backup_value(k, v):
     v = str(v).strip()
     if not v or v.endswith("(default)") or v in _BACKUP_UNSET.get(k, ()):
         return None
+    # enum props come back in nmcli's display form "N (word)" (e.g. pmf "2 (optional)"),
+    # which `nmcli add/modify` rejects — keep only the word
+    m = re.fullmatch(r"\d+\s+\((\w[\w-]*)\)", v)
+    if m:
+        return m.group(1)
     return v
 
 
