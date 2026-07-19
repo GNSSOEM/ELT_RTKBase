@@ -838,7 +838,14 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     notify("connecting", ssid)
     try:
         if existed:
-            nmcli.connection.modify(name, options)
+            mod_opts = dict(options)
+            if security == "open":
+                # the saved profile may carry an old key-mgmt/psk (the AP was secured
+                # before) — NM would then look for a secured BSS and fail with "no
+                # suitable network found"; drop the security setting (harmless when
+                # the profile never had one)
+                mod_opts["remove"] = "802-11-wireless-security"
+            nmcli.connection.modify(name, mod_opts)
         else:
             nmcli.connection.add("wifi", options, WIFI_IFACE, name,
                                  autoconnect=remember)
