@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..2ad1d08 100644
+index 5b64baa..4b05387 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -79,7 +79,7 @@ $(document).ready(function () {
@@ -605,7 +605,7 @@ index 5b64baa..2ad1d08 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +921,1150 @@ $(document).ready(function () {
+@@ -758,5 +921,1153 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1407,6 +1407,9 @@ index 5b64baa..2ad1d08 100644
 +        wifi.status = status;
 +        if (status.capability && !status.capability.nm) {
 +            $('#wifiModal .modal-body').children().hide();
++            // Export/Import live in the footer (outside .modal-body) — hide them too:
++            // there is nothing to back up or restore without NetworkManager. Close stays.
++            $('#wifi-backup-button, #wifi-import-button').hide();
 +            if (!$('#wifi-no-nm').length) {
 +                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">WiFi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
 +            }
