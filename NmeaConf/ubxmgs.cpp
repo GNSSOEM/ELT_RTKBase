@@ -30,7 +30,7 @@ TUbxCfg UbxCfgTable[] = {
         // undocumented
         // CFG-4
         {"CFG-4", 0x1004ffff, "", 0, "",
-         "get all CFG-50"},
+         "get all CFG-4"},
         // F9T
         {"CFG-4-1", 0x10040001, "L", 1, "",
          "Unknown"},
@@ -105,7 +105,7 @@ TUbxCfg UbxCfgTable[] = {
          "Use GAL Nav Data"},
 
         // CFG-GEOFENCE-
-        {"CFG-GEOFENCE", 0x2024FFFF, "", 0, "",
+        {"CFG-GEOFENCE", 0x1024FFFF, "", 0, "",
          "get all CFG-GEOFENCE"},
         {"CFG-GEOFENCE-CONFLVL", 0x20240011, "E1", 1, "",
          "Required confidence level for state evaluation"},
@@ -198,7 +198,7 @@ TUbxCfg UbxCfgTable[] = {
          "Mode for internal LNA"},
 
         // CFG-I2C
-        {"CFG-I2C", 0x2051ffff, "", 0, "",
+        {"CFG-I2C", 0x1051ffff, "", 0, "",
          "get all CFG-I2C"},
         {"CFG-I2C-ADDRESS", 0x20510001, "U1", 1, "",
          "I2C slave address of the receiver"},
@@ -263,7 +263,7 @@ TUbxCfg UbxCfgTable[] = {
          "Information message enable flags for UBX protocol on USB"},
 
         // CFG-ITFM-
-        {"CFG-ITFM", 0x2041ffff, "", 0, "",
+        {"CFG-ITFM", 0x1041ffff, "", 0, "",
          "get all CFG-ITFM"},
         {"CFG-ITFM-ANTSETTING", 0x20410010, "E1", 1, "",
          "Antenna setting"},
@@ -295,7 +295,7 @@ TUbxCfg UbxCfgTable[] = {
          "Time threshold"},
 
         // CFG-MOT-
-        {"CFG-MOT", 0x3025ffff, "", 0, "",
+        {"CFG-MOT", 0x1025ffff, "", 0, "",
          "get all CFG-MOT"},
         {"CFG-MOT-GNSSDIST_THRS", 0x3025003b, "U2", 1, "",
          "Distance above which GNSS-based stationary motion is exit"},
@@ -304,7 +304,7 @@ TUbxCfg UbxCfgTable[] = {
          "as stationary"},
 
         // CFG-MSGOUT-
-        {"CFG-MSGOUT", 0x2091ffff, "", 0, "",
+        {"CFG-MSGOUT", 0x1091ffff, "", 0, "",
          "get all CFG-MSGOUT"},
 
         // CFG-MSGOUT-NMEA
@@ -1293,7 +1293,7 @@ TUbxCfg UbxCfgTable[] = {
          "Enable/disable HOST corrections"},
 
         // CFG-NAVHPG-
-        {"CFG-NAVHPG", 0x2014ffff, "", 0, "",
+        {"CFG-NAVHPG", 0x1014ffff, "", 0, "",
          "get all CFG-NAVHPG"},
         {"CFG-NAVHPG-ACKAIDING", 0x10140025, "L", 1, "",
          "ACK Assist Messages"},
@@ -1378,7 +1378,7 @@ TUbxCfg UbxCfgTable[] = {
          "Sat mask for QZSS"},
 
         // CFG-NAVSPG-
-        {"CFG-NAVSPG", 0x2011ffff, "", 0, "",
+        {"CFG-NAVSPG", 0x1011ffff, "", 0, "",
          "get all CFG-NAVSPG"},
         {"CFG-NAVSPG-ACKAIDING", 0x10110025, "L", 1, "",
          "Acknowledge assistance input messages"},
@@ -1451,7 +1451,7 @@ TUbxCfg UbxCfgTable[] = {
          "GPS week rollover number"},
 
         // CFG-NMEA-
-        {"CFG-NMEA", 0x2093ffff, "", 0, "",
+        {"CFG-NMEA", 0x1093ffff, "", 0, "",
          "get all CFG-NMEA"},
         {"CFG-NMEA-BDSTALKERID", 0x30930033, "U2", 1, "",
          "BeiDou Talker ID"},
@@ -1524,7 +1524,7 @@ TUbxCfg UbxCfgTable[] = {
          "Velocity low-pass filter level"},
 
         // CFG-PM-
-        {"CFG-PM", 0x20d0ffff, "", 0, "",
+        {"CFG-PM", 0x10d0ffff, "", 0, "",
          "get all CFG-PM, receiver power management"},
         {"CFG-PM-ACQPERIOD", 0x40d00003, "U4", 1, "s",
          "Acquisition period if receiver fails to achieve a position fix"},
@@ -1560,7 +1560,7 @@ TUbxCfg UbxCfgTable[] = {
          "wait for time fix"},
 
         // CFG-QZSS-
-        {"CFG-QZSS", 0x3037ffff, "", 0, "s",
+        {"CFG-QZSS", 0x1037ffff, "", 0, "s",
          "get all CFG-QZSS"},
         {"CFG-QZSS-SBAS_MAX_BASELINE", 0x30370008, "U2", 1, "km",
          "Max baseline to closest GMS"},
@@ -1572,7 +1572,7 @@ TUbxCfg UbxCfgTable[] = {
          "Use QZSS SLAS data when it is in test mode"},
 
         // CFG-RATE-
-        {"CFG-RATE", 0x3021ffff, "", 0, "s",
+        {"CFG-RATE", 0x1021ffff, "", 0, "s",
          "get all CFG-RATE"},
         {"CFG-RATE-MEAS", 0x30210001, "U2", 0.001, "s",
          "Nominal time between GNSS measurements"},
@@ -1796,6 +1796,12 @@ TUbxCfg UbxCfgTable[] = {
         {"CFG-SIGNAL-SBAS_L1CA_ENA", 0x10310005, "L", 1, "",
          "SBAS L1C/A enable"},
 
+        // CFG-SPARTN-
+        {"CFG-SPARTN", 0x10a7ffff, "", 0, "",
+         "get all CFG-SPARTN"},
+        {"CFG-SPARTN-USE_SOURCE", 0x20a70001, "U1", 1, "",
+         "Selector for source SPARTN stream"},
+
         // CFG-SPI-
         {"CFG-SPI", 0x1064ffff, "", 0, "",
          "get all CFG-SPI"},
@@ -1820,6 +1826,8 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if RTCM2X should be an input protocol on SPI"},
         {"CFG-SPIINPROT-RTCM3X", 0x10790004, "L", 1, "",
          "Flag to indicate if RTCM3X should be an input protocol on SPI"},
+        {"CFG-SPIINPROT-SPARTN", 0x10790005, "L", 1, "",
+         "Flag to indicate if SPARTN should be an input protocol on SPI"},
         {"CFG-SPIINPROT-UBX", 0x10790001, "L", 1, "",
          "Flag to indicate if UBX should be an input protocol on SPI"},
 
@@ -1834,7 +1842,7 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if UBX should be an output protocol on SPI"},
 
         // CFG-TMODE-
-        {"CFG-TMODE", 0x2003ffff, "", 0, "",
+        {"CFG-TMODE", 0x1003ffff, "", 0, "",
          "get all CFG-TMODE"},
         {"CFG-TMODE-ECEF_X", 0x40030003, "I4", 1, "cm",
          "ECEF X coordinate of the ARP position."},
@@ -1874,7 +1882,7 @@ TUbxCfg UbxCfgTable[] = {
 
         // CFG-TP-
         // group 5
-        {"CFG-TP", 0x3005ffff, "", 0, "",
+        {"CFG-TP", 0x1005ffff, "", 0, "",
          "get all CFG-TP"},
         {"CFG-TP-ALIGN_TO_TOW_TP1", 0x1005000a, "L", 1, "",
          "Align time pulse to top of second (TP1)"},
@@ -1967,7 +1975,7 @@ TUbxCfg UbxCfgTable[] = {
 
         // CFG-UART1-
         // group 52
-        {"CFG-UART1", 0x4052ffff, "", 0, "",
+        {"CFG-UART1", 0x1052ffff, "", 0, "",
          "get all CFG-UART1"},
         {"CFG-UART1-BAUDRATE", 0x40520001, "U4", 1, "",
          "The baud rate that should be configured on the UART1"},
@@ -1989,6 +1997,8 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if RTCM2X should be an input protocol on UART1"},
         {"CFG-UART1INPROT-RTCM3X", 0x10730004, "L", 1, "",
          "Flag to indicate if RTCM3X should be an input protocol on UART1"},
+        {"CFG-UART1INPROT-SPARTN", 0x10730005, "L", 1, "",
+         "Flag to indicate if SPARTN should be an input protocol on UART1"},
         {"CFG-UART1INPROT-UBX", 0x10730001, "L", 1, "",
          "Flag to indicate if UBX should be an input protocol on UART1"},
 
@@ -2003,7 +2013,7 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if UBX should be an output protocol on UART1"},
 
         // CFG-UART2-
-        {"CFG-UART2", 0x4053FFFF, "", 0, "",
+        {"CFG-UART2", 0x1053FFFF, "", 0, "",
          "get all CFG-UART2"},
         {"CFG-UART2-BAUDRATE", 0x40530001, "U4", 1, "",
          "The baud rate that should be configured on the UART2"},
@@ -2027,6 +2037,8 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if RTCM2X should be an input protocol on UART2"},
         {"CFG-UART2INPROT-RTCM3X", 0x10750004, "L", 1, "",
          "Flag to indicate if RTCM3X should be an input protocol on UART2"},
+        {"CFG-UART2INPROT-SPARTN", 0x10750005, "L", 1, "",
+         "Flag to indicate if SPARTN should be an input protocol on UART2"},
         {"CFG-UART2INPROT-UBX", 0x10750001, "L", 1, "",
          "Flag to indicate if UBX should be an input protocol on UART2"},
 
@@ -2087,6 +2099,8 @@ TUbxCfg UbxCfgTable[] = {
          "Flag to indicate if RTCM2X should be an input protocol on USB"},
         {"CFG-USBINPROT-RTCM3X", 0x10770004, "L", 1, "",
          "Flag to indicate if RTCM3X should be an input protocol on USB"},
+        {"CFG-USBINPROT-SPARTN", 0x10770005, "L", 1, "",
+         "Flag to indicate if SPARTN should be an input protocol on USB"},
         {"CFG-USBINPROT-UBX", 0x10770001, "L", 1, "",
          "Flag to indicate if UBX should be an input protocol on USB"},
 
