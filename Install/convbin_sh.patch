@@ -1,5 +1,5 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..1049e62 100755
+index 91a8020..1ba9470 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
 @@ -5,18 +5,40 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -11,7 +11,7 @@ index 91a8020..1049e62 100755
 +if [[ -z "${MARKER_NAME}" ]]; then
 +   MARKER_NAME="${mnt_name_a}"
 +fi
-+MARKER_NUMBER="${marker_number}"
++MARKER_NUMBER=`echo "${marker_number}" | awk -F ',' '{print $1}'`
  RAW_TYPE=$receiver_format
  RINEX_TYPE=$3
 +FILENAME_MODE=$rinex_filename
@@ -108,7 +108,7 @@ index 91a8020..1049e62 100755
          -od -os -oi -ot -ti 1 -tt 0                    \
          -ro "${REC_OPTION}" -o "${RINEX_FILE}"
      return $?
-@@ -88,15 +110,76 @@ filedate=$(echo ${1:0:10})
+@@ -88,15 +110,84 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -181,7 +181,15 @@ index 91a8020..1049e62 100755
 +   else
 +      datafreq="01S"
 +   fi
-+   RINEX_FILE=$(echo "${marker4}""${markernum}"0"$(iso3)"_R_"${year4}""${day}""${hhmm}"_01D_"${datafreq}"_MO.rnx.obs)
++   MONUMENT_INDEX=`echo "${marker_number}" | awk -F ',' '{print $2}'`
++   RECEIVER_INDEX=`echo "${marker_number}" | awk -F ',' '{print $3}'`
++   if [[ -z "${MONUMENT_INDEX}" ]]; then
++      MONUMENT_INDEX=0
++   fi
++   if [[ -z "${RECEIVER_INDEX}" ]]; then
++      RECEIVER_INDEX=0
++   fi
++   RINEX_FILE=$(echo "${marker4}""${MONUMENT_INDEX}""${RECEIVER_INDEX}""$(iso3)"_R_"${year4}""${day}""${hhmm}"_01D_"${datafreq}"_MO.rnx.obs)
  fi
  
  #Let's launch the CONVBIN process
@@ -190,7 +198,7 @@ index 91a8020..1049e62 100755
  if [[ $file_extension == 'zip' ]]
    then
      extract_raw_file
-@@ -105,6 +188,10 @@ if [[ $file_extension == 'zip' ]]
+@@ -105,6 +196,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?

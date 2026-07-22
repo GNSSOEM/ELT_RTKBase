@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..cb5c565 100644
+index 9690796..b817b6c 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -87,15 +87,17 @@ index 9690796..cb5c565 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -86,7 +139,7 @@
+@@ -86,8 +139,8 @@
  
        <label for="antenna_info" class="col-sm-3 col-form-label">Antenna info: </label>
        <div class="col-sm-9">
 -          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\s]*" required>
+-          <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model,serial number) for IGS calibrated antenna</small>
 +          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\r\n]*" required>
-           <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model,serial number) for IGS calibrated antenna</small>
++          <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model dome,serial number,setup id) for IGS calibrated antenna</small>
  
        </div>
+ 
 @@ -95,7 +148,7 @@
  
      <div class="form-group row">
@@ -649,10 +651,10 @@ index 9690796..cb5c565 100644
 +        </div>
 +      </div>
 +      <div class="form-group row">
-+        <label for="marker_number" class="col-sm-3 col-form-label">Marker number: </label>
++        <label for="marker_number" class="col-sm-3 col-form-label">Marker information: </label>
 +        <div class="col-sm-9">
-+            <input id="marker_number" type="text" name="marker_number" class="form-control" aria-describedby="marker_numberHelp" value="{{ file_settings[6].marker_number }}" pattern="[a-zA-Z\d_\-]+">
-+            <small class="form-text text-muted" id="marker_numberHelp">Marker number for RINEX</small>
++            <input id="marker_number" type="text" name="marker_number" class="form-control" aria-describedby="marker_numberHelp" value="{{ file_settings[6].marker_number }}" pattern="[a-zA-Z\d_\-,]+">
++            <small class="form-text text-muted" id="marker_numberHelp">Marker information for RINEX (Marker number,Monument number,Receiver number)</small>
 +        </div>
 +      </div>
 +      <div class="form-group row">
