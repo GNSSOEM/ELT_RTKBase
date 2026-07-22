@@ -767,6 +767,8 @@ stop_rtkbase_services(){
      echo '################################'
      echo 'STOP RTKBASE SERVICES'
      echo '################################'
+     #echo systemctl daemon-reload
+     systemctl daemon-reload
      serviceList="str2str_ntrip_A.service \
                   str2str_ntrip_B.service \
                   str2str_ntrip_C.service \
@@ -1491,6 +1493,15 @@ configure_settings(){
          ExitCodeCheck $?
       fi
 
+      #echo if ! grep -q "^receiver_serial_number=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^receiver_serial_number=" "${SETTINGS_NOW}"; then
+         echo insert receiver_serial_number into ${SETTINGS_NOW}
+         #echo ${sed} "/^receiver_carrier=/a #gnss receiver inactivity timeout in seconds\nreceiver_inactivity_timeout=\'60\'" "${SETTINGS_NOW}"
+         ${sed} "/^receiver_carrier=/a #gnss receiver serial number\nreceiver_serial_number=\'\'" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
+         NEED_DETECT=Y
+      fi
+
       #echo if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
       if ! grep -q "^marker_name=" "${SETTINGS_NOW}"; then
          echo insert marker_name \& marker number into ${SETTINGS_NOW}
@@ -1541,7 +1552,7 @@ configure_gnss(){
       echo 'No any ports for GNSS receiver. We can'\''t detect and configure.'
       ExitCodeCheck 1
    else
-      if [[ "${UPDATE}" != "Y" ]] || ! have_full; then
+      if [[ "${UPDATE}" != "Y" ]] || ! have_full || [[ "${NEED_DETECT}" == "Y" ]]; then
          for i in `seq 1 3`; do
             #echo ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e -s
             ${RTKBASE_TOOLS}/${UNICORE_CONFIGURE} -u ${RTKBASE_USER} -e -s 2>&1

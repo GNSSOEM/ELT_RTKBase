@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..c2c4a5e
+index e36bbc4..0213395
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,8 @@ from RTKLIB import RTKLIB
@@ -369,7 +369,7 @@ index e36bbc4..c2c4a5e
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -645,16 +824,18 @@ def deleteLog(json_msg):
+@@ -645,18 +824,21 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -381,7 +381,7 @@ index e36bbc4..c2c4a5e
              device_info = next(x for x in answer.stdout.splitlines() if x.startswith('/dev/')).split(' - ')
 -            port, gnss_type, speed, firmware, model = [x.strip() for x in device_info]
 -            result = {"result" : "success",
-+            port, gnss_type, speed, recv_format, firmware, model = [x.strip() for x in device_info]
++            port, gnss_type, speed, recv_format, firmware, model, serial_number = [x.strip() for x in device_info]
 +            status = "success" if port != "/dev/" else "failed"
 +            result = {"result" : status,
                        "port" : port,
@@ -389,9 +389,13 @@ index e36bbc4..c2c4a5e
                        "port_speed" : speed,
 +                      "recv_format" : recv_format,
                        "firmware" : firmware,
-                       "model" : model}
+-                      "model" : model}
++                      "model" : model,
++                      "serial_number" : serial_number}
              result.update(json_msg)
-@@ -672,10 +853,19 @@ def detect_receiver(json_msg):
+         except Exception:
+             result = {"result" : "failed"}
+@@ -672,10 +854,20 @@ def detect_receiver(json_msg):
  def apply_receiver_settings(json_msg):
      print("Applying gnss receiver new settings")
      print(json_msg)
@@ -404,6 +408,7 @@ index e36bbc4..c2c4a5e
      rtkbaseconfig.update_setting("main", "receiver", json_msg.get("gnss_type") + '_' + json_msg.get("model"), write_file=False)
 +    rtkbaseconfig.update_setting("main", "receiver_format", json_msg.get("recv_format"), write_file=False)
      rtkbaseconfig.update_setting("main", "receiver_firmware", json_msg.get("firmware"), write_file=True)
++    rtkbaseconfig.update_setting("main", "receiver_serial_number", json_msg.get("serial_number"), write_file=True)
 +    receiver_conf = os.path.join(rtkbase_path, "receiver.conf")
 +    with open(receiver_conf, "w") as f:
 +        f.write("recv_port=" + port +"\n")
@@ -413,7 +418,7 @@ index e36bbc4..c2c4a5e
  
      socketio.emit("gnss_settings_saved", json.dumps(json_msg), namespace="/test")
  
-@@ -693,8 +883,8 @@ def configure_receiver(brand="", model=""):
+@@ -693,8 +885,8 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -424,7 +429,7 @@ index e36bbc4..c2c4a5e
      #print("DEBUG - returncode: ", answer.returncode)
  
      if answer.returncode == 0: # and "Done" in answer.stdout:
-@@ -813,6 +1003,11 @@ def rebootRtkbase():
+@@ -813,6 +1005,11 @@ def rebootRtkbase():
      rtk.shutdown()
      #socketio.stop() hang. I disabled it
      #socketio.stop()
@@ -436,7 +441,7 @@ index e36bbc4..c2c4a5e
      subprocess.check_output("reboot")
  
  @socketio.on("shutdown device", namespace="/test")
-@@ -823,6 +1018,15 @@ def shutdownRtkbase():
+@@ -823,6 +1020,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -452,7 +457,7 @@ index e36bbc4..c2c4a5e
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -881,6 +1085,13 @@ def restartServices(restart_services_list=None):
+@@ -881,6 +1087,13 @@ def restartServices(restart_services_list=None):
                      rtk.stopBase()
                      service["unit"].restart()
                  else:
@@ -466,7 +471,7 @@ index e36bbc4..c2c4a5e
                      service["unit"].restart()
  
      #refresh service status
-@@ -904,7 +1115,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -904,7 +1117,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -480,7 +485,7 @@ index e36bbc4..c2c4a5e
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -913,7 +1129,10 @@ def getServicesStatus(emit_pingback=True):
+@@ -913,7 +1131,10 @@ def getServicesStatus(emit_pingback=True):
                  service["state_ok"] = None
  
          except Exception as e:
@@ -492,7 +497,7 @@ index e36bbc4..c2c4a5e
              pass
  
      services_status = []
-@@ -984,11 +1203,17 @@ def update_settings(json_msg):
+@@ -984,11 +1205,17 @@ def update_settings(json_msg):
  
          #Restart service if needed
          if source_section == "main":
@@ -511,7 +516,7 @@ index e36bbc4..c2c4a5e
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1229,270 @@ def update_settings(json_msg):
+@@ -1004,6 +1231,270 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  

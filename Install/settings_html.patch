@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..355e318 100644
+index 9690796..cb5c565 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -719,12 +719,15 @@ index 9690796..355e318 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -539,7 +971,7 @@
+@@ -537,9 +969,9 @@
+       <span class="col-sm-3">Gnss receiver:</span>
+     </div>
      <div class="col-sm-8">
-       <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
+-      <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
++      <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }} {% if main_settings[14].receiver_serial_number != '' %} - S/N {{ main_settings[14].receiver_serial_number }} {% endif %}
          {% if 'septentrio' in main_settings[3].receiver.lower() %}
 -         - <a href="{{ main_settings[11] }}"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
-+         - <a href="{{ main_settings[14] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
++         - <a href="{{ main_settings[15] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
          {% endif %}
        </span>
      </div>
@@ -765,7 +768,7 @@ index 9690796..355e318 100644
 +        <span class="col-sm-3">Mobile modem:</span>
 +      </div>
 +      <div class="col-sm-8">
-+          <a href="{{ main_settings[15] }}" target="_blank"><button id="modem_web_site" class="btn btn-secondary" type="button">Modem Web server</button></a>
++          <a href="{{ main_settings[16] }}" target="_blank"><button id="modem_web_site" class="btn btn-secondary" type="button">Modem Web server</button></a>
 +      </div>
 +    </div>
 +  {% endif %}
