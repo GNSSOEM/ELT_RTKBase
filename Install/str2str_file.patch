@@ -1,0 +1,12 @@
+diff --git a/unit/str2str_file.service b/unit/str2str_file.service
+index d58d66c..3befce1 100644
+--- a/unit/str2str_file.service
++++ b/unit/str2str_file.service
+@@ -16,6 +16,7 @@ LogRateLimitBurst=1
+ ProtectHome=read-only
+ ProtectSystem=strict
+ ReadWritePaths={script_path}
++ReadWritePaths=/tmp
+ 
+ [Install]
+ WantedBy=multi-user.target

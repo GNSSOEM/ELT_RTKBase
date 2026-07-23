@@ -73,10 +73,12 @@ OPIZERO_TEMP=${RTKBASE_TOOLS}/opizero_temp_offset.sh
 STR2STR_RTCM_SVR_PATCH=str2str_rtcm_svr.patch
 STR2STR_TCP_PATCH=str2str_tcp.patch
 STR2STR_NTRIP_A_PATCH=str2str_ntrip_A.patch
+STR2STR_FILE_PATCH=str2str_file.patch
 RAW2NMEA_SH_PATCH=raw2nmea_sh.patch
 CONVBIN_SH_PATCH=convbin_sh.patch 
 UNINSTALL_SH_PATCH=uninstall_sh.patch
 ARCHIVE_AND_CLEAN_PATCH=archive_and_clean_sh.patch
+CHECK_TIMESYNC_PATCH=check_timesync_sh.patch
 CREATE_ARCHIVE=create_archive.sh
 SYSCONGIG=rtkbase_system_configure.sh
 SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
@@ -1156,6 +1158,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_UNIT}/str2str_tcp.service      ${STR2STR_TCP_PATCH}
    patch_one ${RTKBASE_UNIT}/str2str_ntrip_A.service  ${STR2STR_NTRIP_A_PATCH}
    patch_one ${RTKBASE_UNIT}/str2str_rtcm_svr.service ${STR2STR_RTCM_SVR_PATCH}
+   patch_one ${RTKBASE_UNIT}/str2str_file.service     ${STR2STR_FILE_PATCH}
    patch_one ${RTKBASE_WEB}/server.py                 ${SERVER_PATCH}
    patch_one ${RTKBASE_WEB}/ServiceController.py      ${SERVICE_CONTROLLER_PATCH}
    patch_one ${RTKBASE_WEB}/gnss_rproxy_server.py     ${GNSS_RPROXY_PATCH}
@@ -1176,6 +1179,7 @@ patch_rtkbase(){
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
    patch_one ${RTKBASE_GIT}/archive_and_clean.sh      ${ARCHIVE_AND_CLEAN_PATCH}      755
+   patch_one ${RTKBASE_GIT}/check_timesync.sh         ${CHECK_TIMESYNC_PATCH}         755
    sync
    ExitCodeCheck $?
 }
@@ -1861,7 +1865,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
               ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE} \
               ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS} \
-              ${CONBOBOX_CSS} ${CONBOBOX_JS}"
+              ${CONBOBOX_CSS} ${CONBOBOX_JS} ${CHECK_TIMESYNC_PATCH} ${STR2STR_FILE_PATCH}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
