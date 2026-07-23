@@ -21,6 +21,8 @@ setElevationMask, Tracking, 5
 setElevationMask, PVT, 15
 setSmoothingInterval,all,300,30
 setCN0Mask,all,32
+setNTPServer,on
+setPTPServer,on
 exeCopyConfigFile, Current, Boot
 #lstConfigFile,Current
 

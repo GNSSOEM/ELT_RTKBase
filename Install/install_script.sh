@@ -1671,10 +1671,11 @@ start_rtkbase_services(){
      systemctl enable --now "${GNSS_WEB_PROXY}"
      ExitCodeCheck $?
 
+     CHRONY_CONFIG=/etc/chrony/chrony.conf
      if is_ELT07x5; then
+        NEED_RESTART_CHRONY=Y
+        NEED_RESTART_GPSD=Y
         GPSD_CONFIG=/etc/default/gpsd
-        CHRONY_CONFIG=/etc/chrony/chrony.conf
-        TEMPFILE=/run/gpsd.tmp
         echo source \<\( grep '^nmea_port=' "${SETTINGS_NOW}" \)
         source <( grep '^nmea_port=' "${SETTINGS_NOW}" )
         ExitCodeCheck $?
@@ -1691,6 +1692,20 @@ start_rtkbase_services(){
         systemctl enable --now "${RAW2NMEA_SERVICE}"
         ExitCodeCheck $?
      fi
+
+     HAVE_SEPTENTRIO_ETH=$(nmcli --get-values DEVICE connection show --active | grep -w "septentrio")
+     #echo HAVE_SEPTENTRIO_ETH=${HAVE_SEPTENTRIO_ETH}
+     if [[ -n "${HAVE_SEPTENTRIO_ETH}" ]]; then
+        SEPTENTRIO_IP="192.168.3.1"
+        #echo if ! grep -q "${SEPTENTRIO_IP}" "${CHRONY_CONFIG}"\; then
+        if ! grep -q "${SEPTENTRIO_IP}" "${CHRONY_CONFIG}"; then
+           echo add server ${SEPTENTRIO_IP} into ${CHRONY_CONFIG}
+           echo server ${SEPTENTRIO_IP} iburst >>${CHRONY_CONFIG}
+           ExitCodeCheck $?
+           NEED_RESTART_CHRONY=Y
+        fi
+     fi
+
   fi
 
   delete_from_service_list ${DHCP_SERVICE}
@@ -1724,17 +1739,19 @@ start_rtkbase_services(){
         systemctl enable --now str2str_tcp.service
         ExitCodeCheck $?
         #echo lastcode=$lastcode
-        if [[ "${lastcode}" == "0" ]] ; then
-           #echo systemctl restart gpsd.service
-           systemctl restart gpsd.service
-           ExitCodeCheck $?
-           #echo systemctl restart chrony.service
-           systemctl restart chrony.service
-           ExitCodeCheck $?
-        fi
      fi
   fi
 
+  if [[ -n "${NEED_RESTART_GPSD}"  ]] ; then
+     #echo systemctl restart gpsd.service
+     systemctl restart gpsd.service
+     ExitCodeCheck $?
+  fi
+  if [[ -n "${NEED_RESTART_CHRONY}"  ]] ; then
+     #echo systemctl restart chrony.service
+     systemctl restart chrony.service
+     ExitCodeCheck $?
+  fi
   delete_from_service_list gpsd.service
   delete_from_service_list chrony.service
   delete_from_service_list ${MODEM_WEB_PROXY_SERVICE}
