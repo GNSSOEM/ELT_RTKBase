@@ -819,6 +819,11 @@ stop_rtkbase_services(){
         #echo sleep 2
         sleep 2
      fi
+     killall NmeaConf 2>/dev/null
+     killall ntripserver 2>/dev/null
+     killall convbin 2>/dev/null
+     killall rtkrcv 2>/dev/null
+     killall str2str 2>/dev/null
   fi
 }
 
