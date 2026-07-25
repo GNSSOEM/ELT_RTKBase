@@ -53,7 +53,9 @@ WPS() {
         HAVE_WIFI=`nmcli --get-values TYPE,AUTOCONNECT connection show  | grep -w "802-11-wireless:yes"`
         #echo HAVE_WIFI=${HAVE_WIFI}
         if [[ -z "${HAVE_WIFI}" ]]; then
-           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "RtkBase" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+           HOSTNAME=$(hostame)
+           #echo HOSTNAME=${HOSTNAME}
+           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
            ExitCodeCheck $?
            nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
            ExitCodeCheck $?
