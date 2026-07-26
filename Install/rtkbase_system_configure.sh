@@ -53,9 +53,9 @@ WPS() {
         HAVE_WIFI=`nmcli --get-values TYPE,AUTOCONNECT connection show  | grep -w "802-11-wireless:yes"`
         #echo HAVE_WIFI=${HAVE_WIFI}
         if [[ -z "${HAVE_WIFI}" ]]; then
-           HOSTNAME=$(hostame)
+           HOSTNAME=$(hostname)
            #echo HOSTNAME=${HOSTNAME}
-           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
            ExitCodeCheck $?
            nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
            ExitCodeCheck $?
@@ -102,7 +102,11 @@ then
    exit ${exitcode}
 fi
 
-PRECONFIGURED=preconfigured
+if ! ip link show ap0 >/dev/null 2>&1; then
+   sudo iw dev wlan0 interface add ap0 type __ap
+fi
+
+fiPRECONFIGURED=preconfigured
 HAVE_PRECONFIGURED=`nmcli --fields NAME connection show | grep -w "${PRECONFIGURED}"`
 if [[ -n "${HAVE_PRECONFIGURED}" ]]; then
    PRECONFIGURED_SSID=`nmcli --fields 802-11-wireless.ssid connection show id "${PRECONFIGURED}" | awk -F ' ' '{print $2}'`
@@ -192,7 +196,7 @@ then
       fi
    else
       DeleteHotSpots
-      nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname wlan0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
       nmcli connection modify id ${HOTSPOT} connection.autoconnect yes connection.autoconnect-priority 100 802-11-wireless.hidden ${HIDbool}
       ExitCodeCheck $?
