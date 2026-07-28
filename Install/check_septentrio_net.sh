@@ -174,7 +174,7 @@ fi
 
 HOTSPOT=Hotspot
 HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
-HAS_HOTSPOT=`iptables-save | grep -c "wlan0"`
+HAS_HOTSPOT=`iptables-save | grep -c -E "ap0|wlan0"`
 #echo HAVE_HOTSPOT=${HAVE_HOTSPOT} HAS_HOTSPOT=${HAS_HOTSPOT}
 if (( ("${#HAVE_HOTSPOT}" == 0) != ("${HAS_HOTSPOT}" == 0) )); then
    echo hotspot changed

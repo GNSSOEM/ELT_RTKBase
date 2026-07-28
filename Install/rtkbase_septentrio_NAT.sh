@@ -125,14 +125,18 @@ else
 fi
 
 HOTSPOT=Hotspot
-HAVE_HOTSPOT=`nmcli --get-values NAME connection show --activ | grep ${HOTSPOT}`
-HAS_HOTSPOT=`iptables-save | grep -c "wlan0"`
+HAVE_HOTSPOT=`nmcli --get-values NAME connection show --active | grep ${HOTSPOT}`
+if [[ -n "${HAVE_HOTSPOT}" ]]; then
+   HOTSPOT_DEVICE=`nmcli --get-values GENERAL.DEVICES connection show ${HOTSPOT}`
+fi
+HAS_HOTSPOT=`iptables-save | grep -c -E "ap0|wlan0"`
 #echo HAVE_HOTSPOT=${HAVE_HOTSPOT} HAS_HOTSPOT=${HAS_HOTSPOT}
 if (( ("${#HAVE_HOTSPOT}" == 0) == ("${HAS_HOTSPOT}" == 0) )); then
    echo NAT for hotspot already setuped
 else
    if [[ ${HAS_HOTSPOT} != 0 ]]; then
       echo drop NAT for hotspot
+      delete_by_ip "ap0"
       delete_by_ip "wlan0"
    else
       echo setup NAT for hotspot
@@ -164,13 +168,13 @@ fi
 
 if [[ -n "${HAVE_HOTSPOT}" ]]; then
    if [[ -n "${SEPTENTRIO_IP}" ]]; then
-      addIfNotExistNAT "POSTROUTING ! -o wlan0 ! -d ${SEPTENTRIO_NET} -j MASQUERADE"
-      addIfNotExist "FORWARD -i wlan0 -d ${SEPTENTRIO_NET} -j ACCEPT"    # wlan0 -> Septentrio
-      addIfNotExist "FORWARD -s ${SEPTENTRIO_NET} ! -o wlan0 -j ACCEPT"  # Septentrio -> Internet
+      addIfNotExistNAT "POSTROUTING ! -o ${HOTSPOT_DEVICE} ! -d ${SEPTENTRIO_NET} -j MASQUERADE"
+      addIfNotExist "FORWARD -i ${HOTSPOT_DEVICE} -d ${SEPTENTRIO_NET} -j ACCEPT"    # wlan0 -> Septentrio
+      addIfNotExist "FORWARD -s ${SEPTENTRIO_NET} ! -o ${HOTSPOT_DEVICE} -j ACCEPT"  # Septentrio -> Internet
    else
-      iptables -t nat -A POSTROUTING ! -o wlan0 -j MASQUERADE
+      iptables -t nat -A POSTROUTING ! -o ${HOTSPOT_DEVICE} -j MASQUERADE
    fi
-   iptables -A FORWARD -i wlan0 ! -o wlan0 -j ACCEPT
+   iptables -A FORWARD -i ${HOTSPOT_DEVICE} ! -o ${HOTSPOT_DEVICE} -j ACCEPT
 else
    if [[ -n "${SEPTENTRIO_IP}" ]]; then
       addIfNotExistNAT "POSTROUTING -s ${SEPTENTRIO_NET} -j MASQUERADE"

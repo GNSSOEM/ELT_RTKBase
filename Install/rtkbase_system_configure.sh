@@ -106,7 +106,7 @@ if ! ip link show ap0 >/dev/null 2>&1; then
    sudo iw dev wlan0 interface add ap0 type __ap
 fi
 
-fiPRECONFIGURED=preconfigured
+PRECONFIGURED=preconfigured
 HAVE_PRECONFIGURED=`nmcli --fields NAME connection show | grep -w "${PRECONFIGURED}"`
 if [[ -n "${HAVE_PRECONFIGURED}" ]]; then
    PRECONFIGURED_SSID=`nmcli --fields 802-11-wireless.ssid connection show id "${PRECONFIGURED}" | awk -F ' ' '{print $2}'`
@@ -169,26 +169,33 @@ then
    else
       HIDbool=yes
    fi
-   SSIDprinted=Wifi_$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+   SSIDprinted=WiFi_$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
    #echo SSID=${SSID} SSIDprinted=${SSIDprinted} KEY=${KEY} HIDDEN=${HIDDEN} AP=${AP} HIDnum=${HIDnum} HIDkey=${HIDkey} HIDbool=${HIDbool}
    nm-online -s >/dev/null
    nmcli radio wifi on
    if [[ -z "${AP}" ]]; then
       DeleteHotSpots
-      HAVE_OLD_SSID=`nmcli --fields NAME connection show | grep -w "${SSIDprinted}"`
-      if [ -n "${HAVE_OLD_SSID}" ]; then
+      HAVE_OLD_SSID1=`nmcli --get-values NAME connection show | grep -w "${SSIDprinted}"`
+      if [ -n "${HAVE_OLD_SSID1}" ]; then
          #echo nmcli connection delete id "${SSIDprinted}"
          nmcli connection delete id "${SSIDprinted}"
          ExitCodeCheck $?
       fi
+      HAVE_OLD_SSID_LIST=`nmcli --get-values NAME connection show | grep "${SSIDprinted}_"`
+      #echo HAVE_OLD_SSID_LIST=${HAVE_OLD_SSID_LIST}
+      for old_ssid_name in ${HAVE_OLD_SSID_LIST}; do
+          #echo nmcli connection delete id ${old_ssid_name}
+          nmcli connection delete id ${old_ssid_name}
+          ExitCodeCheck $?
+      done
       #echo nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool}
       nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
-      HAVE_WIFI=`nmcli --get-values NAME connection show | grep -w "${SSID}"`
+      HAVE_WIFI=`nmcli --get-values NAME connection show | grep -w "${SSIDprinted}"`
       if [[ -n "${HAVE_WIFI}" ]]; then
          echo Wifi SSID set to ${SSID} -- code ${exitcode}
       else
-         echo Wifi ${SSID} not created
+         echo Wifi ${SSID} not created -- code ${exitcode}
          WIFI_IP=""
          WIFI_GATE=""
          WIFI_DNS=""
