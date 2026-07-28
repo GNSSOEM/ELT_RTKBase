@@ -103,7 +103,7 @@ then
 fi
 
 if ! ip link show ap0 >/dev/null 2>&1; then
-   sudo iw dev wlan0 interface add ap0 type __ap
+   iw dev wlan0 interface add ap0 type __ap
 fi
 
 PRECONFIGURED=preconfigured
@@ -155,8 +155,18 @@ fi
 if [[ -n "${COUNTRY}" ]]
 then
    nm-online -s >/dev/null
-   #echo raspi-config nonint do_wifi_country "${COUNTRY}"
-   raspi-config nonint do_wifi_country "${COUNTRY}"
+   if [ -e /boot/firmware/config.txt ] ; then
+      FIRMWARE=/firmware
+   else
+      FIRMWARE=
+   fi
+   CMDLINE="/boot${FIRMWARE}/cmdline.txt"
+   sed -i \
+   -e "s/\s*cfg80211.ieee80211_regdom=\S*//" \
+   -e "s/\(.*\)/\1 cfg80211.ieee80211_regdom=${COUNTRY}/" \
+   "$CMDLINE"
+   ExitCodeCheck $?
+   iw reg set "${COUNTRY}"
    ExitCodeCheck $?
    echo Wifi country set to ${COUNTRY} -- code ${exitcode}
    WORK=Y

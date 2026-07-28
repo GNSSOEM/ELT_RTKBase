@@ -1658,6 +1658,11 @@ start_rtkbase_services(){
   chmod 2775 ${datadir}
   ExitCodeCheck $?
 
+  #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
+  systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
+  ExitCodeCheck $?
+  delete_from_service_list ${SEPTENTRIO_NAT_SERVICE}
+
   source <( grep '^receiver=' "${SETTINGS_NOW}" ) #import settings
   ExitCodeCheck $?
   #echo receiver=${receiver}
@@ -1670,10 +1675,6 @@ start_rtkbase_services(){
   if [[ "${receiver}" =~ Septentrio ]]; then
      #echo systemctl start "${DHCP_SERVICE}"
      systemctl start "${DHCP_SERVICE}"
-     ExitCodeCheck $?
-
-     #echo systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
-     systemctl enable --now "${SEPTENTRIO_NAT_SERVICE}"
      ExitCodeCheck $?
 
      #echo systemctl enable --now "${GNSS_WEB_PROXY}"
@@ -1718,9 +1719,9 @@ start_rtkbase_services(){
   fi
 
   delete_from_service_list ${DHCP_SERVICE}
-  delete_from_service_list ${SEPTENTRIO_NAT_SERVICE}
   delete_from_service_list ${GNSS_WEB_PROXY}
   delete_from_service_list ${RAW2NMEA_SERVICE}
+
 
   if [[ "${ONLINE_UPDATE}" == "UPDATE" ]]; then
      if ! [[ "${serviceStartList}" =~ "str2str_tcp.service" ]]; then
