@@ -1523,9 +1523,19 @@ configure_settings(){
       if ! grep -q "^rinex_filename=" "${SETTINGS_NOW}"; then
          echo insert rinex_filename \& rinex_mode into ${SETTINGS_NOW}
          #echo ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\''" "${SETTINGS_NOW}"
-         ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\''" "${SETTINGS_NOW}"
+         ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\'\'" "${SETTINGS_NOW}"
          ExitCodeCheck $?
       fi
+
+      #echo if ! grep -q "^rinex_filename=" "${SETTINGS_NOW}"; then
+      if ! grep -q "^rinex_observer=" "${SETTINGS_NOW}"; then
+         echo insert observer name \& agency into ${SETTINGS_NOW}
+         #echo ${sed} "/^marker_number=/a #RINEX filename mode\nrinex_filename=\'0\'\n#RINEX mode for automatic convertation\nrinex_mode=\''" "${SETTINGS_NOW}"
+         ${sed} "/^rinex_filename/a #observer name and agency\nrinex_observer=\'ELTRtkBase\,ELTRtkBase\'" "${SETTINGS_NOW}"
+         ExitCodeCheck $?
+      fi
+
+
    else
       #echo cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}
       cp ${SETTINGS_DEFAULT} ${SETTINGS_NOW}

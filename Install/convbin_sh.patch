@@ -1,8 +1,8 @@
 diff --git a/tools/convbin.sh b/tools/convbin.sh
-index 91a8020..1ba9470 100755
+index 91a8020..3b7a56f 100755
 --- a/tools/convbin.sh
 +++ b/tools/convbin.sh
-@@ -5,18 +5,40 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+@@ -5,18 +5,46 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
  source <( grep '=' "${SCRIPT_DIR}"/../settings.conf )
  RAW_ARCHIVE=$1
  DATA_DIR=$2
@@ -44,10 +44,16 @@ index 91a8020..1ba9470 100755
 +ANT_INFO="${ANTSERIAL}/${ANTNAME}"
 +#echo ANT_INFO=\"${ANT_INFO}\"
 +
++OBSERVER=`echo "${rinex_observer}" | awk -F ',' '{print $1}'`
++AGENCY=`echo "${rinex_observer}" | awk -F ',' '{print $2}'`
++AGENT_INFO="${OBSERVER}/${AGENCY}"
++#echo AGENT_INFO=\"${AGENT_INFO}\"
++
++AG
  extract_raw_file() {
    raw_file=$(unzip -l "${RAW_ARCHIVE}" "*.${RAW_TYPE}" | awk '/-----/ {p = ++p % 2; next} p {print $NF}')
    test $(echo "${raw_file}" | wc -l) -gt 1 && echo 'Error: There is more than 1 file in this archive' 1>&2 && exit 1
-@@ -29,9 +51,9 @@ extract_raw_file() {
+@@ -29,9 +57,9 @@ extract_raw_file() {
  convert_to_rinex_ign() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 2.11 -r "${RAW_TYPE}"       \
@@ -55,21 +61,21 @@ index 91a8020..1ba9470 100755
 -        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 -        -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}" \
-+        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}" -ho "${AGENT_INFO}" \
 +        -hr "${REC_SERIAL}"/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y R -y E -y J -y S -y C -y I             \
          -od -os -oi -ot -ti 30 -tt 0.005                   \
          -ro "${REC_OPTION}" -o "${RINEX_FILE}"
-@@ -40,7 +62,7 @@ convert_to_rinex_ign() {
+@@ -40,7 +68,7 @@ convert_to_rinex_ign() {
  
  convert_to_rinex_ign_bis() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
 -  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MOUNT_NAME}"' -hp '"${ANT_POSITION}"' -ha 0000/'"${ANT_TYPE}"' -hr 0000/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
-+  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MARKER_NAME}"' -hn '"${MARKER_NUMBER}"' -ht '"${MARKER_TYPE}"' -hp '"${ANT_POSITION}"' -ha '"${ANT_INFO}"' -hr '"${REC_SERIAL}"'/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
++  args="${raw_file}"' -v 2.11 -r '"${RAW_TYPE}"' -hc '"${RTKBASE_VERSION}"' -hm '"${MARKER_NAME}"' -hn '"${MARKER_NUMBER}"' -ht '"${MARKER_TYPE}"' -hp '"${ANT_POSITION}"' -ha '"${ANT_INFO}"' -ho '"${AGENT_INFO}"' -hr '"${REC_SERIAL}"'/'"${RECEIVER}"'/'"${REC_VERSION}"' -f 2 -y R -y E -y J -y S -y C -y I -od -os -oi -ot -ti 30 -tt 0 -ro '"${REC_OPTION}"' -o '"${RINEX_FILE}"
    "${CONVBIN_PATH}" "${args}"
      return $?
  }
-@@ -48,9 +70,9 @@ convert_to_rinex_ign_bis() {
+@@ -48,9 +76,9 @@ convert_to_rinex_ign_bis() {
  convert_to_rinex_nrcan() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -77,12 +83,12 @@ index 91a8020..1ba9470 100755
 -        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 -        -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-+        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}" -ho "${AGENT_INFO}" \
 +        -hr "${REC_SERIAL}"/"${RECEIVER}"/"${REC_VERSION}"        \
          -f 2 -y J -y S -y C -y I                  \
          -od -os -oi -ot -ti 30 -tt 0                   \
          -ro "${REC_OPTION}" -o "${RINEX_FILE}"
-@@ -61,9 +83,9 @@ convert_to_rinex_nrcan() {
+@@ -61,9 +89,9 @@ convert_to_rinex_nrcan() {
  convert_to_rinex_30s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -90,12 +96,12 @@ index 91a8020..1ba9470 100755
 -        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 -        -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}"  -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-+        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}" -ho "${AGENT_INFO}" \
 +        -hr "${REC_SERIAL}"/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 30 -tt 0                   \
          -ro "${REC_OPTION}" -o "${RINEX_FILE}"
      return $?
-@@ -73,9 +95,9 @@ convert_to_rinex_30s_full() {
+@@ -73,9 +101,9 @@ convert_to_rinex_30s_full() {
  convert_to_rinex_1s_full() {
    echo "- CREATING RINEX " "${RINEX_FILE}"
    "${CONVBIN_PATH}" "${raw_file}" -v 3.04 -r "${RAW_TYPE}"       \
@@ -103,12 +109,12 @@ index 91a8020..1ba9470 100755
 -        -hp "${ANT_POSITION}" -ha 0000/"${ANT_TYPE}"   \
 -        -hr 0000/"${RECEIVER}"/"${REC_VERSION}"        \
 +        -hc "${RTKBASE_VERSION}" -hm "${MARKER_NAME}" -hn "${MARKER_NUMBER}" -ht "${MARKER_TYPE}"  \
-+        -hp "${ANT_POSITION}" -ha "${ANT_INFO}"   \
++        -hp "${ANT_POSITION}" -ha "${ANT_INFO}" -ho "${AGENT_INFO}" \
 +        -hr "${REC_SERIAL}"/"${RECEIVER}"/"${REC_VERSION}"        \
          -od -os -oi -ot -ti 1 -tt 0                    \
          -ro "${REC_OPTION}" -o "${RINEX_FILE}"
      return $?
-@@ -88,15 +110,84 @@ filedate=$(echo ${1:0:10})
+@@ -88,15 +116,84 @@ filedate=$(echo ${1:0:10})
  year2=$(echo ${1:2:2})
  
  test -z "${CONVBIN_PATH}" && echo 'Error: Convbin not found' && exit 1
@@ -198,7 +204,7 @@ index 91a8020..1ba9470 100755
  if [[ $file_extension == 'zip' ]]
    then
      extract_raw_file
-@@ -105,6 +196,10 @@ if [[ $file_extension == 'zip' ]]
+@@ -105,6 +202,10 @@ if [[ $file_extension == 'zip' ]]
  fi
  ${rnx_conversion_func}
  return_code=$?
