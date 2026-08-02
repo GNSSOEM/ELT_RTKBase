@@ -50,5 +50,19 @@ else
    sudo sudo -u rtkbase sed -i "s/^updated=.*/updated=${result}/" ${SETTINGS}
 fi
 
+source <( grep -v '^#' "${SETTINGS}" | grep 'web_port=' )
+if [[ -z "${web_port}" ]]; then
+   web_port=80
+fi
+
+# Tell connected browser clients that the server is about to restart.
+curl --silent --show-error --max-time 3 --request POST \
+    --header 'Content-Type: application/json' \
+    --data "{\"reason\":\"${result}\"}" \
+    "http://127.0.0.1:${web_port}/api/v1/internal/server-restarting"
+
+# Allow the Socket.IO packet to reach the browsers.
+sleep 1
+
 #echo sudo systemctl restart rtkbase_web.service
 sudo systemctl restart rtkbase_web.service

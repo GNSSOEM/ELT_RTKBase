@@ -1,8 +1,42 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..4b05387 100644
+index 5b64baa..b941bcc 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
-@@ -79,7 +79,7 @@ $(document).ready(function () {
+@@ -24,6 +24,8 @@
+ 
+ // ############################### MAIN ###############################
+ 
++let expectedServerRestart = false;
++
+ $(document).ready(function () {
+ 
+ 	if(window.location.hash != '')
+@@ -41,13 +43,21 @@ $(document).ready(function () {
+ 
+     // say hello on connect
+     socket.on("connect", function () {
++        console.log("connect");
+         socket.emit("browser connected", {data: "I'm connected"});
++        if (expectedServerRestart) {
++           expectedServerRestart = false;
++           $("#updateModal .modal-title").text("Restarting web server");
++           $("#updateModal .modal-body").html('The web server restarted.');
++           $("#start-update-button").prop("disabled", false);
++           $("#start-update-button").off("click");
++           $("#start-update-button").on("click", function() {
++               location.reload();
++           });
++        };
+     });
+     console.log("main.js Asking for service status");
+     socket.emit("get services status");
+-    socket.on('disconnect', function(){
+-        console.log('disconnected');
+-    });
+ 
+     //Enable "Save" button when form value is changed
+     $("form").on('input', 'input, select', function() {
+@@ -79,7 +89,7 @@ $(document).ready(function () {
      // View/hide password buttons for: Ntrip A, Ntrip B and Local caster
      document.querySelectorAll(".input-group-append").forEach(function(e) {
          var name = e.querySelector("button").id.replace("_button", "");
@@ -11,7 +45,7 @@ index 5b64baa..4b05387 100644
              return;
  
          var button = $("#" + name + "_button");
-@@ -111,7 +111,7 @@ $(document).ready(function () {
+@@ -111,7 +121,7 @@ $(document).ready(function () {
      socket.on("services status", function(msg) {
          // gestion des services
          var servicesStatus = JSON.parse(msg);
@@ -20,7 +54,7 @@ index 5b64baa..4b05387 100644
          
          // ################ MAiN service Switch  ######################
          //console.log("REFRESHING  service switch");
-@@ -131,7 +131,12 @@ $(document).ready(function () {
+@@ -131,7 +141,12 @@ $(document).ready(function () {
          if (servicesStatus[0].btn_off_color) {
              mainSwitch.bootstrapToggle('setOffStyle', servicesStatus[0].btn_off_color);
          }
@@ -34,7 +68,7 @@ index 5b64baa..4b05387 100644
          // event for switching on/off service on user mouse click
          //TODO When the switch changes its position, this event seems attached before
          //the switch finish its transition, then fire another event.
-@@ -159,6 +164,12 @@ $(document).ready(function () {
+@@ -159,6 +174,12 @@ $(document).ready(function () {
          if (servicesStatus[1].btn_off_color) {
              ntrip_A_Switch.bootstrapToggle('setOffStyle', servicesStatus[1].btn_off_color);
          }
@@ -47,7 +81,7 @@ index 5b64baa..4b05387 100644
          
          // event for switching on/off service on user mouse click
          //TODO When the switch changes its position, this event seems attached before
-@@ -187,6 +198,12 @@ $(document).ready(function () {
+@@ -187,6 +208,12 @@ $(document).ready(function () {
          if (servicesStatus[2].btn_off_color) {
              ntrip_B_Switch.bootstrapToggle('setOffStyle', servicesStatus[2].btn_off_color);
          }
@@ -60,7 +94,7 @@ index 5b64baa..4b05387 100644
          
          // event for switching on/off service on user mouse click
          //TODO When the switch changes its position, this event seems attached before
-@@ -198,11 +215,113 @@ $(document).ready(function () {
+@@ -198,11 +225,113 @@ $(document).ready(function () {
              socket.emit("services switch", {"name" : "ntrip_B", "active" : switchStatus});           
          })
  
@@ -175,7 +209,7 @@ index 5b64baa..4b05387 100644
              //document.querySelector("#main-switch").bootstrapToggle('on');
              ntripcSwitch.bootstrapToggle('on', true);
          } else {
-@@ -210,12 +329,12 @@ $(document).ready(function () {
+@@ -210,12 +339,12 @@ $(document).ready(function () {
              ntripcSwitch.bootstrapToggle('off', true);
          }
          
@@ -193,7 +227,7 @@ index 5b64baa..4b05387 100644
          }
          
          // event for switching on/off service on user mouse click
-@@ -232,19 +351,19 @@ $(document).ready(function () {
+@@ -232,19 +361,19 @@ $(document).ready(function () {
  
          var rtcmSvrSwitch = $('#rtcm_svr-switch');
          // set the switch to on/off depending of the service status
@@ -219,7 +253,7 @@ index 5b64baa..4b05387 100644
          }
          
          // event for switching on/off service on user mouse click
-@@ -261,19 +380,19 @@ $(document).ready(function () {
+@@ -261,19 +390,19 @@ $(document).ready(function () {
          
          var rtcmSerialSwitch = $('#rtcm_serial-switch');
          // set the switch to on/off depending of the service status
@@ -245,7 +279,7 @@ index 5b64baa..4b05387 100644
          }
          
          // event for switching on/off service on user mouse click
-@@ -290,19 +409,19 @@ $(document).ready(function () {
+@@ -290,19 +419,19 @@ $(document).ready(function () {
  
          var fileSwitch = $('#file-switch');
          // set the switch to on/off depending of the service status
@@ -271,7 +305,7 @@ index 5b64baa..4b05387 100644
          }
          
          // event for switching on/off service on user mouse click
-@@ -343,8 +462,8 @@ $(document).ready(function () {
+@@ -343,8 +472,8 @@ $(document).ready(function () {
      socket.on("gnss_detection_result", function(msg) {
          // open modal box with detection result and asking for configuration if detection is a success
          response = JSON.parse(msg);
@@ -282,7 +316,7 @@ index 5b64baa..4b05387 100644
          if (response['result'] === 'success') {
              detectBodyElt.innerHTML = '<b>' + response['gnss_type'] + ' ' + response['model'] + '</b>' + ' detected on ' + '<b>' + response['port'] + '</b>' + '<br>' + '<br>' + 'Do you want to apply?';
              detectApplyBtnElt.onclick = function (){
-@@ -361,7 +480,7 @@ $(document).ready(function () {
+@@ -361,7 +490,7 @@ $(document).ready(function () {
          response = JSON.parse(msg);
          if (response['then_configure']) {
              // asking for gnss receiver configuration
@@ -291,7 +325,7 @@ index 5b64baa..4b05387 100644
          } else {
              // refreshing the page to display the new informations
              location.href = document.URL.replace(/#$/, '');
-@@ -381,18 +500,18 @@ $(document).ready(function () {
+@@ -381,18 +510,18 @@ $(document).ready(function () {
      })
      socket.on("gnss_configuration_result", function(msg) {
          response = JSON.parse(msg);
@@ -318,7 +352,7 @@ index 5b64baa..4b05387 100644
          } else {
              detectBodyElt.innerHTML = "GNSS receiver configuration failed"
          }
-@@ -412,28 +531,47 @@ $(document).ready(function () {
+@@ -412,28 +541,47 @@ $(document).ready(function () {
      // ####################### HANDLE UPDATE #######################
  
      $('#check_update_button').on("click", function (){
@@ -377,7 +411,7 @@ index 5b64baa..4b05387 100644
              $("#start-update-button").removeAttr("disabled");
              $("#updateModal").modal();
          } else {
-@@ -445,55 +583,68 @@ $(document).ready(function () {
+@@ -445,55 +593,68 @@ $(document).ready(function () {
          const queryString = window.location.search;
          const urlParams = new URLSearchParams(queryString);
          if (urlParams.get('update') === 'manual' ) {
@@ -410,8 +444,9 @@ index 5b64baa..4b05387 100644
      });
      
      $("#start-update-button").on("click", function () {
-         //$("#updateModal .modal-title").text(("Installing update"));
+-        //$("#updateModal .modal-title").text(("Installing update"));
 -        socket.emit("update rtkbase");
++        $("#updateModal .modal-title").text("Installing update");
 +        const urlParams = new URLSearchParams(window.location.search);
 +        update = urlParams.get('update');
 +        if (update === 'manual') update = null;
@@ -459,13 +494,40 @@ index 5b64baa..4b05387 100644
      })
  
      socket.on("updating_rtkbase", function() {
-@@ -501,16 +652,40 @@ $(document).ready(function () {
+@@ -501,16 +662,67 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
 -    socket.on("update_successful", function() {
 -            console.log("update successful");
++    function set_restart_window(reason) {
++        $("#updateModal .modal-title").text("Restarting web server");
++        $("#updateModal .modal-body").html(
++            '<span class="spinner-border spinner-border-sm"></span> ' +
++             'The web server ' + reason + '...'
++        );
++
++        $("#start-update-button").html('Refresh');
++        $("#start-update-button").prop("disabled", true);
++        $("#update-cancel-button").html('Cancel');
++        $("#update-cancel-button").prop("disabled", true);
++        expectedServerRestart = true;
++        $("#updateModal").modal();
++    }
++
++    socket.on("server_restarting", function(data) {
++        console.log("Server will be restarting:",  data && data.reason);
++        set_restart_window("is about to restart. Please wait")
++    });
++
++    socket.on('disconnect', function(){
++        console.log('disconnected');
++        set_restart_window("is restarting. Waiting for reconnection")
++    });
++
 +    socket.on("update_successful", function(msg) {
++        expectedServerRestart = false;
++        $("#updateModal .modal-title").text("Update finished");
 +        response = JSON.parse(msg);
 +        console.log("update finished: " + JSON.stringify(response));
 +        console.log("result=" + response['result']);
@@ -505,7 +567,7 @@ index 5b64baa..4b05387 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -527,14 +702,6 @@ $(document).ready(function () {
+@@ -527,14 +739,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -520,7 +582,7 @@ index 5b64baa..4b05387 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -597,33 +764,9 @@ $(document).ready(function () {
+@@ -597,33 +801,9 @@ $(document).ready(function () {
              volumeSpaceElt.style.color = "#212529";
          }
  
@@ -556,7 +618,7 @@ index 5b64baa..4b05387 100644
      //source: https://stackoverflow.com/a/34270811
      /**
       * Translates seconds into human readable format of seconds, minutes, hours, days, and years
-@@ -726,6 +869,23 @@ $(document).ready(function () {
+@@ -726,6 +906,23 @@ $(document).ready(function () {
            };
        };
  
@@ -580,7 +642,7 @@ index 5b64baa..4b05387 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +897,19 @@ $(document).ready(function () {
+@@ -737,16 +934,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -605,7 +667,7 @@ index 5b64baa..4b05387 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +921,1153 @@ $(document).ready(function () {
+@@ -758,5 +958,1153 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
