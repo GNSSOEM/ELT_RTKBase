@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..b941bcc 100644
+index 5b64baa..997fe19 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -494,7 +494,7 @@ index 5b64baa..b941bcc 100644
      })
  
      socket.on("updating_rtkbase", function() {
-@@ -501,16 +662,67 @@ $(document).ready(function () {
+@@ -501,16 +662,69 @@ $(document).ready(function () {
          //update_countdown(1200, 0);
      })
      
@@ -527,6 +527,8 @@ index 5b64baa..b941bcc 100644
 +
 +    socket.on("update_successful", function(msg) {
 +        expectedServerRestart = false;
++        socket.emit("update successful ack");
++
 +        $("#updateModal .modal-title").text("Update finished");
 +        response = JSON.parse(msg);
 +        console.log("update finished: " + JSON.stringify(response));
@@ -567,7 +569,7 @@ index 5b64baa..b941bcc 100644
      });
  
      function update_countdown(remaining, count) {
-@@ -527,14 +739,6 @@ $(document).ready(function () {
+@@ -527,14 +741,6 @@ $(document).ready(function () {
          }
          setTimeout(function(){ update_countdown(remaining - 1, count + 1); }, 1000);
      };
@@ -582,7 +584,7 @@ index 5b64baa..b941bcc 100644
      // ####################### HANDLE CHANGING PASSWORD #######################
  
      document.getElementById('change_password').addEventListener("input", function(e) {
-@@ -597,33 +801,9 @@ $(document).ready(function () {
+@@ -597,33 +803,9 @@ $(document).ready(function () {
              volumeSpaceElt.style.color = "#212529";
          }
  
@@ -618,7 +620,7 @@ index 5b64baa..b941bcc 100644
      //source: https://stackoverflow.com/a/34270811
      /**
       * Translates seconds into human readable format of seconds, minutes, hours, days, and years
-@@ -726,6 +906,23 @@ $(document).ready(function () {
+@@ -726,6 +908,23 @@ $(document).ready(function () {
            };
        };
  
@@ -642,7 +644,7 @@ index 5b64baa..b941bcc 100644
      // ####################### HANDLE REBOOT & SHUTDOWN #######################
  
      $("#reboot-button").on("click", function() {
-@@ -737,16 +934,19 @@ $(document).ready(function () {
+@@ -737,16 +936,19 @@ $(document).ready(function () {
          $(this).prop("disabled", true);
          $("#reboot-cancel-button").prop("disabled", true);
          socket.emit("reboot device");
@@ -667,7 +669,7 @@ index 5b64baa..b941bcc 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +958,1153 @@ $(document).ready(function () {
+@@ -758,5 +960,1153 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
