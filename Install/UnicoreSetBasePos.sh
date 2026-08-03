@@ -119,7 +119,7 @@ fi
 
 #echo stty -F /dev/${com_port} -echo -icrnl ${recv_speed}
 stty -F /dev/${com_port} -echo -icrnl ${recv_speed}
-#echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
+#echo recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant="${recv_ant}" recv_com=${recv_com}
 
 #echo ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
 ${BASEDIR}/tools/onoffELT0x33.sh ${com_port} ON
@@ -131,23 +131,20 @@ TIMEPOS=N
 BADPOS=
 if [[ "${com_port}" == "${recv_port}" ]]
 then
-   if [[ "${com_speed}" == "${recv_speed}" ]]
-   then
+   if [[ "${com_speed}" == "${recv_speed}" ]]; then
       SETSPEED=N
    fi
-   if [[ "${position}" == "${recv_position}" ]]
-   then
+   if [[ "${position}" == "${recv_position}" ]]; then
       SETPOS=N
    else
-      if [[ "${position}" == "${ZEROPOS}" ]]
-      then
+      if [[ "${position}" == "${ZEROPOS}" ]]; then
          TIMEPOS=Y
          SETPOS=N
          BADPOS=N
       fi
    fi
-   if [[ "${antenna_info}" == "${recv_ant}" ]]
-   then
+   #echo if [[ \""${antenna_info}"\" == \""${recv_ant}"\" ]]\; then
+   if [[ "${antenna_info}" == "${recv_ant}" ]]; then
       SETANT=N
    fi
 else
@@ -466,6 +463,12 @@ if [[ ${SETANT} == Y ]]; then
    ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
    ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
    ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
+   ANT_H=`echo "${antenna_info}" | awk -F ',' '{print $4}'`
+   ANT_E=`echo "${antenna_info}" | awk -F ',' '{print $5}'`
+   ANT_N=`echo "${antenna_info}" | awk -F ',' '{print $6}'`
+   if [[ -z "${ANT_H}" ]]; then ANT_H="0.0000"; fi
+   if [[ -z "${ANT_E}" ]]; then ANT_E="0.0000"; fi
+   if [[ -z "${ANT_N}" ]]; then ANT_N="0.0000"; fi
    #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
    if [[ "${receiver}" =~ Unicore ]]; then
       ANTNAME=`echo "${ANTNAME}" | awk -F ' ' '{print $1}'`
@@ -475,17 +478,20 @@ if [[ ${SETANT} == Y ]]; then
       #echo NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
       NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
       ExitCodeCheck $?
+      #echo NmeaConf ${DEVICE} \"CONFIG SELFANTENNAPCO ${ANT_N} ${ANT_E} ${ANT_H}\" QUIET
+      NmeaConf ${DEVICE} "CONFIG SELFANTENNAPCO ${ANT_N} ${ANT_E} ${ANT_H}" QUIET
+      ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio_mosaic-H ]]; then
       ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\""
       #echo ANTINFO=${ANTINFO}
       #echo NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
-      NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      NmeaConf ${DEVICE} "setAntennaOffset, Main, ${ANT_E}, ${ANT_N}, ${ANT_H}, ${ANTINFO}" QUIET
       ExitCodeCheck $?
    elif [[ "${receiver}" =~ Septentrio ]]; then
       ANTINFO="\"${ANTNAME}\", \"${ANTSERIAL}\", ${ANTSETUP}"
       #echo ANTINFO=${ANTINFO}
       #echo NmeaConf ${DEVICE} \"setAntennaOffset, Main, , , , ${ANTINFO}\" QUIET
-      NmeaConf ${DEVICE} "setAntennaOffset, Main, , , , ${ANTINFO}" QUIET
+      NmeaConf ${DEVICE} "setAntennaOffset, Main, ${ANT_E}, ${ANT_N}, ${ANT_H}, ${ANTINFO}" QUIET
       ExitCodeCheck $?
    else
       lastcode=0
@@ -525,8 +531,8 @@ then
    #echo SAVE OLDCONF=${OLDCONF} recv_port=${recv_port} recv_speed=${recv_speed} recv_position=${recv_position} recv_ant=${recv_ant} recv_com=${recv_com}
    echo recv_port=${recv_port}>${OLDCONF}
    echo recv_speed=${recv_speed}>>${OLDCONF}
-   echo recv_position=\"${recv_position}\">>${OLDCONF}
-   echo recv_ant=\"${recv_ant}\">>${OLDCONF}
+   echo recv_position=\""${recv_position}"\">>${OLDCONF}
+   echo recv_ant=\""${recv_ant}"\">>${OLDCONF}
    echo recv_com=${recv_com}>>${OLDCONF}
 fi
 

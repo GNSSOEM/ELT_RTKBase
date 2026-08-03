@@ -1,7 +1,7 @@
 diff --git a/run_cast.sh b/run_cast.sh
 old mode 100755
 new mode 100644
-index e8f6f2d..5698368
+index e8f6f2d..d581471
 --- a/run_cast.sh
 +++ b/run_cast.sh
 @@ -7,19 +7,168 @@
@@ -163,11 +163,11 @@ index e8f6f2d..5698368
 +  ntrip_flag="${BASEDIR}/tools/ntrip_led.sh ${3}"
 +  if [[ "${svr_mode}" < 2 ]]; then
 +     if [[ "$3" == "A" ]]; then
-+        #echo ${cast} -in ${!1} ${out_caster} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags}  -fe \"${ntrip_flag}\" \&
-+        ${cast} -in ${!1} ${out_caster} -i "${receiver_info}" -a "${antenna_info}" ${flags} -fe "${ntrip_flag}" &
++        #echo ${cast} -in ${!1} ${out_caster} -i \"${receiver_info}\" -a \"${ant_info}\" ${flags}  -fe \"${ntrip_flag}\" \&
++        ${cast} -in ${!1} ${out_caster} -i "${receiver_info}" -a "${ant_info}" ${flags} -fe "${ntrip_flag}" &
 +     else
-+        #echo ${cast} -in ${!1} ${out_caster} -i \"${receiver_info}\" -a \"${antenna_info}\" ${flags} \&
-+        ${cast} -in ${!1} ${out_caster} -i "${receiver_info}" -a "${antenna_info}" ${flags} &
++        #echo ${cast} -in ${!1} ${out_caster} -i \"${receiver_info}\" -a \"${ant_info}\" ${flags} \&
++        ${cast} -in ${!1} ${out_caster} -i "${receiver_info}" -a "${ant_info}" ${flags} &
 +     fi
 +  else
 +     if [[ "$3" == "A" ]]; then
@@ -182,7 +182,7 @@ index e8f6f2d..5698368
  
  array_pos=(${position})
  if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
-@@ -28,72 +177,127 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
+@@ -28,72 +177,134 @@ if [[ ${local_ntripc_user} == '' ]] && [[ ${local_ntripc_pwd} == '' ]]
    else
      local_ntripc_auth='B' #Basic authentification
  fi
@@ -235,6 +235,12 @@ index e8f6f2d..5698368
 +ANTNAME=`echo "${antenna_info}" | awk -F ',' '{print $1}'`
 +ANTSERIAL=`echo "${antenna_info}" | awk -F ',' '{print $2}'`
 +ANTSETUP=`echo "${antenna_info}" | awk -F ',' '{print $3}'`
++ANT_H=`echo "${antenna_info}" | awk -F ',' '{print $4}'`
++ANT_E=`echo "${antenna_info}" | awk -F ',' '{print $5}'`
++ANT_N=`echo "${antenna_info}" | awk -F ',' '{print $6}'`
++if [[ -z "${ANT_H}" ]]; then ANT_H="0.0000"; fi
++if [[ -z "${ANT_E}" ]]; then ANT_E="0.0000"; fi
++if [[ -z "${ANT_N}" ]]; then ANT_N="0.0000"; fi
 +if [[ "${ANTNAME}" == "ELT0123" ]] || [[ "${ANTNAME}" == "ELT0323" ]]; then
 +   ANTNAME="HXCSX627A       NONE"
 +fi
@@ -244,7 +250,8 @@ index e8f6f2d..5698368
 +if [[ "${ANTSETUP}" == "" ]]; then
 +   ANTSETUP=0
 +fi
-+antenna_info="${ANTNAME},${ANTSERIAL},${ANTSETUP}"
++antenna_info="${ANTNAME},${ANTSERIAL},${ANTSETUP},${ANT_H},${ANT_E},${ANT_N}"
++ant_info="${ANTNAME},${ANTSERIAL},${ANTSETUP}"
  
    case "$2" in
      out_tcp)
@@ -302,35 +309,35 @@ index e8f6f2d..5698368
    out_local_caster)
      #echo ${cast} -in ${!1} -out "${out_local_caster}"
 -    ${cast} -in ${!1} ${out_local_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip.log
-+    ${cast} -in ${!1} ${out_local_caster} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_ntrip.log &
++    ${cast} -in ${!1} ${out_local_caster} -i "${receiver_info}" -a "${ant_info}" -t ${level} -fl ${logdir}/str2str_ntrip.log &
      ;;
  
    out_rtcm_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_svr
 -    ${cast} -in ${!1} ${out_rtcm_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_svr.log
-+    ${cast} -in ${!1} ${out_rtcm_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_svr.log &
++    ${cast} -in ${!1} ${out_rtcm_svr} -i "${receiver_info}" -a "${ant_info}" -t ${level} -fl ${logdir}/str2str_rtcm_svr.log &
      ;;
    
    out_rtcm_client)
      #echo ${cast} -in ${!1} -out $out_rtcm_client
 -    ${cast} -in ${!1} ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log
-+    ${cast} -in ${!1} ${out_rtcm_client} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log &
++    ${cast} -in ${!1} ${out_rtcm_client} -i "${receiver_info}" -a "${ant_info}" -t ${level} -fl ${logdir}/str2str_rtcm_client.log &
    ;;
  
    out_rtcm_udp_svr)
      #echo ${cast} -in ${!1} -out $out_rtcm_udp_svr
 -    ${cast} -in ${!1} ${out_rtcm_udp_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_udp_svr.log
-+    ${cast} -in ${!1} ${out_rtcm_udp_svr} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_udp_svr.log &
++    ${cast} -in ${!1} ${out_rtcm_udp_svr} -i "${receiver_info}" -a "${ant_info}" -t ${level} -fl ${logdir}/str2str_rtcm_udp_svr.log &
      ;;
    
    out_rtcm_serial)
      #echo ${cast} -in ${!1} -out $out_rtcm_serial
 -    ${cast} -in ${!1} ${out_rtcm_serial} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_serial.log
-+    ${cast} -in ${!1} ${out_rtcm_serial} -i "${receiver_info}" -a "${antenna_info}" -t ${level} -fl ${logdir}/str2str_rtcm_serial.log &
++    ${cast} -in ${!1} ${out_rtcm_serial} -i "${receiver_info}" -a "${ant_info}" -t ${level} -fl ${logdir}/str2str_rtcm_serial.log &
      ;;
  
    out_file)
-@@ -103,8 +307,12 @@ mkdir -p ${logdir}
+@@ -103,8 +314,12 @@ mkdir -p ${logdir}
      if [ ${ret} -eq 0 ]
      then
        mkdir -p ${datadir}

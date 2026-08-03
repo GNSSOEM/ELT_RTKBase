@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..a7d0b24 100644
+index 9690796..0494f5c 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -87,18 +87,18 @@ index 9690796..a7d0b24 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -86,8 +139,8 @@
+@@ -86,16 +139,15 @@
  
        <label for="antenna_info" class="col-sm-3 col-form-label">Antenna info: </label>
        <div class="col-sm-9">
 -          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\s]*" required>
 -          <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model,serial number) for IGS calibrated antenna</small>
+-
 +          <input id="antenna_info" type="text" name="antenna_info" class="form-control" aria-describedby="antenna_infoHelp" placeholder="ADVNULLANTENNA" value="{{ main_settings[6].antenna_info }}" pattern="\w[^\|><\/\r\n]*" required>
-+          <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model dome,serial number,setup id) for IGS calibrated antenna</small>
- 
++          <small class="form-text text-muted" id="antenna_infoHelp">ADVNULLANTENNA or information (model dome, serial number, setup id, delta H, delta E, delta N) for IGS calibrated antenna</small>
        </div>
  
-@@ -95,7 +148,7 @@
+   </div>
  
      <div class="form-group row">
  
@@ -107,7 +107,7 @@ index 9690796..a7d0b24 100644
              <div class="col-sm-9">
                <input id="tcp_host-switch" type="text" name="host_addr" class="form-control" aria-describedby="tcp_hostHelp" placeholder="127.0.0.1" value="{{ main_settings[7].tcp_host_addr }}">
                <small class="form-text text-muted" id="tcp_hostHelp">Empty value enable external access to the Gnss receiver from another computer. Default is 127.0.0.1 (no external access)</small>
-@@ -113,7 +166,7 @@
+@@ -113,7 +165,7 @@
  
      </div>
            <div class="clearfix">
@@ -116,7 +116,7 @@ index 9690796..a7d0b24 100644
            </div>
        </form>
  
-@@ -123,19 +176,34 @@
+@@ -123,19 +175,34 @@
      <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
      <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
@@ -153,7 +153,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -146,11 +214,18 @@
+@@ -146,11 +213,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -174,7 +174,7 @@ index 9690796..a7d0b24 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -164,24 +239,24 @@
+@@ -164,24 +238,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -205,7 +205,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -197,19 +272,34 @@
+@@ -197,19 +271,34 @@
      <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
      <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
@@ -242,7 +242,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -220,11 +310,18 @@
+@@ -220,11 +309,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -263,7 +263,7 @@ index 9690796..a7d0b24 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -238,24 +335,24 @@
+@@ -238,24 +334,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -294,7 +294,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -265,6 +362,294 @@
+@@ -265,6 +361,294 @@
          </div>
      </form>
  
@@ -589,7 +589,7 @@ index 9690796..a7d0b24 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -291,7 +676,7 @@
+@@ -291,7 +675,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -598,7 +598,7 @@ index 9690796..a7d0b24 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -322,7 +707,7 @@
+@@ -322,7 +706,7 @@
        <div class="form-group row">
          <label for="local_ntripc_msg" class="col-sm-3 col-form-label">Local caster rtcm messages: </label>
          <div class="col-sm-9">
@@ -607,7 +607,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="local_ntripc_msgHelp">Local caster Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -361,10 +746,10 @@
+@@ -361,10 +745,10 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -620,7 +620,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="rtcm_svr_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -413,7 +798,7 @@
+@@ -413,7 +797,7 @@
        <div class="form-group row">
          <label for="rtcm_serial_msg" class="col-sm-3 col-form-label">Serial Rtcm messages: </label>
          <div class="col-sm-9">
@@ -629,7 +629,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="rtcm_serial_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -448,7 +833,7 @@
+@@ -448,7 +832,7 @@
        <div class="form-group row">
          <label for="datadir" class="col-sm-3 col-form-label">Data directory: </label>
          <div class="col-sm-9">
@@ -638,7 +638,7 @@ index 9690796..a7d0b24 100644
              <small class="form-text text-muted" id="datadirHelp">Absolute path to the directory where the data will be stored</small>
          </div>
        </div>
-@@ -479,6 +864,53 @@
+@@ -479,6 +863,53 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -692,7 +692,7 @@ index 9690796..a7d0b24 100644
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +921,7 @@
+@@ -489,7 +920,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -701,7 +701,7 @@ index 9690796..a7d0b24 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +943,24 @@
+@@ -511,17 +942,24 @@
              </div>
            </div>
            -->      
@@ -728,7 +728,7 @@ index 9690796..a7d0b24 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -537,9 +976,9 @@
+@@ -537,9 +975,9 @@
        <span class="col-sm-3">Gnss receiver:</span>
      </div>
      <div class="col-sm-8">
@@ -740,7 +740,7 @@ index 9690796..a7d0b24 100644
          {% endif %}
        </span>
      </div>
-@@ -600,8 +1039,8 @@
+@@ -600,8 +1038,8 @@
      <div class="col-sm-4">
        <span class="col-sm-3">Network:</span>
      </div>
@@ -751,7 +751,7 @@ index 9690796..a7d0b24 100644
      </div>
    </div>
    
-@@ -621,11 +1060,32 @@
+@@ -621,11 +1059,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -785,7 +785,7 @@ index 9690796..a7d0b24 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1093,7 @@
+@@ -633,6 +1092,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -793,7 +793,7 @@ index 9690796..a7d0b24 100644
        </div>
    </div>
      
-@@ -675,7 +1136,7 @@
+@@ -675,7 +1135,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -802,7 +802,7 @@ index 9690796..a7d0b24 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1255,267 @@
+@@ -794,12 +1254,267 @@
    </div>
  </div>
  
