@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import shutil
+import socket
 import subprocess
 import time
 
@@ -84,6 +85,11 @@ _fallback_country = None
 # station broadcasting the same name — the default SSID is the same on every unit.)
 _own_ap_bssids = set()
 
+# Last access-point start failure, shown persistently in the AP card (a toast alone
+# disappears; reopening the dialog must still tell WHY the AP is not running). Cleared
+# on a successful start and on an intentional disable. In-process only by design.
+_last_ap_error = None
+
 # Last successfully read interface list (network_infos.get_interfaces_infos). That upstream
 # helper is all-or-nothing: one nmcli.device.show() raising on an interface in a transient
 # state (e.g. a wlan device mid radio-toggle) makes the whole call fail. Reusing the last good
@@ -121,6 +127,17 @@ def sanitize_profile_name(ssid):
 
 def freq_to_band(freq_mhz):
     return "5" if freq_mhz and freq_mhz > 3000 else "2.4"
+
+
+def _default_ap_ssid():
+    """Hostname as the default AP SSID — stations become tellable apart out of the box;
+    falls back to the fixed default when the hostname is empty. Used only while no
+    Hotspot profile exists yet (a saved profile keeps whatever SSID it has)."""
+    try:
+        name = socket.gethostname().strip()
+    except Exception:
+        name = ""
+    return name[:32] or AP_DEFAULTS["ssid"]
 
 
 def parse_security(sec):
@@ -528,6 +545,18 @@ def validate_ip_config(ip, prefix, gateway=None, dns=None, occupied=None, local_
     return None
 
 
+def validate_dns_list(dns):
+    """DNS override with DHCP: only the server list needs checking. None when valid."""
+    for server in (dns or "").split(","):
+        server = server.strip()
+        if server:
+            try:
+                ipaddress.IPv4Address(server)
+            except ValueError:
+                return "Invalid DNS server address: {}".format(server)
+    return None
+
+
 # --------------------------------------------------------------------------
 # network list
 # --------------------------------------------------------------------------
@@ -642,6 +671,10 @@ def list_networks(rescan=False):
             "security": kind, "security_label": label,
             "band": band, "chan": chan, "freq": freq,
             "saved": bool(name) and not (name or "").endswith(ONETIME_SUFFIX),
+            # profiles created via "Add hidden network" carry hidden=yes and no BSSID pin —
+            # marked in the list so a duplicate next to a pinned profile of the same SSID
+            # is tellable apart (and the right one can be forgotten)
+            "hidden_profile": details.get("802-11-wireless.hidden") == "yes" if details else False,
             "profile": name,
             "autoconnect": details.get("connection.autoconnect") == "yes" if details else None,
             "in_use": bool(scan_item and scan_item.in_use),
@@ -679,10 +712,12 @@ def list_networks(rescan=False):
         elif e["saved"]:
             saved.append(e)
         else:
-            # country set: networks on DISABLED channels are not scannable at all;
-            # if one still shows up, hide it from Available
-            if not (country and e["usable"] == "disabled"):
-                available.append(e)
+            # Networks on channels DISABLED in the selected country are not scannable, but
+            # entries linger in the scan cache right after a region change. Show them
+            # greyed out with the "Unavailable in <CC>" badge instead of silently hiding —
+            # a network vanishing with no trace right after picking a country reads as a
+            # bug. They drop off naturally as the cache ages out.
+            available.append(e)
     # saved but not in scan (the pinned AP is out of range/off — strict BSSID matching
     # deliberately does NOT fall back to a same-SSID sibling)
     for name, details in list(profs_by_bssid.values()) + list(profs_by_ssid.values()):
@@ -704,6 +739,36 @@ def list_networks(rescan=False):
         "ap_active": ap_live,
         "connected": connected, "saved": saved, "available": available,
     }
+
+
+def _interfaces_fallback():
+    """Interface list without NetworkManager, from `ip -j addr` (kernel state).
+
+    Mirrors network_infos.get_interfaces_infos() shape and filtering: loopback and
+    link-local IPv6 are dropped, only interfaces holding an address are listed (plus
+    the Wi-Fi interface, kept even bare). conn_name is absent — it's an NM concept.
+    """
+    try:
+        data = json.loads(subprocess.check_output(["ip", "-j", "addr"], text=True,
+                                                  timeout=10))
+    except Exception as e:
+        log.warning("ip -j addr fallback failed: %s", e)
+        return None
+    ifaces = []
+    for it in data:
+        name = it.get("ifname")
+        if not name or name == "lo":
+            continue
+        v4 = [a.get("local") for a in it.get("addr_info", []) if a.get("family") == "inet"]
+        v6 = [a.get("local") for a in it.get("addr_info", [])
+              if a.get("family") == "inet6" and not (a.get("local") or "").startswith("fe80")]
+        if not v4 and not v6 and name != WIFI_IFACE:
+            continue
+        entry = {"device": name, "ipv4": v4 or None, "ipv6": v6 or None}
+        if it.get("address"):
+            entry["hwaddr"] = it["address"].upper()
+        ifaces.append(entry)
+    return ifaces or None
 
 
 def _augment_wifi_iface(interfaces):
@@ -733,6 +798,10 @@ def get_status(hide_country_codes=()):
     cap = capability()
     status = {"capability": cap}
     if not cap["nm"]:
+        # No NetworkManager (Debian 11 with NM stopped/absent): the interface table can
+        # still be served — addresses and MACs come straight from the kernel. Only the
+        # connection name is an NM concept and stays empty.
+        status["interfaces"] = _interfaces_fallback()
         return status
     global _last_interfaces
     try:
@@ -744,6 +813,12 @@ def get_status(hide_country_codes=()):
     # link-local (fe80::) intentionally NOT added: the interface list mirrors the client's
     # original Network Infos logic (network_infos.get_interfaces_infos strips link-local)
     status["interfaces"] = _augment_wifi_iface(_last_interfaces)
+    # a station without any WiFi adapter renders an empty dialog otherwise — let the UI
+    # say so explicitly (seen on x86/DIY installs; the Pi always has wlan0)
+    try:
+        status["wifi_present"] = any(d.device == WIFI_IFACE for d in nmcli.device.status())
+    except Exception:
+        status["wifi_present"] = True   # can't tell — don't alarm
     status.update({
         "radio": nmcli.radio.wifi(),
         "country": get_country(),
@@ -761,13 +836,17 @@ def get_status(hide_country_codes=()):
 # --------------------------------------------------------------------------
 
 def _ipv4_options(ipconf):
-    """ipconf: None|{method, ip, prefix, gateway, dns} -> nmcli option dict."""
+    """ipconf: None|{method, ip, prefix, gateway, dns} -> nmcli option dict.
+
+    DHCP with a manual DNS is a supported combination (the DHCP-provided DNS is not
+    always usable): dns set with method=auto maps to ipv4.ignore-auto-dns=yes."""
+    dns = ",".join(s.strip() for s in ((ipconf or {}).get("dns") or "").split(",") if s.strip())
     if not ipconf or ipconf.get("method") != "manual":
-        return {"ipv4.method": "auto", "ipv4.addresses": "", "ipv4.gateway": "", "ipv4.dns": ""}
+        return {"ipv4.method": "auto", "ipv4.addresses": "", "ipv4.gateway": "",
+                "ipv4.dns": dns, "ipv4.ignore-auto-dns": "yes" if dns else "no"}
     opts = {"ipv4.method": "manual",
             "ipv4.addresses": "{}/{}".format(ipconf["ip"].strip(), int(ipconf["prefix"]))}
     opts["ipv4.gateway"] = (ipconf.get("gateway") or "").strip()
-    dns = ",".join(s.strip() for s in (ipconf.get("dns") or "").split(",") if s.strip())
     opts["ipv4.dns"] = dns
     return opts
 
@@ -810,9 +889,16 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         raise WifiError("Client connection is not available while Access Point mode is on")
 
     if ipconf and ipconf.get("method") == "manual":
+        # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
+        # and WiFi legitimately share one L2 network with a common DHCP) — the UI warns;
+        # exact-address clashes and the rest still validate
         err = validate_ip_config(ipconf.get("ip", ""), ipconf.get("prefix", 0),
                                  ipconf.get("gateway"), ipconf.get("dns"),
-                                 occupied_subnets(), local_ip_addresses())
+                                 None, local_ip_addresses())
+        if err:
+            raise WifiError(err)
+    elif ipconf and ipconf.get("dns"):        # DHCP + manual DNS override
+        err = validate_dns_list(ipconf.get("dns"))
         if err:
             raise WifiError(err)
 
@@ -973,9 +1059,16 @@ def set_ip_config(profile, ipconf):
     """Change the IP configuration of an existing (saved) profile."""
     _guard_client_profile(profile)
     if ipconf and ipconf.get("method") == "manual":
+        # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
+        # and WiFi legitimately share one L2 network with a common DHCP) — the UI warns;
+        # exact-address clashes and the rest still validate
         err = validate_ip_config(ipconf.get("ip", ""), ipconf.get("prefix", 0),
                                  ipconf.get("gateway"), ipconf.get("dns"),
-                                 occupied_subnets(), local_ip_addresses())
+                                 None, local_ip_addresses())
+        if err:
+            raise WifiError(err)
+    elif ipconf and ipconf.get("dns"):        # DHCP + manual DNS override
+        err = validate_dns_list(ipconf.get("dns"))
         if err:
             raise WifiError(err)
     try:
@@ -1076,7 +1169,8 @@ def get_ap_config():
     try:
         details = nmcli.connection.show(AP_PROFILE, show_secrets=True)
     except nmcli.NotExistException:
-        return dict(AP_DEFAULTS, enabled=False, configured=False, has_password=False)
+        return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), enabled=False, configured=False,
+                    has_password=False, last_error=_last_ap_error)
     km = details.get("802-11-wireless-security.key-mgmt")
     pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
     if km == "sae":
@@ -1093,7 +1187,8 @@ def get_ap_config():
     ip, _, prefix = addr.partition("/")
     chan = details.get("802-11-wireless.channel")
     return {
-        "ssid": details.get("802-11-wireless.ssid") or AP_DEFAULTS["ssid"],
+        "ssid": details.get("802-11-wireless.ssid") or _default_ap_ssid(),
+        "last_error": _last_ap_error,
         "security": security,
         # The stored key is shown in the form ONLY under the CSS masking (a type=text
         # input the browser's password manager ignores — no save prompts). Browsers
@@ -1159,7 +1254,7 @@ def set_ap(config, status_cb=None):
 
     options = {
         "802-11-wireless.mode": "ap",
-        "802-11-wireless.ssid": config.get("ssid") or AP_DEFAULTS["ssid"],
+        "802-11-wireless.ssid": config.get("ssid") or _default_ap_ssid(),
         "802-11-wireless.hidden": "yes" if config.get("hidden") else "no",
         "ipv4.method": "shared",
         "ipv4.addresses": "{}/{}".format(ip, prefix),
@@ -1202,6 +1297,7 @@ def set_ap(config, status_cb=None):
                 continue
             nmcli.connection.modify(name, {"connection.autoconnect": "no" if enabled else "yes"})
         nmcli.connection.modify(AP_PROFILE, {"connection.autoconnect": "yes" if enabled else "no"})
+        global _last_ap_error
         if enabled:
             notify("starting", "hotspot")
             nmcli.connection.up(AP_PROFILE, wait=30)
@@ -1213,8 +1309,10 @@ def set_ap(config, status_cb=None):
                 except Exception:
                     pass
             _set_hotspot_flag(False)
+        _last_ap_error = None
     except Exception as e:
-        raise WifiError(_readable_error(e))
+        _last_ap_error = _readable_error(e)
+        raise WifiError(_last_ap_error)
     return get_ap_config()
 
 
@@ -1241,13 +1339,13 @@ def _set_hotspot_flag(up):
 # are neither needed to restore state nor valid `nmcli add/modify` input, and would break
 # restore. WPA3 stores its key in .psk (not .sae-password); WEP uses .wep-key-type=key.
 _BACKUP_KEYS = frozenset({
-    "connection.id", "connection.autoconnect",
+    "connection.id", "connection.autoconnect", "connection.interface-name",
     "802-11-wireless.ssid", "802-11-wireless.bssid", "802-11-wireless.hidden",
     "802-11-wireless.mode", "802-11-wireless.band", "802-11-wireless.channel",
     "802-11-wireless-security.key-mgmt", "802-11-wireless-security.psk",
     "802-11-wireless-security.pmf",
     "802-11-wireless-security.wep-key0", "802-11-wireless-security.wep-key-type",
-    "ipv4.method", "ipv4.addresses", "ipv4.gateway", "ipv4.dns",
+    "ipv4.method", "ipv4.addresses", "ipv4.gateway", "ipv4.dns", "ipv4.ignore-auto-dns",
 })
 
 
@@ -1333,12 +1431,16 @@ def restore_profiles(data):
             if cv is not None:
                 options[k] = cv
         autoconnect = options.pop("connection.autoconnect", "yes") == "yes"
+        # honour the exported device binding (wlan0 / ap0 / a USB dongle): restoring onto
+        # the wrong adapter is exactly what the binding is meant to prevent. Passed as the
+        # add ifname (which IS connection.interface-name) — popped to avoid a duplicate.
+        ifname = options.pop("connection.interface-name", None) or WIFI_IFACE
         try:
             nmcli.connection.delete(name)
         except Exception:
             pass
         try:
-            nmcli.connection.add("wifi", options, WIFI_IFACE, name, autoconnect=autoconnect)
+            nmcli.connection.add("wifi", options, ifname, name, autoconnect=autoconnect)
             count += 1
         except Exception as e:
             raise WifiError("Restore failed on '{}': {}".format(name, _readable_error(e)))

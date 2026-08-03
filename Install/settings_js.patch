@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..997fe19 100644
+index 5b64baa..493a173 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..997fe19 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1153 @@ $(document).ready(function () {
+@@ -758,5 +960,1254 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -904,7 +904,7 @@ index 5b64baa..997fe19 100644
 +        var t = $('#wifi-toast');
 +        t.text(msg).toggleClass('wifi-toast-error', !!isError).show();
 +        clearTimeout(wifiToastTimer);
-+        wifiToastTimer = setTimeout(function () { t.hide(); }, isError ? 6000 : 2500);
++        wifiToastTimer = setTimeout(function () { t.hide(); }, isError ? 12000 : 2500);
 +    }
 +
 +    // Long operation in progress: persistent spinner toast + block all controls so the user
@@ -945,6 +945,14 @@ index 5b64baa..997fe19 100644
 +        }
 +        if (pwd.length < 8 || pwd.length > 63) return 'Password must be 8–63 characters';
 +        return null;
++    }
++    // Password-format hint under the key field: the expected format differs per security
++    // kind (WEP keys vs WPA passphrases) and a mismatch is not obvious from the error alone.
++    function wifiPwdSetHint(sec) {
++        $('#wifi-cm-pwd-hint').text(
++            !sec || sec === 'open' ? '' :
++            sec === 'wep' ? 'WEP key: 5 or 13 characters, or 10/26 hex digits'
++                          : 'Passphrase: 8–63 characters (64 hex digits for a raw key)');
 +    }
 +    function wifiShowPwdErr(msg) {
 +        $('#wifi-cm-pwd-err').text(msg || '').toggle(!!msg);
@@ -1013,12 +1021,13 @@ index 5b64baa..997fe19 100644
 +        var errEl = $('#' + ids.err), ipEl = $('#' + ids.ip);
 +        var prefix = +$('#' + ids.mask).val();
 +        function fail(el, m) {
-+            errEl.text('⚠ ' + m).show();
++            errEl.text('⚠ ' + m).removeClass('text-warning').addClass('text-danger').show();
 +            if (el) el.css('border-color', '#dc3545');
 +            return false;
 +        }
 +        function good() {
-+            errEl.hide();
++            if (warnMsg) errEl.text('⚠ ' + warnMsg).removeClass('text-danger').addClass('text-warning').show();
++            else errEl.removeClass('text-warning').addClass('text-danger').hide();
 +            ipEl.css('border-color', '');
 +            if (ids.gw) $('#' + ids.gw).css('border-color', '');
 +            return true;
@@ -1030,7 +1039,10 @@ index 5b64baa..997fe19 100644
 +        var bcast = (net | host) >>> 0;
 +        if (ip === net || ip === bcast) return fail(ipEl, 'This is a network or broadcast address — use a host address.');
 +        var conf = wifiOccupiedConflict(ip, prefix);
-+        if (conf) return fail(ipEl, 'Subnet overlaps ' + conf.net + ' (' + conf.conn + '). Choose a different subnet.');
++        if (conf && !ids.softOccupied) return fail(ipEl, 'Subnet overlaps ' + conf.net + ' (' + conf.conn + '). Choose a different subnet.');
++        // client STA: overlapping an occupied subnet can be intentional (Ethernet and
++        // WiFi in one L2 network with a shared DHCP) — warn without blocking
++        var warnMsg = conf ? 'Subnet overlaps ' + conf.net + ' (' + conf.conn + ') — make sure the networks are really one (shared DHCP), otherwise routing breaks.' : null;
 +        // exact clash with an address already assigned to this device (header interfaces
 +        // list; skip wlan0 — re-using its own current address is fine)
 +        var ifs = (wifi.status && wifi.status.interfaces) || [];
@@ -1081,6 +1093,11 @@ index 5b64baa..997fe19 100644
 +        for (var i = 0; i < all.length; i++) {
 +            var e = all[i];
 +            if (e.disabled || e.no_ir || e.dfs) continue;
++            // `iw list` also enumerates non-standard 5 GHz center frequencies (e.g. ch 34,
++            // the Japanese legacy J52 grid) — the AP cannot start on those; keep only the
++            // standard 20 MHz grid: 36–144 and 149–177 in steps of 4
++            if (band === '5' && !((e.ch >= 36 && e.ch <= 144 && (e.ch - 36) % 4 === 0) ||
++                                  (e.ch >= 149 && e.ch <= 177 && (e.ch - 149) % 4 === 0))) continue;
 +            chans.push(e.ch);
 +        }
 +        if (band === '2.4' && width === '40') chans = chans.filter(function (c) { return c <= 9; });
@@ -1099,7 +1116,7 @@ index 5b64baa..997fe19 100644
 +        if (band === 'all') {
 +            mSel.prop('disabled', true).html('<option value="auto">Auto</option>');
 +            cSel.prop('disabled', true).html('<option value="0">Auto</option>');
-+            wRef.text('Channel width: auto (all bands)');
++            wRef.text('Channel width: auto — one radio, the AP beacons on a single band');
 +            return;
 +        }
 +        mSel.prop('disabled', !!wifi.apFormLock);
@@ -1156,7 +1173,19 @@ index 5b64baa..997fe19 100644
 +        var limited = kind !== 'connected' && n.usable && n.usable !== 'ok';
 +        var right;
 +        if (kind === 'connected') {
-+            right = '<button class="btn btn-secondary btn-sm" type="button" data-wifi-act="disconnect">Disconnect</button>';
++            // the ⋮ menu is available here too: IP settings of the LIVE connection is a
++            // real need (the backend re-activates the profile to apply); no Connect item —
++            // it is already up. One-time connections have no stored profile to manage.
++            right = '<button class="btn btn-secondary btn-sm mr-1" type="button" data-wifi-act="disconnect">Disconnect</button>' +
++                (n.profile && !n.onetime
++                    ? '<div class="dropdown">' +
++                      '<button class="btn btn-secondary btn-sm" type="button" data-wifi-act="menu">&#8942;</button>' +
++                      '<div class="dropdown-menu dropdown-menu-right">' +
++                      '<a class="dropdown-item" href="#" data-wifi-act="changepwd">Change password</a>' +
++                      '<a class="dropdown-item" href="#" data-wifi-act="ipconf">IP settings</a>' +
++                      '<a class="dropdown-item text-danger" href="#" data-wifi-act="forget">Forget</a>' +
++                      '</div></div>'
++                    : '');
 +        } else if (kind === 'saved') {
 +            right = limited
 +                ? '<button class="btn btn-secondary btn-sm" type="button" disabled style="opacity:.5">&#8942;</button>'
@@ -1186,6 +1215,9 @@ index 5b64baa..997fe19 100644
 +        // BSSID always shown: rows are one-per-access-point (a dual-band AP or several
 +        // APs sharing an SSID are separate rows), the MAC is what tells them apart
 +        if (n.bssid) meta.push(n.bssid);
++        // a hidden-network profile (no BSSID pin) can coexist with a pinned profile of
++        // the same SSID — the mark makes the two rows distinguishable
++        if (n.hidden_profile && kind !== 'available') meta.push('hidden');
 +        if (kind === 'connected') {
 +            if (n.ip) meta.push(n.ip);
 +            if (n.onetime) meta.push('not saved (one-time)');
@@ -1204,6 +1236,10 @@ index 5b64baa..997fe19 100644
 +
 +    function wifiRenderList() {
 +        var el = $('#wifi-net-list');
++        if (wifi.status && wifi.status.wifi_present === false) {
++            el.html('<div class="text-muted text-center py-4">No WiFi adapter (wlan0) found on this device</div>');
++            return;
++        }
 +        if (wifi.scanning) {
 +            el.html('<div class="text-muted text-center py-4"><span class="spinner-border spinner-border-sm"></span> Scanning networks…</div>');
 +            return;
@@ -1249,7 +1285,8 @@ index 5b64baa..997fe19 100644
 +        // The no-region gate only blocks TURNING THE AP ON: with the AP already running
 +        // (e.g. enabled outside the web UI with no region set) the card stays usable so it
 +        // can be turned OFF — otherwise the UI has no way out of that state.
-+        var apGate = !radioOn || (!hasCountry && !apOn);
++        var noAdapter = !!(wifi.status && wifi.status.wifi_present === false);
++        var apGate = !radioOn || (!hasCountry && !apOn) || noAdapter;
 +        $('#wifi-ap-card').toggleClass('wifi-disabled-area', apGate);
 +        // natively disable the toggle too — pointer-events on the card is not enough
 +        // (e.g. a stale status), and a disabled input can't open the form
@@ -1269,7 +1306,7 @@ index 5b64baa..997fe19 100644
 +            if (!apFormLock) wifiRepopRadio();   // restore the band-derived Auto states
 +        }
 +        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
-+        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn);
++        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn || noAdapter);
 +        $('#wifi-region-hint').toggle(!hasCountry);
 +    }
 +
@@ -1326,7 +1363,11 @@ index 5b64baa..997fe19 100644
 +        $('#wifi-ap-body').toggle(!!cfg.enabled);
 +        wifiRepopRadio();
 +        if (cfg.channel) $('#wifi-ap-channel').val(String(cfg.channel));
++        // persistent start-failure line (survives the toast and a dialog reopen)
++        $('#wifi-ap-last-err').text(cfg.last_error ? 'Access point failed to start: ' + cfg.last_error : '')
++            .toggle(!!cfg.last_error);
 +        wifi.updating = false;
++        wifi.apDirty = false;   // the form now mirrors the stored config — nothing to lose
 +    }
 +
 +    function wifiGatherApForm(enabled) {
@@ -1360,7 +1401,11 @@ index 5b64baa..997fe19 100644
 +        $('#wifi-cm-eye').html(WIFI_EYEOFF);
 +        wifiShowPwdErr('');
 +        $('#wifi-cm-ssid').val('');
++        $('#wifi-cm-ssid-visible').hide();
 +        $('#wifi-cm-ip, #wifi-cm-gw, #wifi-cm-dns').val('').css('border-color', '');
++        $('#wifi-cm-dns2').val('');
++        $('#wifi-cm-dns2-err').hide();
++        $('#wifi-cm-autodns').show();   // default mode is Automatic
 +        $('#wifi-cm-mask').html(wifiMaskOptions(24));
 +        $('#wifi-cm-ip-err').hide();
 +        $('#wifi-cm-ipmode label').removeClass('active');
@@ -1373,6 +1418,7 @@ index 5b64baa..997fe19 100644
 +        $('#wifi-cm-ipblock').toggle(!isPwd);
 +        $('#wifi-cm-save').closest('.custom-control').toggle(!isPwd && !isIp);
 +        $('#wifi-cm-pwd-field').toggle(!isIp && (isHidden || isPwd || opts.security !== 'open'));
++        wifiPwdSetHint(isIp ? '' : (isHidden ? $('#wifi-cm-sec').val() : opts.security));
 +        if (isHidden) {
 +            $('#wifi-cm-title').text('Add hidden network');
 +            $('#wifi-cm-meta').text('Enter the network name, security and password.');
@@ -1387,10 +1433,14 @@ index 5b64baa..997fe19 100644
 +            $('#wifi-cm-connect').text('Save');
 +            // pre-fill with the profile's CURRENT configuration (the reset above assumed DHCP)
 +            var net = wifiFindNet(opts.profile), ipc = net && net.ipconf;
++            if (ipc && ipc.method !== 'manual' && ipc.dns) {
++                $('#wifi-cm-dns2').val(ipc.dns);   // DHCP with a DNS override stored
++            }
 +            if (ipc && ipc.method === 'manual') {
 +                $('#wifi-cm-ipmode label').removeClass('active');
 +                $('#wifi-cm-ipmode input[value="manual"]').prop('checked', true).closest('label').addClass('active');
 +                $('#wifi-cm-static').show();
++                $('#wifi-cm-autodns').hide();
 +                $('#wifi-cm-ip').val(ipc.ip || '');
 +                $('#wifi-cm-mask').html(wifiMaskOptions(ipc.prefix || 24));
 +                $('#wifi-cm-gw').val(ipc.gateway || '');
@@ -1409,7 +1459,7 @@ index 5b64baa..997fe19 100644
 +
 +    function wifiGatherIpconf() {
 +        var mode = $('#wifi-cm-ipmode input:checked').val();
-+        if (mode !== 'manual') return {method: 'auto'};
++        if (mode !== 'manual') return {method: 'auto', dns: $('#wifi-cm-dns2').val().trim()};
 +        return {
 +            method: 'manual',
 +            ip: $('#wifi-cm-ip').val().trim(),
@@ -1419,6 +1469,17 @@ index 5b64baa..997fe19 100644
 +        };
 +    }
 +
++    function wifiValidateAutoDns(ipconf) {
++        // DHCP + DNS override: only the server list needs checking
++        if (ipconf.method === 'manual' || !ipconf.dns) return true;
++        var bad = null;
++        ipconf.dns.split(',').forEach(function (srv) {
++            srv = srv.trim();
++            if (srv && !/^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/.test(srv)) bad = srv;
++        });
++        $('#wifi-cm-dns2-err').text(bad ? 'Invalid DNS server address: ' + bad : '').toggle(!!bad);
++        return !bad;
++    }
 +    function wifiDoConnect() {
 +        var m = wifi.cm;
 +        if (m.mode === 'changepwd') {
@@ -1432,9 +1493,10 @@ index 5b64baa..997fe19 100644
 +        }
 +        var ipconf = wifiGatherIpconf();
 +        if (ipconf.method === 'manual' &&
-+            !wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'})) {
++            !wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err', softOccupied: true})) {
 +            return;
 +        }
++        if (!wifiValidateAutoDns(ipconf)) return;
 +        if (m.mode === 'ipconf') {
 +            socket.emit('wifi set ipconf', {profile: m.profile, ipconf: ipconf});
 +            $('#wifiConnectModal').modal('hide');
@@ -1477,6 +1539,14 @@ index 5b64baa..997fe19 100644
 +            if (!$('#wifi-no-nm').length) {
 +                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">WiFi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
 +            }
++            // every status event re-runs the children().hide() above, which also hides the
++            // alert appended on a PREVIOUS event (reopening the dialog requests a fresh
++            // status) — re-show it explicitly or the second open ends up an empty dialog
++            $('#wifi-no-nm').show();
++            // the interface table still has data without NM (kernel-sourced fallback on
++            // the backend) — render and re-show it; only the connection name is missing
++            wifiRenderIfaces();
++            $('#wifi-ifaces').show();
 +            return;
 +        }
 +        wifiRenderIfaces();
@@ -1546,7 +1616,11 @@ index 5b64baa..997fe19 100644
 +        var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
 +        var a = document.createElement('a');
 +        a.href = URL.createObjectURL(blob);
-+        a.download = 'rtkbase_wifi_profiles.json';
++        // name the file after the station so exports from several stations don't collide;
++        // sanitize: the station name may come from a mount point / hostname / IP
++        var station = String($('#wifi-backup-button').data('station') || 'rtkbase')
++            .replace(/[^\w.-]+/g, '_').replace(/^[_.]+|[_.]+$/g, '') || 'rtkbase';
++        a.download = station + '_wifi_profiles.json';
 +        a.click();
 +        URL.revokeObjectURL(a.href);
 +    });
@@ -1719,17 +1793,29 @@ index 5b64baa..997fe19 100644
 +        $(this).html(show ? WIFI_EYE : WIFI_EYEOFF);
 +    });
 +    $('#wifi-cm-pwd').on('input', function () { wifiShowPwdErr(''); });   // clear the inline error as the user types
++    // hidden-network dialog: typing an SSID that is in fact visible in the scan creates a
++    // duplicate (unpinned) profile next to the pinned one — warn, don't block
++    $('#wifi-cm-ssid').on('input', function () {
++        var ssid = $(this).val().trim(), seen = false;
++        if (ssid && wifi.list) {
++            var all = (wifi.list.connected || []).concat(wifi.list.saved || [], wifi.list.available || []);
++            for (var i = 0; i < all.length; i++) if (all[i].ssid === ssid && all[i].bssid) { seen = true; break; }
++        }
++        $('#wifi-cm-ssid-visible').toggle(seen);
++    });
 +    $('#wifi-cm-sec').on('change', function () {
 +        $('#wifi-cm-pwd-field').toggle($(this).val() !== 'open');
++        wifiPwdSetHint($(this).val());
 +    });
 +    $('#wifi-cm-ipmode').on('change', 'input', function () {
 +        $('#wifi-cm-static').toggle($(this).val() === 'manual');
++        $('#wifi-cm-autodns').toggle($(this).val() !== 'manual');
 +    });
 +    $('#wifi-cm-ip, #wifi-cm-gw, #wifi-cm-dns').on('input', function () {
-+        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'});
++        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err', softOccupied: true});
 +    });
 +    $('#wifi-cm-mask').on('change', function () {
-+        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err'});
++        wifiValidateStatic({ip: 'wifi-cm-ip', mask: 'wifi-cm-mask', gw: 'wifi-cm-gw', dns: 'wifi-cm-dns', err: 'wifi-cm-ip-err', softOccupied: true});
 +    });
 +
 +    // AP form events
@@ -1794,7 +1880,22 @@ index 5b64baa..997fe19 100644
 +        }
 +    });
 +    $('#wifi-ap-save').on('click', function () {
++        wifi.apDirty = false;   // the edits are being saved — no discard warning needed
 +        wifiSubmitAp($('#wifi-ap-switch').prop('checked'));
++    });
++    // Unsaved-changes guard: the AP form applies on Save only, so closing the dialog with
++    // edits pending silently discards them. Track user edits (programmatic re-renders run
++    // under wifi.updating) and confirm before the modal closes.
++    $('#wifi-ap-body').on('input change', 'input, select', function () {
++        if (!wifi.updating) wifi.apDirty = true;
++    });
++    $('#wifiModal').on('hide.bs.modal', function (e) {
++        if (wifi.apDirty && $('#wifi-ap-body').is(':visible') &&
++            !window.confirm('Access point settings were changed but not saved. Close and discard the changes?')) {
++            e.preventDefault();
++            return;
++        }
++        wifi.apDirty = false;
 +    });
 +
 +    // optional WiFi profiles backup/restore (JSON)

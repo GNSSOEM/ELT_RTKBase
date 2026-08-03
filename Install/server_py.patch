@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..5d899ee
+index e36bbc4..74b31e8
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,10 @@ from RTKLIB import RTKLIB
@@ -599,7 +599,7 @@ index e36bbc4..5d899ee
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1305,270 @@ def update_settings(json_msg):
+@@ -1004,6 +1305,276 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -848,6 +848,12 @@ index e36bbc4..5d899ee
 +            socketio.emit("ap config", config, namespace="/test")
 +        except Exception as e:
 +            wifi_emit_error("set ap", e)
++            # push the refreshed config too: it carries last_error, which the AP card
++            # shows persistently (the error toast alone disappears)
++            try:
++                socketio.emit("ap config", wifi_manager.get_ap_config(), namespace="/test")
++            except Exception:
++                pass
 +    socketio.start_background_task(task)
 +
 +@socketio.on("wifi backup", namespace="/test")

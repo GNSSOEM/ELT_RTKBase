@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..0494f5c 100644
+index 9690796..776b26a 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -802,7 +802,7 @@ index 9690796..0494f5c 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1254,267 @@
+@@ -794,12 +1254,289 @@
    </div>
  </div>
  
@@ -894,6 +894,9 @@ index 9690796..0494f5c 100644
 +              <label class="custom-control-label font-weight-bold" for="wifi-ap-switch">Access Point mode</label>
 +            </div>
 +          </div>
++          <!-- persistent start-failure line: an error toast disappears, but WHY the AP is
++               not running must survive the toast and a dialog reopen -->
++          <p class="text-danger mb-0 px-3 pb-2" id="wifi-ap-last-err" style="display:none"></p>
 +          <div class="card-body border-top" id="wifi-ap-body" style="display:none">
 +            <div class="form-group">
 +              <label class="mb-1" for="wifi-ap-ssid">SSID</label>
@@ -931,8 +934,11 @@ index 9690796..0494f5c 100644
 +            <div class="form-row">
 +              <div class="form-group col-sm-4">
 +                <label class="mb-1" for="wifi-ap-band">Band</label>
++                <!-- value "all" = band left unset in the NM profile: the single radio
++                     beacons on ONE band NetworkManager picks (2.4 GHz in practice) —
++                     labelled Auto so it does not read as dual-band broadcasting -->
 +                <select class="form-control" id="wifi-ap-band">
-+                  <option value="all" selected>All</option>
++                  <option value="all" selected>Auto (single band, 2.4 GHz preferred)</option>
 +                  <option value="2.4">2.4 GHz</option>
 +                  <option value="5">5 GHz</option>
 +                </select>
@@ -966,7 +972,8 @@ index 9690796..0494f5c 100644
 +        </div>
 +      </div>
 +      <div class="modal-footer">
-+        <button class="btn btn-secondary" type="button" id="wifi-backup-button">Export</button>
++        <!-- data-station feeds the export file name: <station>_wifi_profiles.json -->
++        <button class="btn btn-secondary" type="button" id="wifi-backup-button" data-station="{{ g.station_name }}">Export</button>
 +        <button class="btn btn-secondary mr-auto" type="button" id="wifi-import-button">Import</button>
 +        <input type="file" id="wifi-restore-file" accept="application/json" hidden>
 +        <button class="btn btn-primary" type="button" data-dismiss="modal">Close</button>
@@ -992,6 +999,10 @@ index 9690796..0494f5c 100644
 +        <div class="form-group" id="wifi-cm-ssid-field" style="display:none">
 +          <label class="mb-1" for="wifi-cm-ssid">Network name (SSID)</label>
 +          <input class="form-control" id="wifi-cm-ssid" autocomplete="off" placeholder="Enter SSID">
++          <small class="text-warning" id="wifi-cm-ssid-visible" style="display:none">This network is
++            visible in the scan — connect to it from the list instead (that also pins the exact
++            access point). Continue here only for a truly hidden network: you would end up with a
++            second, unpinned profile of the same name.</small>
 +        </div>
 +        <div class="form-group" id="wifi-cm-sec-field" style="display:none">
 +          <label class="mb-1" for="wifi-cm-sec">Security</label>
@@ -999,7 +1010,11 @@ index 9690796..0494f5c 100644
 +            <option value="mixed23">WPA2 / WPA3</option>
 +            <option value="wpa2">WPA2-PSK</option>
 +            <option value="wpa3">WPA3-SAE</option>
-+            <option value="wep">WEP / WPA (legacy)</option>
++            <!-- WPA(1) is a passphrase network (8-63 chars, key-mgmt wpa-psk) while WEP is a
++                 key network (5/13 chars or 10/26 hex, key-mgmt none) — one combined item
++                 forced WEP semantics onto WPA passphrases, rejecting valid 8-char keys -->
++            <option value="wpa1">WPA (legacy)</option>
++            <option value="wep">WEP</option>
 +            <option value="open">Open (no password)</option>
 +          </select>
 +        </div>
@@ -1013,6 +1028,7 @@ index 9690796..0494f5c 100644
 +            </div>
 +          </div>
 +          <small class="text-danger" id="wifi-cm-pwd-err" style="display:none"></small>
++          <small class="form-text text-muted" id="wifi-cm-pwd-hint"></small>
 +        </div>
 +        <div id="wifi-cm-ipblock">
 +          <div class="form-group mb-2">
@@ -1023,6 +1039,12 @@ index 9690796..0494f5c 100644
 +              <label class="btn btn-secondary btn-sm">
 +                <input type="radio" name="wifi-cm-ipmode" value="manual"> Manual (static)</label>
 +            </div>
++          </div>
++          <!-- DHCP + manual DNS: the DHCP-provided DNS is not always usable -->
++          <div class="form-group mb-2" id="wifi-cm-autodns">
++            <label class="mb-1" for="wifi-cm-dns2">DNS servers (optional — overrides the DHCP-provided DNS)</label>
++            <input class="form-control" id="wifi-cm-dns2" placeholder="8.8.8.8, 1.1.1.1" autocomplete="off">
++            <small class="text-danger" id="wifi-cm-dns2-err" style="display:none"></small>
 +          </div>
 +          <div id="wifi-cm-static" style="display:none">
 +            <div class="form-row">
