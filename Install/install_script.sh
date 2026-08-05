@@ -795,8 +795,8 @@ stop_rtkbase_services(){
                   ${CHECK_INTERNET_SERVICE} \
                   ${CHECK_SATELITES_SERVICE} \
                   ${SEPTENTRIO_NAT_SERVICE} \
-                  ${DHCP_SERVICE}"
-     #${SYSSERVICE} excluded, it's not need be restarted
+                  ${DHCP_SERVICE} \
+                  ${SYSSERVICE}"
      if [[ "${ONLINE_UPDATE}" != "UPDATE" ]]; then
         serviceList="${serviceList} rtkbase_web.service"
      fi
@@ -1635,6 +1635,11 @@ start_rtkbase_services(){
 
   #echo systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
   systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
+  ExitCodeCheck $?
+  delete_from_service_list ${START_SERVICE}
+
+  #echo systemctl start ${START_SERVICE}
+  systemctl start ${START_SERVICE}
   ExitCodeCheck $?
   delete_from_service_list ${START_SERVICE}
 
