@@ -1638,11 +1638,6 @@ start_rtkbase_services(){
   ExitCodeCheck $?
   delete_from_service_list ${START_SERVICE}
 
-  #echo systemctl start ${START_SERVICE}
-  systemctl start ${START_SERVICE}
-  ExitCodeCheck $?
-  delete_from_service_list ${START_SERVICE}
-
   #echo systemctl enable --now rtkbase_web.service
   systemctl enable --now rtkbase_web.service
   ExitCodeCheck $?
