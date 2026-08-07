@@ -263,6 +263,9 @@ detect_usb() {
                    detected_gnss[6]=`echo  $ID_SERIAL | awk -F '_' '{print $5}' | awk -F '-' '{print $1}'`
                    set_septetrio_format
                    break
+                elif [[ ! '/dev/ttyGNSS_CTRL' -ef '/dev/'"${devname}" ]]; then
+                   detect_Septentrio ${devname} 115200
+                   [[ ${#detected_gnss[*]} -ge 7 ]] && break
                 fi
              elif [[ "$ID_SERIAL" =~ ELT0x33 ]]; then
                 #echo detect ELT0x33 ${devname}
@@ -347,6 +350,7 @@ detect_configure() {
       [[ ${#detected_gnss[*]} -le 4 ]] && detected_gnss[4]='unknown'
       [[ ${#detected_gnss[*]} -le 5 ]] && detected_gnss[5]='?'
       [[ ${#detected_gnss[*]} -le 6 ]] && detected_gnss[6]=''
+      detected_gnss[5]=$(echo "${detected_gnss[5]}" | sed -E "s/ /_/")
       # "send" result
       echo '/dev/'"${detected_gnss[0]}" ' - ' "${detected_gnss[1]}" ' - ' "${detected_gnss[2]}" ' - ' "${detected_gnss[3]}" ' - ' "${detected_gnss[4]}" ' - ' "${detected_gnss[5]}" ' - ' "${detected_gnss[6]}"
 
@@ -688,10 +692,17 @@ configure_septentrio() {
     echo Receiver ${RECVNAME}\(${FIRMWARE}\) found on ${RECVPORT}
     SetConf "receiver_firmware" "${FIRMWARE}"
 
-    RECVTYPE=$(echo ${RECVNAME} | sed s/^mosaic-//)
+    RECVTYPE=$(echo ${RECVNAME} | sed s/^mosaic-// | sed "s/ //")
+    RECVCONFNAME2=${RECVTYPE:0:2}_${FORMAT^^}_OUT.txt
     RECVCONFNAME=${RECVTYPE}_${FORMAT^^}_OUT.txt
+    RECVCONF2=${rtkbase_path}/receiver_cfg/${RECVCONFNAME2}
     RECVCONF=${rtkbase_path}/receiver_cfg/${RECVCONFNAME}
-    #echo RECVCONF=${RECVCONF}
+    #echo RECVCONF=${RECVCONF} RECVCONF2=${RECVCONF2}
+    if [[ -f "${RECVCONF2}" ]]; then
+       RECVCONF="${RECVCONF2}"
+       RECVCONFNAME=${RECVCONFNAME2}
+       #echo now RECVCONFNAME=${RECVCONFNAME} RECVCONF=${RECVCONF}
+    fi
 
     if [[ -f "${RECVCONF}" ]]; then
        if [[ "${RECVNAME}" =~ "mosaic-H" ]]; then

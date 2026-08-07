@@ -9,5 +9,6 @@ SUBSYSTEMS=="usb", ATTRS{bInterfaceNumber}=="?*", ENV{.MM_USBIFNUM}="$attr{bInte
 
 # Fully ignore septentrio GNSS devices
 ATTRS{idVendor}=="152a", ATTRS{idProduct}=="85c0", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTRS{idVendor}=="152a", ATTRS{idProduct}=="8231", ENV{ID_MM_DEVICE_IGNORE}="1"
 
 LABEL="mm_septentrio_port_types_end"

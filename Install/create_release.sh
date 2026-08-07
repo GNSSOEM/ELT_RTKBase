@@ -40,7 +40,8 @@ tar --exclude-vcs \
     check_septentrio_net.sh uninstall_sh.patch archive_and_clean_sh.patch \
     create_archive.sh wifi_manager.py bootstrap-select-1.13.18.min.css \
     bootstrap-select-1.13.18.min.js combobox.js combobox.css \
-    check_timesync_sh.patch str2str_file.patch
+    check_timesync_sh.patch str2str_file.patch 91-gnss_rules.patch \
+    G5_RTCM3_OUT.txt G5_SBF_OUT.txt
 
 rm -f $BUNDLE_NAME
 cat install_script.sh $ARCHIVE_NAME > $BUNDLE_NAME

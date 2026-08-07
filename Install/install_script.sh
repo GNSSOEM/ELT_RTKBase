@@ -1183,7 +1183,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_TOOLS}/raw2nmea/raw2nmea.sh    ${RAW2NMEA_SH_PATCH}
    patch_one ${RTKBASE_TOOLS}/convbin.sh              ${CONVBIN_SH_PATCH}             755
    patch_one ${RTKBASE_TOOLS}/uninstall.sh            ${UNINSTALL_SH_PATCH}           755
-   patch_one ${RTKBASE_TOOLS}/udev_rules/91-gnss.rules ${GNSS_RULES_PATCH}
+   patch_one ${UDEV_RULES}/91-gnss.rules              ${GNSS_RULES_PATCH}
    patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
@@ -1269,8 +1269,9 @@ configure_for_septentrio(){
       NEW_MOSAIC_ETH=septentrio
       OLD_MOSAIC_ETH=$(ip route | grep 192.168.3.0 | awk -F ' ' '{print $3}')
       HAVE_MOSAIC=`find -P /dev/serial/by-id -name "*Septentrio*" 2>/dev/null`
+      HAVE_USBETH=$(lsusb -t | grep "If 0, Class=Communications, Driver=rndis_host, 480M")
       #echo OLD_MOSAIC_ETH=${OLD_MOSAIC_ETH} NEW_MOSAIC_ETH=${NEW_MOSAIC_ETH} HAVE_MOSAI=${HAVE_MOSAIC}
-      if [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "${NEW_MOSAIC_ETH}" ]]; then
+      if [[ "${HAVE_MOSAIC}" != "" ]] && [[ "${HAVE_USBETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "" ]] && [[ "${OLD_MOSAIC_ETH}" != "${NEW_MOSAIC_ETH}" ]]; then
          echo '################################'
          echo 'CONFIGURE USB-ETH FOR SEPTENTRIO'
          echo '################################'
@@ -1377,6 +1378,8 @@ configure_for_unicore(){
    copy_root "${AUTOCONNECT_CONF}" "${NETWORK_CONF}"
    copy_root "${GLOBAL_DNS_CONF}" "${NETWORK_CONF}"
    if ! ischroot; then
+      #echo udevadm control --reload && udevadm trigger
+      udevadm control --reload && udevadm trigger
       if systemctl is-enabled --quiet NetworkManager.service 2>/dev/null; then
          #echo nmcli general reload
          nmcli general reload
@@ -1689,13 +1692,15 @@ start_rtkbase_services(){
   GNSS_WEB_PROXY=rtkbase_gnss_web_proxy.service
   RAW2NMEA_SERVICE=rtkbase_raw2nmea.service
   if [[ "${receiver}" =~ Septentrio ]]; then
-     #echo systemctl start "${DHCP_SERVICE}"
-     systemctl start "${DHCP_SERVICE}"
-     ExitCodeCheck $?
+     if [[ ! "${receiver}" =~ G5 ]]; then
+        #echo systemctl start "${DHCP_SERVICE}"
+        systemctl start "${DHCP_SERVICE}"
+        ExitCodeCheck $?
 
-     #echo systemctl enable --now "${GNSS_WEB_PROXY}"
-     systemctl enable --now "${GNSS_WEB_PROXY}"
-     ExitCodeCheck $?
+        #echo systemctl enable --now "${GNSS_WEB_PROXY}"
+        systemctl enable --now "${GNSS_WEB_PROXY}"
+        ExitCodeCheck $?
+     fi
 
      CHRONY_CONFIG=/etc/chrony/chrony.conf
      if is_ELT07x5; then

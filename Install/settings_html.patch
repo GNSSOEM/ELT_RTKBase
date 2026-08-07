@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..d8e41dc 100644
+index 9690796..40fed54 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -733,9 +733,10 @@ index 9690796..d8e41dc 100644
      </div>
      <div class="col-sm-8">
 -      <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }}
-+      <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }} {% if main_settings[14].receiver_serial_number != '' %} - S/N {{ main_settings[14].receiver_serial_number }} {% endif %}
-         {% if 'septentrio' in main_settings[3].receiver.lower() %}
+-        {% if 'septentrio' in main_settings[3].receiver.lower() %}
 -         - <a href="{{ main_settings[11] }}"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
++      <span>{{ main_settings[3].receiver }} - {{ main_settings[4].receiver_firmware }} {% if main_settings[14].receiver_serial_number != '' %} - S/N {{ main_settings[14].receiver_serial_number }} {% endif %}
++        {% if 'septentrio' in main_settings[3].receiver.lower() and 'g5' not in main_settings[3].receiver.lower() %}
 +         - <a href="{{ main_settings[15] }}" target="_blank"><button id="ext_web_site" class="btn btn-secondary" type="button">Mosaic Web server</button></a>
          {% endif %}
        </span>
