@@ -1269,14 +1269,21 @@ _AP_RSN_ONLY = {
 }
 
 _AP_KEY_MGMT = {
-    # WPA2+WPA3 mixed: NM has no dual key-mgmt; wpa-psk + pmf=optional is the
-    # compatible choice (WPA3 clients associate via WPA2 with PMF). NM pmf enum:
-    # 0=default 1=disable 2=optional 3=required.
+    # `key-mgmt` holds one value, but NetworkManager expands it for wpa_supplicant, and for
+    # "wpa-psk" it appends SAE unless PMF is disabled — so the ONE profile property that
+    # decides whether the beacon carries WPA3 is `pmf` (enum: 0=default 1=disable
+    # 2=optional 3=required). Measured on the air with a second radio:
+    #   wpa-psk + pmf optional/default -> AKM PSK + PSK-SHA256 + SAE  (scanners: WPA2 WPA3)
+    #   wpa-psk + pmf disable          -> AKM PSK + PSK-SHA256        (scanners: WPA2)
+    #   sae     + pmf required         -> AKM SAE                     (scanners: WPA3)
+    # Hence WPA2-PSK pins pmf=disable: without it the two choices are indistinguishable in
+    # the air, and a station showing two settings that broadcast the same thing is a bug.
     "mixed": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "wpa-psk",
                                    "802-11-wireless-security.pmf": "2"}),
     "wpa3": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "sae",
                                   "802-11-wireless-security.pmf": "3"}),
-    "wpa2": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "wpa-psk"}),
+    "wpa2": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "wpa-psk",
+                                  "802-11-wireless-security.pmf": "1"}),
     "open": {},
 }
 
@@ -1305,10 +1312,11 @@ def get_ap_config():
     if km == "sae":
         security = "wpa3"
     elif km == "wpa-psk":
-        # "1"/"disable": an earlier release wrote pmf=1 for the mixed choice (enum
-        # mix-up) — keep reporting those profiles as mixed so the stored intent
-        # survives an upgrade; re-saving writes the correct pmf=2
-        security = "mixed" if pmf in ("2", "optional", "1", "disable") else "wpa2"
+        # Report what the profile actually broadcasts, not what it was once picked as: only
+        # PMF=disable keeps SAE out of the beacon. A profile with pmf unset (ours from before
+        # this rule, or one from provisioning) does advertise WPA2+WPA3, so it reads as mixed
+        # — re-saving as WPA2-PSK writes pmf=disable and makes it plain WPA2 for real.
+        security = "wpa2" if pmf in ("1", "disable") else "mixed"
     else:
         security = "open"
     band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
