@@ -47,6 +47,8 @@ CONFH1RTCM3=H1_${RTCM3_TAIL}
 CONFH1SBF=H1_${SBF_TAIL}
 CONFHRTCM3=H_${RTCM3_TAIL}
 CONFHSBF=H_${SBF_TAIL}
+CONFG5RTCM3=G5_${RTCM3_TAIL}
+CONFG5SBF=G5_${SBF_TAIL}
 TESTSEPTENTRIO=Septentrio_TEST.txt
 CONFX20P=X20P_${RTCM3_TAIL}
 CFGX20P=X20P_${UBX_TAIL}
@@ -79,6 +81,7 @@ CONVBIN_SH_PATCH=convbin_sh.patch
 UNINSTALL_SH_PATCH=uninstall_sh.patch
 ARCHIVE_AND_CLEAN_PATCH=archive_and_clean_sh.patch
 CHECK_TIMESYNC_PATCH=check_timesync_sh.patch
+GNSS_RULES_PATCH=91-gnss_rules.patch
 CREATE_ARCHIVE=create_archive.sh
 SYSCONGIG=rtkbase_system_configure.sh
 SYSCONGIG_OLD=RtkbaseSystemConfigure.sh
@@ -1180,6 +1183,7 @@ patch_rtkbase(){
    patch_one ${RTKBASE_TOOLS}/raw2nmea/raw2nmea.sh    ${RAW2NMEA_SH_PATCH}
    patch_one ${RTKBASE_TOOLS}/convbin.sh              ${CONVBIN_SH_PATCH}             755
    patch_one ${RTKBASE_TOOLS}/uninstall.sh            ${UNINSTALL_SH_PATCH}           755
+   patch_one ${RTKBASE_TOOLS}/udev_rules/91-gnss.rules ${GNSS_RULES_PATCH}
    patch_one ${OPIZERO_TEMP}                          ${OPIZERO_TEMP_PATCH}           755
    patch_one ${SETTINGS_DEFAULT}                      ${SETTINGS_CONF_PATCH}
    patch_one ${RTKBASE_GIT}/run_cast.sh               ${RUNCAST_PATCH}                755
@@ -1340,6 +1344,8 @@ configure_for_unicore(){
    copy_file "${CONFH1SBF}" "${RTKBASE_RECV}"
    copy_file "${CONFHRTCM3}" "${RTKBASE_RECV}"
    copy_file "${CONFHSBF}" "${RTKBASE_RECV}"
+   copy_file "${CONFG5RTCM3}" "${RTKBASE_RECV}"
+   copy_file "${CONFG5SBF}" "${RTKBASE_RECV}"
    copy_file "${TESTSEPTENTRIO}" "${RTKBASE_RECV}"
    copy_file "${CONFX20P}" "${RTKBASE_RECV}"
    copy_file "${CFGX20P}" "${RTKBASE_RECV}"
@@ -1881,7 +1887,8 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${CONVBIN_SH_PATCH} ${START} ${START_SERVICE} ${CHECK_SEPTENRIO_NET} \
               ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE} \
               ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS} \
-              ${CONBOBOX_CSS} ${CONBOBOX_JS} ${CHECK_TIMESYNC_PATCH} ${STR2STR_FILE_PATCH}"
+              ${CONBOBOX_CSS} ${CONBOBOX_JS} ${CHECK_TIMESYNC_PATCH} ${STR2STR_FILE_PATCH} \
+              ${GNSS_RULES_PATCH} ${CONFG5RTCM3} ${CONFG5SBF}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"

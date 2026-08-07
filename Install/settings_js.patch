@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..493a173 100644
+index 5b64baa..e9358fe 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..493a173 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1254 @@ $(document).ready(function () {
+@@ -758,5 +960,1270 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1075,19 +1075,12 @@ index 5b64baa..493a173 100644
 +        return good();
 +    }
 +
-+    // ---- radio / channels (Mode -> width is derived) ----
-+    function wifiModesFor(band) {
-+        return band === '2.4' ? ['b', 'g', 'n', 'ax'] : (band === '5' ? ['a', 'n', 'ac', 'ax'] : []);
-+    }
-+    function wifiModeWidth(band, mode) {
-+        if (band === '2.4') {
-+            return {b: ['22', '22 MHz (b)'], g: ['20', '20 MHz (g)'], n: ['40', '40 MHz (n)'], ax: ['40', '40 MHz (ax)']}[mode] || ['20', '20 MHz'];
-+        }
-+        return {a: ['20', '20 MHz (a)'], n: ['40', '40 MHz (n)'], ac: ['80', '80 MHz (ac)'], ax: ['80', '80 MHz (ax)']}[mode] || ['20', '20 MHz'];
-+    }
-+    // usable AP channels for a band: from the kernel via backend, minus disabled/NO-IR/DFS,
-+    // then narrowed by the derived channel width (wider -> fewer usable primaries)
-+    function wifiApChannels(band, width) {
++    // ---- radio / channels ----
++    // No 802.11 Mode selector: NetworkManager (1.42) has no profile property for the AP
++    // standard or channel width — a Mode choice changed nothing on the radio and only
++    // misled (agreed with the client to drop it). The channel list is simply every
++    // IR-allowed standard channel of the band.
++    function wifiApChannels(band) {
 +        var all = ((wifi.status && wifi.status.channels) || {})[band] || [];
 +        var chans = [];
 +        for (var i = 0; i < all.length; i++) {
@@ -1100,11 +1093,6 @@ index 5b64baa..493a173 100644
 +                                  (e.ch >= 149 && e.ch <= 177 && (e.ch - 149) % 4 === 0))) continue;
 +            chans.push(e.ch);
 +        }
-+        if (band === '2.4' && width === '40') chans = chans.filter(function (c) { return c <= 9; });
-+        if (band === '5') {
-+            if (width === '40') chans = chans.filter(function (c) { return [36, 44, 149, 157].indexOf(c) >= 0; });
-+            if (width === '80') chans = chans.filter(function (c) { return [36, 149].indexOf(c) >= 0; });
-+        }
 +        return chans;
 +    }
 +    function wifiChanFreq(ch) {
@@ -1112,26 +1100,32 @@ index 5b64baa..493a173 100644
 +    }
 +    function wifiRepopRadio() {
 +        var band = $('#wifi-ap-band').val();
-+        var mSel = $('#wifi-ap-mode'), cSel = $('#wifi-ap-channel'), wRef = $('#wifi-ap-width-ref');
++        var cSel = $('#wifi-ap-channel');
 +        if (band === 'all') {
-+            mSel.prop('disabled', true).html('<option value="auto">Auto</option>');
 +            cSel.prop('disabled', true).html('<option value="0">Auto</option>');
-+            wRef.text('Channel width: auto — one radio, the AP beacons on a single band');
++            $('#wifi-ap-chan-warn').hide();
 +            return;
 +        }
-+        mSel.prop('disabled', !!wifi.apFormLock);
 +        cSel.prop('disabled', !!wifi.apFormLock);
-+        var modes = wifiModesFor(band), prev = mSel.val();
-+        var mode = modes.indexOf(prev) >= 0 ? prev : modes[modes.length - 1];
-+        mSel.html(modes.map(function (m) {
-+            return '<option value="' + m + '"' + (m === mode ? ' selected' : '') + '>802.11' + m + '</option>';
-+        }).join(''));
-+        var wv = wifiModeWidth(band, mode);
-+        wRef.text('Channel width: ' + wv[1] + ' — derived from 802.11' + mode + ' (reference)');
-+        var chans = wifiApChannels(band, wv[0]), prevCh = cSel.val();
++        var chans = wifiApChannels(band), prevCh = cSel.val();
 +        cSel.html('<option value="0">Auto</option>' + chans.map(function (ch) {
 +            return '<option value="' + ch + '"' + (String(ch) === prevCh ? ' selected' : '') + '>ch ' + ch + ' · ' + wifiChanFreq(ch) + ' MHz</option>';
 +        }).join(''));
++        // A channel stored in the profile that the adapter cannot beacon on (inherited from
++        // provisioning or an import — our picker never offers one) has no option here. Keep
++        // it visible and flagged instead of silently showing "Auto", which hid the real
++        // setting and let Save rewrite it behind the user's back. Re-applied on every
++        // repopulate because a fresh 'wifi status' rebuilds the list.
++        var stored = wifi.apStoredChannel;
++        if (stored && band === wifi.apStoredBand && chans.indexOf(stored) < 0) {
++            cSel.append('<option value="' + stored + '" selected>ch ' + stored + ' · ' +
++                wifiChanFreq(stored) + ' MHz — not available</option>');
++            $('#wifi-ap-chan-warn').text('⚠ Channel ' + stored + ' is stored in the profile but not ' +
++                'available on this adapter in the current region — the access point cannot start on it. ' +
++                'Pick another channel or Auto.').show();
++        } else {
++            $('#wifi-ap-chan-warn').hide();
++        }
 +    }
 +
 +    // ---- rendering ----
@@ -1169,6 +1163,12 @@ index 5b64baa..493a173 100644
 +            : 'This channel is not allowed without a WiFi region — select a region to connect';
 +    }
 +
++    // Menu entry toggling NetworkManager's autoconnect for a saved network: connecting only
++    // activates a profile, the flag decides whether NM brings it up by itself later.
++    function wifiAutoConnectItem(n) {
++        return '<a class="dropdown-item" href="#" data-wifi-act="autoconnect">' +
++            (n.autoconnect === false ? 'Turn on auto-connect' : 'Turn off auto-connect') + '</a>';
++    }
 +    function wifiRowHTML(n, kind) {
 +        var limited = kind !== 'connected' && n.usable && n.usable !== 'ok';
 +        var right;
@@ -1183,6 +1183,7 @@ index 5b64baa..493a173 100644
 +                      '<div class="dropdown-menu dropdown-menu-right">' +
 +                      '<a class="dropdown-item" href="#" data-wifi-act="changepwd">Change password</a>' +
 +                      '<a class="dropdown-item" href="#" data-wifi-act="ipconf">IP settings</a>' +
++                      wifiAutoConnectItem(n) +
 +                      '<a class="dropdown-item text-danger" href="#" data-wifi-act="forget">Forget</a>' +
 +                      '</div></div>'
 +                    : '');
@@ -1195,6 +1196,7 @@ index 5b64baa..493a173 100644
 +                  '<a class="dropdown-item" href="#" data-wifi-act="connect">Connect</a>' +
 +                  '<a class="dropdown-item" href="#" data-wifi-act="changepwd">Change password</a>' +
 +                  '<a class="dropdown-item" href="#" data-wifi-act="ipconf">IP settings</a>' +
++                  wifiAutoConnectItem(n) +
 +                  '<a class="dropdown-item text-danger" href="#" data-wifi-act="forget">Forget</a>' +
 +                  '</div></div>';
 +        } else {
@@ -1227,6 +1229,7 @@ index 5b64baa..493a173 100644
 +        return '<div class="wifi-row' + (kind === 'connected' ? ' wifi-connected' : '') +
 +            (limited ? ' wifi-limited' : '') + (clickable ? ' wifi-clickable' : '') + '"' +
 +            ' data-kind="' + kind + '" data-ssid="' + wifiEsc(n.ssid) + '" data-bssid="' + wifiEsc(n.bssid || '') + '" data-profile="' + wifiEsc(n.profile || '') + '"' +
++            ' data-autoconnect="' + (n.autoconnect === false ? 0 : 1) + '"' +
 +            ' data-security="' + wifiEsc(n.security) + '" data-band="' + wifiEsc(n.band || '') + '" data-chan="' + (n.chan || '') + '"' +
 +            ' data-limited="' + (limited ? 1 : 0) + '" data-usable="' + wifiEsc(n.usable || 'ok') + '">' +
 +            wifiBars(n.signal) +
@@ -1361,6 +1364,8 @@ index 5b64baa..493a173 100644
 +        $('#wifi-ap-pwd-field').toggle(cfg.security !== 'open');
 +        $('#wifi-ap-switch').prop('checked', !!cfg.enabled);
 +        $('#wifi-ap-body').toggle(!!cfg.enabled);
++        wifi.apStoredChannel = +(cfg.channel || 0);   // drives the not-available flag below
++        wifi.apStoredBand = cfg.band || 'all';
 +        wifiRepopRadio();
 +        if (cfg.channel) $('#wifi-ap-channel').val(String(cfg.channel));
 +        // persistent start-failure line (survives the toast and a dialog reopen)
@@ -1713,6 +1718,13 @@ index 5b64baa..493a173 100644
 +                             security: row.data('security')});
 +            return;
 +        }
++        if (act === 'autoconnect') {
++            var turnOn = !+row.data('autoconnect');
++            socket.emit('wifi set autoconnect', {profile: row.data('profile'), on: turnOn});
++            wifiSetBusy(true, turnOn ? 'Enabling auto-connect…' : 'Disabling auto-connect…',
++                        turnOn ? 'Auto-connect enabled' : 'Auto-connect disabled');
++            return;
++        }
 +        if (act === 'ipconf') {
 +            wifiOpenConnect({mode: 'ipconf', ssid: row.data('ssid'), profile: row.data('profile')});
 +            return;
@@ -1819,8 +1831,12 @@ index 5b64baa..493a173 100644
 +    });
 +
 +    // AP form events
-+    $('#wifi-ap-band, #wifi-ap-mode').on('change', function () {
++    $('#wifi-ap-band').on('change', function () {
 +        if (!wifi.updating) wifiRepopRadio();
++    });
++    $('#wifi-ap-channel').on('change', function () {
++        // the warning describes the STORED channel — moving away from it makes it stale
++        if (!wifi.updating && +$(this).val() !== wifi.apStoredChannel) $('#wifi-ap-chan-warn').hide();
 +    });
 +    $('#wifi-ap-sec').on('change', function () {
 +        $('#wifi-ap-pwd-field').toggle($(this).val() !== 'open');

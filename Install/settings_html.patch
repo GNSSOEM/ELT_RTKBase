@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..776b26a 100644
+index 9690796..d8e41dc 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -802,7 +802,7 @@ index 9690796..776b26a 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1254,289 @@
+@@ -794,12 +1254,288 @@
    </div>
  </div>
  
@@ -929,10 +929,11 @@ index 9690796..776b26a 100644
 +              <label class="custom-control-label" for="wifi-ap-hidden">Hidden network (don't broadcast SSID)</label>
 +            </div>
 +            <div class="wifi-grp-title">Radio / frequency</div>
-+            <small class="form-text text-muted mb-2">Uses the WiFi region selected above. Mode = 802.11 standard;
-+              channel width is derived (shown for reference).</small>
++            <!-- no 802.11 Mode selector: NetworkManager has no profile property for the AP
++                 standard/width, so a Mode choice changed nothing on the radio -->
++            <small class="form-text text-muted mb-2">Uses the WiFi region selected above.</small>
 +            <div class="form-row">
-+              <div class="form-group col-sm-4">
++              <div class="form-group col-sm-6">
 +                <label class="mb-1" for="wifi-ap-band">Band</label>
 +                <!-- value "all" = band left unset in the NM profile: the single radio
 +                     beacons on ONE band NetworkManager picks (2.4 GHz in practice) —
@@ -943,16 +944,14 @@ index 9690796..776b26a 100644
 +                  <option value="5">5 GHz</option>
 +                </select>
 +              </div>
-+              <div class="form-group col-sm-4">
-+                <label class="mb-1" for="wifi-ap-mode">Mode (802.11)</label>
-+                <select class="form-control" id="wifi-ap-mode"></select>
-+              </div>
-+              <div class="form-group col-sm-4">
++              <div class="form-group col-sm-6">
 +                <label class="mb-1" for="wifi-ap-channel">Channel (frequency)</label>
 +                <select class="form-control" id="wifi-ap-channel"></select>
 +              </div>
 +            </div>
-+            <small class="form-text text-muted" id="wifi-ap-width-ref"></small>
++            <!-- shown when the stored profile pins a channel the adapter cannot beacon on
++                 (typically inherited from provisioning or an import) -->
++            <small class="text-warning" id="wifi-ap-chan-warn" style="display:none"></small>
 +            <div class="wifi-grp-title">Network</div>
 +            <div class="form-row">
 +              <div class="form-group col-sm-7">

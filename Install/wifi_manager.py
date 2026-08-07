@@ -37,7 +37,6 @@ AP_DEFAULTS = {
     "password": "",
     "hidden": False,
     "band": "all",           # all | 2.4 | 5
-    "mode80211": "auto",
     "channel": 0,            # 0 = auto
     "ip": "192.168.50.1",
     "prefix": 24,
@@ -214,6 +213,50 @@ def _iw(*args):
     return out
 
 
+def _ap_iface_macs():
+    """MAC addresses of the AP-mode interfaces that share the radio of WIFI_IFACE.
+
+    Our own beacons must never appear as a joinable network. A hotspot can run on a virtual
+    AP interface of the SAME radio (`iw dev wlan0 interface add ap0 type __ap`, which is how
+    the station provisioning sets one up) whose address differs from wlan0's — filtering by
+    the wlan0 address alone let the station's own hotspot show up in the list as a stranger.
+
+    Deliberately scoped to that one radio: an access point running on a *different* adapter
+    of the same host is a separate device as far as wlan0 is concerned, and hiding it would
+    drop a real, joinable network from the list."""
+    if not shutil.which("iw"):
+        return set()
+    try:
+        out = _iw("dev")
+    except Exception as e:
+        log.warning("iw dev failed: %s", e)
+        return set()
+    # `iw dev` lists interfaces grouped under the radio ("phy#N") that owns them
+    radios = {}
+    phy = addr = None
+    for line in out.splitlines():
+        line = line.strip()
+        if line.startswith("phy#"):
+            phy = radios.setdefault(line, {"ifaces": set(), "ap_macs": set()})
+            addr = None
+        elif line.startswith("Interface ") or line.startswith("Unnamed"):
+            addr = None
+            if phy is not None and line.startswith("Interface "):
+                phy["ifaces"].add(line.split()[1])
+        elif line.startswith("addr "):
+            addr = line.split()[1].upper()
+        elif line.startswith("type "):
+            if line.split()[1] == "AP" and addr and phy is not None:
+                phy["ap_macs"].add(addr)
+            addr = None
+    for radio in radios.values():
+        if WIFI_IFACE in radio["ifaces"]:
+            return set(radio["ap_macs"])
+    # radio of WIFI_IFACE not found (no Wi-Fi at all, or the interface was renamed): keep the
+    # safe side of the trade-off and treat every AP interface as ours
+    return {mac for radio in radios.values() for mac in radio["ap_macs"]}
+
+
 def get_country():
     """Current regdomain CC, or None when there is no single real country in effect.
 
@@ -300,6 +343,24 @@ def available_bands():
     if re.search(r"Band 2:", out):
         bands.append("5")
     return bands or None
+
+
+def ap_channel_ok(band, ch, chans=None):
+    """Can the ACCESS POINT beacon on this channel right now?
+
+    Beaconing needs a channel the adapter reports as usable: not disabled, not NO-IR
+    (no transmission allowed) and not DFS (radar detection — we never start an AP there).
+    The adapter's own table is authoritative and can be stricter than the country table:
+    on a self-managed phy (brcmfmac on a Pi) the firmware disables e.g. 5 GHz 149-165 even
+    where the country rules permit them, and hostapd then fails with a cryptic supplicant
+    timeout instead of "this channel is not allowed"."""
+    if not ch or band not in ("2.4", "5"):
+        return True                      # Auto (0) / band not pinned — NM picks
+    chans = chans if chans is not None else allowed_channels()
+    for e in chans.get(band, []):
+        if e["ch"] == ch:
+            return not (e.get("disabled") or e.get("no_ir") or e.get("dfs"))
+    return False
 
 
 def channel_usable(band, ch, chans, country):
@@ -394,7 +455,8 @@ def _wifi_profiles():
         if conn.conn_type != "wifi":
             continue
         try:
-            details = nmcli.connection.show(conn.name)
+            # by uuid: two profiles can share a name (a hotspot on ap0 plus ours on wlan0)
+            details = nmcli.connection.show(conn.uuid)
         except nmcli.NotExistException:
             continue
         bound = details.get("connection.interface-name")
@@ -417,9 +479,39 @@ def get_role(profiles=None):
     return "client"
 
 
-def _ap_active():
+def _ap_ref():
+    """uuid of OUR access-point profile, or None when it does not exist yet.
+
+    A profile with the SAME name can live on a sibling interface — a station provisioned
+    with its hotspot on ap0 ends up with two connections called "Hotspot". nmcli then
+    refuses to guess ("There is another connection with the name 'Hotspot'. Reference the
+    connection by its uuid") and would otherwise act on whichever it picked, so every call
+    must address ours by uuid. Ours is the one bound to wlan0, or an unbound one."""
+    unbound = None
     try:
-        details = nmcli.connection.show(AP_PROFILE)
+        for conn in nmcli.connection():
+            if conn.conn_type != "wifi" or conn.name != AP_PROFILE:
+                continue
+            try:
+                d = nmcli.connection.show(conn.uuid)
+            except Exception:
+                continue
+            bound = d.get("connection.interface-name") or ""
+            if bound == WIFI_IFACE:
+                return conn.uuid
+            if not bound and unbound is None:
+                unbound = conn.uuid
+    except Exception as e:
+        log.warning("could not resolve the AP profile: %s", e)
+    return unbound
+
+
+def _ap_active():
+    ref = _ap_ref()
+    if not ref:
+        return False
+    try:
+        details = nmcli.connection.show(ref)
     except nmcli.NotExistException:
         return False
     return details.get("GENERAL.STATE") == "activated"
@@ -602,6 +694,10 @@ def list_networks(rescan=False):
         pass
     if my_mac and ap_live:
         _own_ap_bssids.add(my_mac)   # this is the BSSID our hotspot beacons with right now
+    # Any AP-mode interface of this host is us, not a network to join: a hotspot may run on
+    # a virtual AP interface of the same radio (ap0) whose MAC differs from wlan0's. Remember
+    # them too, so the entries stay filtered while they age out of the scan cache.
+    _own_ap_bssids.update(_ap_iface_macs())
 
     # One row per BSSID (access point), not per SSID: this is a stationary base station,
     # so the user picks the exact AP — a dual-band AP shows as two rows (2.4 and 5 GHz),
@@ -1055,6 +1151,26 @@ def change_password(profile, password):
     return list_networks()
 
 
+def set_autoconnect(profile, on):
+    """Turn NetworkManager's autoconnect on/off for a saved client network.
+
+    Connecting only activates a profile; the autoconnect flag decides whether NM brings it
+    up on its own (after a reboot, or when the network reappears). The flag also carries the
+    wlan0 role: enabling the AP clears it on every client profile so NM cannot steal the
+    single radio — so refuse while the AP is on instead of handing the user a switch whose
+    effect the role logic would undo (or that would kill the running AP)."""
+    _guard_client_profile(profile)
+    on = bool(on)
+    if on and (get_role() == "ap" or _ap_active()):
+        raise WifiError("Turn off Access Point mode first — with one radio a client network "
+                        "cannot auto-connect while the access point is running")
+    try:
+        nmcli.connection.modify(profile, {"connection.autoconnect": "yes" if on else "no"})
+    except Exception as e:
+        raise WifiError(_readable_error(e))
+    return list_networks()
+
+
 def set_ip_config(profile, ipconf):
     """Change the IP configuration of an existing (saved) profile."""
     _guard_client_profile(profile)
@@ -1142,15 +1258,25 @@ def poll_reconnect(seconds, status_cb, interval=1.0):
 # access point
 # --------------------------------------------------------------------------
 
+# RSN/CCMP only for every secured kind: left unset, wpa_supplicant also advertises the
+# legacy WPA1/TKIP information element, so scanners (ours included) label the access point
+# plain "WPA" and old clients can negotiate TKIP — while the spec says WPA(1) is not
+# supported for the AP at all.
+_AP_RSN_ONLY = {
+    "802-11-wireless-security.proto": "rsn",
+    "802-11-wireless-security.pairwise": "ccmp",
+    "802-11-wireless-security.group": "ccmp",
+}
+
 _AP_KEY_MGMT = {
     # WPA2+WPA3 mixed: NM has no dual key-mgmt; wpa-psk + pmf=optional is the
-    # compatible choice (WPA3 clients associate via WPA2). NM pmf enum:
+    # compatible choice (WPA3 clients associate via WPA2 with PMF). NM pmf enum:
     # 0=default 1=disable 2=optional 3=required.
-    "mixed": {"802-11-wireless-security.key-mgmt": "wpa-psk",
-              "802-11-wireless-security.pmf": "2"},
-    "wpa3": {"802-11-wireless-security.key-mgmt": "sae",
-             "802-11-wireless-security.pmf": "3"},
-    "wpa2": {"802-11-wireless-security.key-mgmt": "wpa-psk"},
+    "mixed": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "wpa-psk",
+                                   "802-11-wireless-security.pmf": "2"}),
+    "wpa3": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "sae",
+                                  "802-11-wireless-security.pmf": "3"}),
+    "wpa2": dict(_AP_RSN_ONLY, **{"802-11-wireless-security.key-mgmt": "wpa-psk"}),
     "open": {},
 }
 
@@ -1166,8 +1292,11 @@ def _nmcli_enum_word(v):
 
 
 def get_ap_config():
+    ref = _ap_ref()
     try:
-        details = nmcli.connection.show(AP_PROFILE, show_secrets=True)
+        if not ref:
+            raise nmcli.NotExistException(AP_PROFILE)
+        details = nmcli.connection.show(ref, show_secrets=True)
     except nmcli.NotExistException:
         return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), enabled=False, configured=False,
                     has_password=False, last_error=_last_ap_error)
@@ -1210,6 +1339,53 @@ def get_ap_config():
     }
 
 
+# Profile keys set_ap writes — snapshotted before a change so a failed start can put the
+# previous access point back (see _ap_snapshot/_ap_restore).
+_AP_SETTING_KEYS = (
+    "802-11-wireless.ssid", "802-11-wireless.hidden", "802-11-wireless.band",
+    "802-11-wireless.channel", "802-11-wireless-security.key-mgmt",
+    "802-11-wireless-security.pmf", "802-11-wireless-security.psk",
+    "ipv4.addresses",
+)
+
+
+def _ap_snapshot(details):
+    """Values of the keys set_ap overwrites, cleaned of nmcli display forms."""
+    if not details:
+        return None
+    snap = {}
+    for k in _AP_SETTING_KEYS:
+        v = details.get(k)
+        v = "" if v is None else _nmcli_enum_word(str(v).strip())
+        snap[k] = "" if v.endswith("(default)") else v
+    return snap
+
+
+def _ap_restore(ref, snap, autoconnect, reactivate):
+    """Undo a failed AP change: put the previous settings and role flags back, and bring the
+    previously working access point up again. Best-effort — a rollback failure must not mask
+    the original error, so everything here only logs."""
+    try:
+        if ref and snap is not None:
+            mod = dict(snap)
+            if not mod.get("802-11-wireless-security.key-mgmt"):
+                mod = _drop_security(mod)
+            nmcli.connection.modify(ref, mod)
+    except Exception as e:
+        log.warning("AP rollback: settings not restored: %s", e)
+    for name, val in (autoconnect or {}).items():
+        try:
+            nmcli.connection.modify(name, {"connection.autoconnect": val})
+        except Exception as e:
+            log.warning("AP rollback: autoconnect not restored on '%s': %s", name, e)
+    if reactivate:
+        try:
+            nmcli.connection.up(ref, wait=30)
+            _set_hotspot_flag(True)
+        except Exception as e:
+            log.warning("AP rollback: previous access point not restarted: %s", e)
+
+
 def set_ap(config, status_cb=None):
     """Create/update the Hotspot profile and switch the wlan0 role."""
     notify = status_cb or (lambda *a: None)
@@ -1223,13 +1399,22 @@ def set_ap(config, status_cb=None):
     # is a key already stored in the profile? (an empty password field means "keep it" —
     # the stored key is never sent to the browser, see get_ap_config)
     stored_key = False
-    if AP_PROFILE in profiles:
+    prev_ap = None            # settings to put back if the new access point fails to start
+    ap_ref = _ap_ref()        # uuid: a same-name profile may exist on a sibling interface
+    if ap_ref:
         try:
-            det = nmcli.connection.show(AP_PROFILE, show_secrets=True)
+            det = nmcli.connection.show(ap_ref, show_secrets=True)
             stored_key = bool(det.get("802-11-wireless-security.psk")
                               or det.get("802-11-wireless-security.sae-password"))
+            prev_ap = _ap_snapshot(det)
         except Exception:
             pass
+    # role flags as they are now: a failed start must not leave the client networks with
+    # autoconnect=no (the station would come up connected to nothing after a reboot)
+    prev_autoconnect = {name: (d.get("connection.autoconnect") or "yes")
+                        for name, d in profiles.items()}
+    was_ap_active = _ap_active()
+    created_ap = False        # a profile we add now must be removed again if the start fails
 
     verr = None
     if not get_country():
@@ -1249,6 +1434,14 @@ def set_ap(config, status_cb=None):
     prefix = int(config.get("prefix", AP_DEFAULTS["prefix"]))
     ip_err = validate_ip_config(ip, prefix, occupied=occupied_subnets())
     verr = verr or ip_err
+    chan_req = int(config.get("channel") or 0)
+    band_req = config.get("band", "all")
+    if chan_req and band_req in ("2.4", "5") and not ap_channel_ok(band_req, chan_req):
+        # reject BEFORE touching NM: a forbidden channel (usually inherited from
+        # provisioning or an import, our picker never offers one) otherwise surfaces as an
+        # unrelated "802.1X supplicant took too long to authenticate"
+        verr = verr or ("Channel {} is not available for the access point in region {} — "
+                        "choose another channel or Auto".format(chan_req, get_country() or "00"))
     if enabled and verr:
         raise WifiError(verr)
 
@@ -1260,6 +1453,9 @@ def set_ap(config, status_cb=None):
         "ipv4.addresses": "{}/{}".format(ip, prefix),
         "802-11-wireless-security.key-mgmt": "",
         "802-11-wireless-security.pmf": "",
+        "802-11-wireless-security.proto": "",
+        "802-11-wireless-security.pairwise": "",
+        "802-11-wireless-security.group": "",
     }
     band = config.get("band", "all")
     options["802-11-wireless.band"] = {"2.4": "bg", "5": "a"}.get(band, "")
@@ -1278,15 +1474,17 @@ def set_ap(config, status_cb=None):
         log.warning("AP settings not saved on disable: %s", verr)
     else:
         try:
-            if AP_PROFILE in profiles:
+            if ap_ref:
                 # switching a secured AP to Open: the base options carry empty-string
                 # security keys (meant to clear values), which modify would reject
                 mod_opts = _drop_security(options) if security == "open" else options
-                nmcli.connection.modify(AP_PROFILE, mod_opts)
+                nmcli.connection.modify(ap_ref, mod_opts)
             else:
                 add_opts = {k: v for k, v in options.items() if v != ""}
                 nmcli.connection.add("wifi", add_opts, WIFI_IFACE, AP_PROFILE,
                                      autoconnect=False)
+                ap_ref = _ap_ref()          # address the fresh profile by uuid from now on
+                created_ap = True
         except Exception as e:
             raise WifiError(_readable_error(e))
 
@@ -1296,22 +1494,37 @@ def set_ap(config, status_cb=None):
             if name == AP_PROFILE or _is_ap(details):
                 continue
             nmcli.connection.modify(name, {"connection.autoconnect": "no" if enabled else "yes"})
-        nmcli.connection.modify(AP_PROFILE, {"connection.autoconnect": "yes" if enabled else "no"})
+        nmcli.connection.modify(ap_ref, {"connection.autoconnect": "yes" if enabled else "no"})
         global _last_ap_error
         if enabled:
             notify("starting", "hotspot")
-            nmcli.connection.up(AP_PROFILE, wait=30)
+            nmcli.connection.up(ap_ref, wait=30)
             _set_hotspot_flag(True)
         else:
             if _ap_active():
                 try:
-                    nmcli.connection.down(AP_PROFILE)
+                    nmcli.connection.down(ap_ref)
                 except Exception:
                     pass
             _set_hotspot_flag(False)
         _last_ap_error = None
     except Exception as e:
         _last_ap_error = _readable_error(e)
+        # transactional: undo the role switch (and the settings, restarting the previous
+        # access point when one was running) so a failed start cannot strand the station
+        # with every client network's autoconnect cleared
+        if created_ap and ap_ref:
+            # we added this profile in this very call and it never came up — deleting it
+            # keeps a station that already has a hotspot profile elsewhere (ap0) from
+            # collecting a second connection with the same name
+            try:
+                nmcli.connection.delete(ap_ref)
+            except Exception as de:
+                log.warning("AP rollback: could not remove the new profile: %s", de)
+            _ap_restore(None, None, prev_autoconnect, reactivate=False)
+        else:
+            _ap_restore(ap_ref, prev_ap if enabled else None,
+                        prev_autoconnect, reactivate=enabled and was_ap_active)
         raise WifiError(_last_ap_error)
     return get_ap_config()
 
@@ -1343,7 +1556,8 @@ _BACKUP_KEYS = frozenset({
     "802-11-wireless.ssid", "802-11-wireless.bssid", "802-11-wireless.hidden",
     "802-11-wireless.mode", "802-11-wireless.band", "802-11-wireless.channel",
     "802-11-wireless-security.key-mgmt", "802-11-wireless-security.psk",
-    "802-11-wireless-security.pmf",
+    "802-11-wireless-security.pmf", "802-11-wireless-security.proto",
+    "802-11-wireless-security.pairwise", "802-11-wireless-security.group",
     "802-11-wireless-security.wep-key0", "802-11-wireless-security.wep-key-type",
     "ipv4.method", "ipv4.addresses", "ipv4.gateway", "ipv4.dns", "ipv4.ignore-auto-dns",
 })

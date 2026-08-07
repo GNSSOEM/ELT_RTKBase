@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..74b31e8
+index e36bbc4..52c858d
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,10 @@ from RTKLIB import RTKLIB
@@ -599,7 +599,7 @@ index e36bbc4..74b31e8
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1305,276 @@ def update_settings(json_msg):
+@@ -1004,6 +1305,287 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -819,6 +819,17 @@ index e36bbc4..74b31e8
 +        socketio.emit("wifi list", networks, namespace="/test")
 +    except Exception as e:
 +        wifi_emit_error("change password", e)
++
++@socketio.on("wifi set autoconnect", namespace="/test")
++def wifi_set_autoconnect(json_msg):
++    def task():
++        try:
++            networks = wifi_manager.set_autoconnect(json_msg.get("profile"),
++                                                    bool(json_msg.get("on")))
++            socketio.emit("wifi list", networks, namespace="/test")
++        except Exception as e:
++            wifi_emit_error("autoconnect", e)
++    socketio.start_background_task(task)
 +
 +@socketio.on("wifi set ipconf", namespace="/test")
 +def wifi_set_ipconf(json_msg):
