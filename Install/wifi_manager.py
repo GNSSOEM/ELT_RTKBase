@@ -25,10 +25,18 @@ import nmcli
 log = logging.getLogger(__name__)
 
 WIFI_IFACE = "wlan0"
+# The access point runs on its OWN virtual interface, never on wlan0: that is what lets the
+# station keep a client connection and an access point at the same time, and it is where the
+# station provisioning puts its hotspot too, so both sides manage one interface instead of
+# two. Created on demand when the system does not have it (a Debian PC does not).
+AP_IFACE = "ap0"
 AP_PROFILE = "Hotspot"
 CLIENT_PREFIX = "WiFi_"
 ONETIME_SUFFIX = ".onetime"
-HOTSPOT_FLAG = "/usr/local/rtkbase/HOTSPOT.flg"
+rtkbase_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+system_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+HOTSPOT_FLAG = os.path.join(system_path, "HOTSPOT.flg")
+
 ISO3166_SYSTEM = "/usr/share/zoneinfo/iso3166.tab"   # tzdata; present on any Debian/RPi OS
 
 AP_DEFAULTS = {
@@ -48,7 +56,7 @@ AP_DEFAULTS = {
 # restart (and spells where a client scan is impossible — 5 GHz in world domain, or the
 # AP owning the single radio); in-memory alone it was lost on restart and the badge
 # silently vanished.
-_SEEN_CHANNELS_FILE = os.path.join(os.path.dirname(HOTSPOT_FLAG), "wifi_seen_channels.json")
+_SEEN_CHANNELS_FILE = os.path.join(system_path, "wifi_seen_channels.json")
 
 
 def _load_seen_channels():
@@ -140,21 +148,29 @@ def _default_ap_ssid():
 
 
 def parse_security(sec):
-    """nmcli SECURITY string -> (kind, label). kind: open|wep|wpa1|wpa2|wpa3|mixed23"""
+    """nmcli SECURITY string -> (kind, label). kind: open|wep|wpa1|wpa2|wpa3|mixed23
+
+    The label names EVERY protocol the beacon advertises, in ascending order — an access
+    point still offering legacy WPA1 alongside WPA2 shows up as "WPA1/WPA2", not as plain
+    WPA2. Collapsing it hid exactly the fact worth seeing: such a network can negotiate
+    TKIP. The kind is separate and drives the connect path, where WPA1+WPA2 is the same
+    wpa-psk profile as WPA2."""
     s = (sec or "").upper()
     if not s.strip():
         return "open", "open"
-    if "WPA3" in s and "WPA2" in s:
-        return "mixed23", "WPA2/WPA3"
-    if "WPA3" in s:
-        return "wpa3", "WPA3"
-    if "WPA2" in s:
-        return "wpa2", "WPA2"
-    if "WPA1" in s or s.strip() == "WPA":
-        return "wpa1", "WPA"
-    if "WEP" in s:
-        return "wep", "WEP"
-    return "wpa2", sec
+    proto = [p for p in ("WPA1", "WPA2", "WPA3") if p in s]
+    if not proto and "WPA" in s:          # bare "WPA" from older nmcli = WPA1
+        proto = ["WPA1"]
+    if not proto:
+        return ("wep", "WEP") if "WEP" in s else ("wpa2", sec)
+    label = "/".join(proto)
+    if "WPA3" in proto:
+        kind = "mixed23" if "WPA2" in proto else "wpa3"
+    elif "WPA2" in proto:
+        kind = "wpa2"
+    else:
+        kind = "wpa1"
+    return kind, label
 
 
 def _key_mgmt_for(kind):
@@ -207,6 +223,143 @@ def _fallback_channels(cc):
     return {"2.4": c24, "5": c5}
 
 
+# Our own settings file, deliberately NOT settings.conf: RTKBase's "Reset settings"
+# rewrites that one from settings.conf.default and drops every key the default lacks — which
+# for a regulatory setting fails in the wrong direction (an outdoor station would quietly
+# become indoor again). This file lives beside HOTSPOT.flg in the parent of the git tree, so
+# neither a settings reset nor a software update touches it. Provisioning writes it; the
+# configurator only ever reads it.
+#
+#   [wifi]
+#   outdoor = true          # station installed outdoors
+#   hotspot_rescue = true   # raise the hotspot when the station has no network at all
+#
+WIFI_CONF = os.path.join(rtkbase_path, "wifi_manager.conf")
+# shipped with the software: documents every setting and holds the defaults, so a station
+# without its own file still has a readable answer for "what is this set to?"
+WIFI_CONF_DEFAULT = os.path.join(rtkbase_path, "wifi_manager.conf.default")
+_TRUE = ("1", "true", "yes", "on")
+_FALSE = ("0", "false", "no", "off")
+
+
+def station_flag(key, default=False, section="wifi"):
+    """Read a boolean station setting. Absent file, section, key or value -> default."""
+    import configparser
+    try:
+        cp = configparser.ConfigParser(interpolation=None)
+        cp.read([WIFI_CONF_DEFAULT, WIFI_CONF])   # the station's own file wins
+        if not cp.has_option(section, key):
+            return default
+        # tolerate the quoting style the station config uses elsewhere ("outdoor='true'")
+        raw = (cp.get(section, key) or "").strip().strip("'\"").lower()
+        if raw in _TRUE:
+            return True
+        if raw in _FALSE:
+            return False
+        log.warning("%s: %s=%r is not a boolean", WIFI_CONF, key, raw)
+    except Exception as e:
+        log.warning("could not read %s: %s", WIFI_CONF, e)
+    return default
+
+
+def outdoor_station():
+    """Is this station installed outdoors? Regulatory rules differ (NO-OUTDOOR ranges).
+
+    Indoor/outdoor cannot be detected — only the owner knows — so it comes from the station
+    config, set when the station is built.
+    """
+    return station_flag("outdoor")
+
+
+def no_outdoor_ranges():
+    """(start, end) MHz ranges the current regdomain marks NO-OUTDOOR.
+
+    The per-channel table (`iw phy`) does NOT carry this flag — it only exists on the range
+    lines of `iw reg get` — so outdoor filtering has to map channels onto these ranges.
+    """
+    ranges = []
+    if not shutil.which("iw"):
+        return ranges
+    try:
+        out = _iw("reg", "get")
+    except Exception as e:
+        log.warning("iw reg get failed: %s", e)
+        return ranges
+    for line in out.splitlines():
+        if "NO-OUTDOOR" not in line:
+            continue
+        m = re.search(r"\((\d+)\s*-\s*(\d+)\s*@", line)
+        if m:
+            ranges.append((int(m.group(1)), int(m.group(2))))
+        if line.strip().startswith("phy#"):
+            break          # only the global domain; the phy block repeats it
+    return ranges
+
+
+def _reg_power_ranges():
+    """Per-domain power limits: (country_ranges, phy_ranges), each [(start, end, dBm)].
+
+    `iw reg get` prints the domain in force ("global", the country) and then, for a radio
+    that manages its own regulatory table, that radio's domain under "phy#N". Both matter,
+    see power_denied_for_ap().
+    """
+    country, phy, current = [], [], None
+    if not shutil.which("iw"):
+        return country, phy
+    try:
+        out = _iw("reg", "get")
+    except Exception as e:
+        log.warning("iw reg get failed: %s", e)
+        return country, phy
+    for line in out.splitlines():
+        s = line.strip()
+        if s.startswith("global"):
+            current = country
+        elif s.startswith("phy#"):
+            current = phy
+        m = re.search(r"\((\d+)\s*-\s*(\d+)\s*@\s*\d+\),\s*\(([^,]+),\s*(\d+)\)", s)
+        if m and current is not None:
+            current.append((int(m.group(1)), int(m.group(2)), int(m.group(4))))
+    return country, phy
+
+
+def power_denied_channels():
+    """Channels the radio will refuse to beacon on because the country caps power lower
+    than the radio's own regulatory table allows.
+
+    A self-managed radio (brcmfmac on a Pi) carries its own domain, and the firmware appears
+    unable to transmit below that domain's limit for a band: asked to start an access point
+    where the country demands less, it simply refuses — the AP start dies with
+    `brcmf_cfg80211_start_ap: Set Channel failed ... -52`, which surfaces as an unrelated
+    "802.1X supplicant took too long to authenticate".
+
+    Measured on the client's stations in Latvia: 5 GHz 36-48 (country 23 dBm vs radio 20)
+    start, 149-165 (country 13 dBm vs radio 20) never do. The same channels work in
+    Australia, where the country allows more than the radio's 20 dBm. Radios without a
+    domain of their own (an ordinary PC adapter) have nothing to compare, so nothing is
+    denied — which is exactly right, they do not have this problem.
+    """
+    country, phy = _reg_power_ranges()
+    if not phy:
+        return set()
+
+    def limit(ranges, freq):
+        for start, end, dbm in ranges:
+            if start <= freq - 10 and freq + 10 <= end:
+                return dbm
+        return None
+
+    denied = set()
+    for start, end, radio_dbm in phy:
+        freq = start + 10
+        while freq + 10 <= end:
+            allowed = limit(country, freq)
+            if allowed is not None and allowed < radio_dbm:
+                denied.add(freq)
+            freq += 5
+    return denied
+
+
 def _iw(*args):
     out = subprocess.check_output(("iw",) + args, text=True, timeout=10,
                                   stderr=subprocess.STDOUT)
@@ -255,6 +408,131 @@ def _ap_iface_macs():
     # radio of WIFI_IFACE not found (no Wi-Fi at all, or the interface was renamed): keep the
     # safe side of the trade-off and treat every AP interface as ours
     return {mac for radio in radios.values() for mac in radio["ap_macs"]}
+
+
+RESCUE_CHECK_S = 30          # how often the watchdog looks at the station
+RESCUE_ISOLATED_S = 180      # unreachable this long -> raise the hotspot
+RESCUE_ONLINE_S = 60         # reachable again this long -> lower what we raised
+
+_rescue_raised = False       # only ever lower an access point the watchdog itself raised
+
+
+def rescue_enabled():
+    """Should the station raise its hotspot when it ends up with no network at all?"""
+    return station_flag("hotspot_rescue")
+
+
+def ethernet_carrier():
+    """True when some wired interface has a cable in it.
+
+    Read from the kernel rather than NetworkManager: a station can be perfectly reachable
+    over a wired link NM does not manage, and raising a rescue hotspot there would be noise.
+    """
+    try:
+        for name in os.listdir("/sys/class/net"):
+            if name == "lo" or name.startswith(("wlan", "ap", "p2p", "tailscale", "docker", "veth")):
+                continue
+            try:
+                with open("/sys/class/net/{}/carrier".format(name)) as f:
+                    if f.read().strip() == "1":
+                        return True
+            except OSError:
+                continue          # carrier is unreadable while the link is down
+    except OSError as e:
+        log.warning("could not inspect wired interfaces: %s", e)
+    return False
+
+
+def station_isolated():
+    """No way in: no Wi-Fi client connection and no wired carrier."""
+    if ethernet_carrier():
+        return False
+    try:
+        return wifi_state().get("state") != "connected"
+    except Exception as e:
+        log.warning("could not read the Wi-Fi state: %s", e)
+        return False          # unknown state is not proof of isolation
+
+
+def _rescue_set_ap(up):
+    """Raise/lower the hotspot as a rescue path — WITHOUT touching autoconnect flags.
+
+    The manual toggle switches roles: it clears autoconnect on the client networks so the
+    radio stays with the access point. The watchdog must not do that. If it did, a station
+    that lost its network for five minutes would keep the hotspot forever and never rejoin
+    the network when it came back. Here the hotspot is only brought up next to untouched
+    client profiles, so NetworkManager reconnects on its own the moment the network returns.
+    """
+    ref = _ap_ref()
+    if not ref:
+        return False
+    try:
+        if up:
+            # the profile is bound to the AP interface, which does not survive a reboot on a
+            # station whose provisioning does not recreate it — without this the rescue fails
+            # with a bare "Connection activation failed"
+            ensure_ap_iface()
+            nmcli.connection.up(ref, wait=30)
+        else:
+            nmcli.connection.down(ref)
+        return True
+    except Exception as e:
+        log.warning("rescue hotspot could not be %s: %s", "raised" if up else "lowered", e)
+        return False
+
+
+def rescue_tick(isolated, ap_active, isolated_for, online_for):
+    """Decide what the watchdog should do. Pure, so the policy is testable on its own.
+
+    Returns (action, isolated_for, online_for) where action is None | 'up' | 'down'.
+    """
+    if isolated:
+        isolated_for, online_for = isolated_for + RESCUE_CHECK_S, 0
+        if not ap_active and isolated_for >= RESCUE_ISOLATED_S:
+            return "up", 0, 0
+    else:
+        online_for, isolated_for = online_for + RESCUE_CHECK_S, 0
+        if _rescue_raised and ap_active and online_for >= RESCUE_ONLINE_S:
+            return "down", 0, 0
+    return None, isolated_for, online_for
+
+
+def rescue_watchdog(stop=None):
+    """Client remark 3: a station whose network is gone must not become unreachable.
+
+    Survives a reboot because the web service itself starts at boot — no extra unit to
+    install. Deliberately conservative: it only acts on a station configured for it
+    (`[network] hotspot_rescue`), only after RESCUE_ISOLATED_S of no network at all, and it
+    only lowers a hotspot it raised itself, so an access point switched on by the operator is
+    never touched.
+    """
+    global _rescue_raised
+    isolated_for = online_for = 0
+    while not (stop and stop.is_set()):
+        time.sleep(RESCUE_CHECK_S)
+        try:
+            if not rescue_enabled():
+                isolated_for = online_for = 0
+                continue
+            action, isolated_for, online_for = rescue_tick(
+                station_isolated(), _ap_active(), isolated_for, online_for)
+            if action == "up":
+                log.warning("no network for %ss — raising the rescue hotspot", RESCUE_ISOLATED_S)
+                _rescue_raised = _rescue_set_ap(True)
+            elif action == "down":
+                log.info("station is back online — lowering the rescue hotspot")
+                if _rescue_set_ap(False):
+                    _rescue_raised = False
+        except Exception as e:                  # a watchdog must never die
+            log.warning("rescue watchdog: %s", e)
+
+
+def start_rescue_watchdog():
+    """Start the watchdog in the background (gunicorn runs a single gevent worker)."""
+    import threading
+    t = threading.Thread(target=rescue_watchdog, name="wifi-rescue", daemon=True)
+    t.start()
+    return t
 
 
 def get_country():
@@ -324,7 +602,19 @@ def allowed_channels():
         band = freq_to_band(freq)
         if all(e["ch"] != ch for e in chans[band]):
             chans[band].append(entry)
+    # NO-OUTDOOR is a property of the frequency RANGE, not of the channel, so it is matched
+    # here against the 20 MHz the channel occupies. Marked always; whether it restricts
+    # anything depends on the station being declared outdoor.
+    outdoor_bad = no_outdoor_ranges()
+    # the radio refuses to beacon where the country caps power below its own table
+    denied = power_denied_channels()
     for band in chans:
+        for e in chans[band]:
+            lo, hi = e["freq"] - 10, e["freq"] + 10
+            if any(lo >= start and hi <= end for start, end in outdoor_bad):
+                e["no_outdoor"] = True
+            if e["freq"] in denied:
+                e["power_denied"] = True
         chans[band].sort(key=lambda e: e["ch"])
     return chans
 
@@ -357,8 +647,13 @@ def ap_channel_ok(band, ch, chans=None):
     if not ch or band not in ("2.4", "5"):
         return True                      # Auto (0) / band not pinned — NM picks
     chans = chans if chans is not None else allowed_channels()
+    outdoor = outdoor_station()
     for e in chans.get(band, []):
         if e["ch"] == ch:
+            if outdoor and e.get("no_outdoor"):
+                return False        # indoor-only channel on a station declared outdoor
+            if e.get("power_denied"):
+                return False        # the radio will not beacon under this country's cap
             return not (e.get("disabled") or e.get("no_ir") or e.get("dfs"))
     return False
 
@@ -470,24 +765,138 @@ def _is_ap(details):
     return details.get("802-11-wireless.mode") == "ap"
 
 
+_sae_supported = None
+
+
+def sae_supported():
+    """Can this adapter offer WPA3 alongside WPA2 on one access point?
+
+    NetworkManager adds SAE to a `wpa-psk` access point only when wpa_supplicant reports SAE
+    among its key_mgmt capabilities. Without it, `wpa-psk` beacons plain WPA2 no matter what
+    `pmf` says — so "WPA2 + WPA3" would be a promise the hardware does not keep, and it must
+    not be offered. Measured on a Raspberry Pi (brcmfmac): SAE is absent from key_mgmt (it
+    appears under auth_alg, which is the driver's SAE offload, not an AKM the AP can announce).
+
+    Cached: a capability of the adapter, it cannot change while the service runs. Unreadable
+    capabilities leave the choice available rather than silently removing it.
+    """
+    global _sae_supported
+    if _sae_supported is None:
+        _sae_supported = True
+        wpa_cli = shutil.which("wpa_cli")
+        if wpa_cli:
+            try:
+                out = subprocess.run([wpa_cli, "-i", WIFI_IFACE, "get_capability", "key_mgmt"],
+                                     capture_output=True, text=True, timeout=10).stdout
+                if out.strip():
+                    _sae_supported = "SAE" in out.split()
+            except Exception as e:
+                log.warning("could not read supplicant key_mgmt capabilities: %s", e)
+    return _sae_supported
+
+
+def ap_security_kinds():
+    """Security choices the AP form may offer on this adapter, default first.
+
+    Without SAE the "WPA2 + WPA3" choice is dropped (it would be indistinguishable from plain
+    WPA2 on the air) and WPA2 leads instead: on such an adapter WPA3-only would turn away every
+    client that does not speak SAE, which is the opposite of a sensible default.
+    """
+    if sae_supported():
+        return ["mixed", "wpa3", "wpa2", "open"]
+    return ["wpa2", "wpa3", "open"]
+
+
+def default_ap_security():
+    return ap_security_kinds()[0]
+
+
+def ap_iface_present():
+    """Does the dedicated AP interface exist right now?"""
+    return os.path.exists("/sys/class/net/" + AP_IFACE)
+
+
+def ensure_ap_iface():
+    """Make AP_IFACE exist and be usable by NetworkManager; raise WifiError if impossible.
+
+    Three steps, all of them needed (measured):
+      1. `iw dev wlan0 interface add ap0 type __ap` — the virtual AP interface. Station
+         provisioning does this at every boot, so on those images step 1 is a no-op.
+      2. NM sees a freshly added interface as UNMANAGED, and a profile bound to an unmanaged
+         device cannot be activated — hand it over explicitly.
+      3. report failure honestly: some drivers refuse a second virtual interface. We do NOT
+         fall back to wlan0 — an access point there would take the radio away from the client
+         connection, which is exactly what this interface exists to avoid.
+    """
+    if not ap_iface_present():
+        if not shutil.which("iw"):
+            raise WifiError("Cannot create the access-point interface: `iw` is not installed")
+        try:
+            _iw("dev", WIFI_IFACE, "interface", "add", AP_IFACE, "type", "__ap")
+        except Exception as e:
+            log.warning("could not add %s: %s", AP_IFACE, e)
+            raise WifiError(
+                "This Wi-Fi adapter does not support a separate access-point interface "
+                "({}), so the access point cannot be started".format(AP_IFACE))
+    # idempotent: a no-op when the interface is already managed (the python nmcli binding
+    # has no wrapper for this, hence the direct call)
+    try:
+        subprocess.run(["nmcli", "device", "set", AP_IFACE, "managed", "yes"],
+                       timeout=15, check=False, capture_output=True)
+    except Exception as e:
+        log.warning("could not hand %s to NetworkManager: %s", AP_IFACE, e)
+    # NM needs a moment to pick the interface up, and activating too early fails with a
+    # misleading "no suitable device found ... device wlan0 ... mismatching interface name":
+    # with ap0 still unmanaged/unavailable NM looks at the other radio and refuses. Wait for
+    # the device to become usable instead of racing it.
+    for _ in range(30):
+        try:
+            state = next((d.state for d in nmcli.device.status() if d.device == AP_IFACE), "")
+        except Exception:
+            state = ""
+        if state and state not in ("unmanaged", "unavailable"):
+            break
+        time.sleep(0.5)
+    else:
+        log.warning("%s did not become usable in time", AP_IFACE)
+    return AP_IFACE
+
+
 def get_role(profiles=None):
-    """'ap' when the AP profile has autoconnect=yes, else 'client'."""
-    profiles = profiles if profiles is not None else _wifi_profiles()
-    ap = profiles.get(AP_PROFILE)
+    """'ap' when the AP profile has autoconnect=yes, else 'client'.
+
+    Resolved through _ap_ref() rather than the caller's profile map: the access point lives on
+    AP_IFACE, and _wifi_profiles() deliberately drops profiles bound to an interface other than
+    wlan0, so looking it up there would always report 'client'. The `profiles` argument is still
+    honoured for the pre-move case (a profile on wlan0 or unbound) and to save a query.
+    """
+    ap = (profiles or {}).get(AP_PROFILE)
+    if ap is None:
+        ref = _ap_ref()
+        if ref:
+            try:
+                ap = nmcli.connection.show(ref)
+            except Exception:
+                ap = None
     if ap and ap.get("connection.autoconnect") == "yes":
         return "ap"
     return "client"
 
 
 def _ap_ref():
-    """uuid of OUR access-point profile, or None when it does not exist yet.
+    """uuid of the station's access-point profile, or None when there is none yet.
 
-    A profile with the SAME name can live on a sibling interface — a station provisioned
-    with its hotspot on ap0 ends up with two connections called "Hotspot". nmcli then
-    refuses to guess ("There is another connection with the name 'Hotspot'. Reference the
-    connection by its uuid") and would otherwise act on whichever it picked, so every call
-    must address ours by uuid. Ours is the one bound to wlan0, or an unbound one."""
-    unbound = None
+    Several connections can share the name "Hotspot" — nmcli then refuses to guess ("There is
+    another connection with the name 'Hotspot'. Reference the connection by its uuid") — so
+    every call addresses it by uuid. Preference order:
+      1. bound to AP_IFACE: the access point of this station, whoever created it (ours, or the
+         one station provisioning puts on ap0). Managing that single profile is what keeps the
+         form showing what is really on the air instead of a second, invisible hotspot.
+      2. not bound to any interface.
+      3. bound to WIFI_IFACE: a profile from before the access point moved off wlan0; picked up
+         so its settings are not lost, and rebound to AP_IFACE on the next save.
+    """
+    unbound = legacy = None
     try:
         for conn in nmcli.connection():
             if conn.conn_type != "wifi" or conn.name != AP_PROFILE:
@@ -497,10 +906,13 @@ def _ap_ref():
             except Exception:
                 continue
             bound = d.get("connection.interface-name") or ""
-            if bound == WIFI_IFACE:
+            if bound == AP_IFACE:
                 return conn.uuid
             if not bound and unbound is None:
                 unbound = conn.uuid
+            elif bound == WIFI_IFACE and legacy is None:
+                legacy = conn.uuid
+        unbound = unbound or legacy
     except Exception as e:
         log.warning("could not resolve the AP profile: %s", e)
     return unbound
@@ -920,6 +1332,8 @@ def get_status(hide_country_codes=()):
         "country": get_country(),
         "channels": allowed_channels(),
         "bands": available_bands(),
+        "ap_security_kinds": ap_security_kinds(),
+        "outdoor": outdoor_station(),
         "role": get_role(),
         "ap_active": _ap_active(),
         "occupied": occupied_subnets(),
@@ -945,6 +1359,41 @@ def _ipv4_options(ipconf):
     opts["ipv4.gateway"] = (ipconf.get("gateway") or "").strip()
     opts["ipv4.dns"] = dns
     return opts
+
+
+def _ap_snapshot_for_safe_apply():
+    """Settings of a running access point, so a failed connection can bring it back."""
+    try:
+        cfg = get_ap_config()
+    except Exception as e:
+        log.warning("could not read the AP config before connecting: %s", e)
+        return None
+    return cfg if cfg.get("configured") else None
+
+
+def _restore_ap_after_failure(snap, notify):
+    """Put the access point back after a connection attempt failed.
+
+    This is the whole point of remark 3: the operator reaches the station THROUGH the
+    hotspot, so switching to a client network is a one-way door — if the network turns out
+    to be wrong, the station is gone. Restoring it here keeps the way in.
+    """
+    if not snap:
+        return
+    try:
+        notify("restoring-hotspot", None)
+        set_ap(dict(snap, enabled=True, password=""))
+        log.warning("connection failed — the access point was restored")
+    except Exception as e:
+        log.warning("could not restore the access point: %s", e)
+
+
+def _lower_ap_for_connect(snap, notify):
+    """Take the access point down so the radio is free for the client connection."""
+    if not snap:
+        return
+    notify("stopping-hotspot", None)
+    set_ap(dict(snap, enabled=False, password=""))
 
 
 def _validate_psk(password):
@@ -981,8 +1430,11 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     """
     notify = status_cb or (lambda *a: None)
     bssid = (bssid or "").strip().upper() or None
-    if get_role() == "ap":
-        raise WifiError("Client connection is not available while Access Point mode is on")
+    # Connecting from access-point mode used to be refused outright, which left the operator
+    # to switch the hotspot off by hand and lose the station when the network did not work
+    # (remark 3). Now the hotspot is lowered for the attempt and restored if it fails.
+    ap_snap = _ap_snapshot_for_safe_apply() if (get_role() == "ap" or _ap_active()) else None
+    _lower_ap_for_connect(ap_snap, notify)
 
     if ipconf and ipconf.get("method") == "manual":
         # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
@@ -1055,6 +1507,7 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
             except Exception:
                 pass
         log.warning("wifi connect '%s' failed: %s", ssid, _err_detail(e))
+        _restore_ap_after_failure(ap_snap, notify)
         notify("failed", _readable_error(e))
         raise WifiError(_readable_error(e))
     notify("connected", ssid)
@@ -1074,8 +1527,10 @@ def activate(profile, bssid=None, status_cb=None):
     """
     notify = status_cb or (lambda *a: None)
     details = _guard_client_profile(profile)
-    if get_role() == "ap":
-        raise WifiError("Client connection is not available while Access Point mode is on")
+    # same safe-apply as connect(): the hotspot is the way in, so it comes back if the
+    # network cannot be joined (remark 3)
+    ap_snap = _ap_snapshot_for_safe_apply() if (get_role() == "ap" or _ap_active()) else None
+    _lower_ap_for_connect(ap_snap, notify)
     bssid = (bssid or "").strip().upper() or None
     pinned_now = False
     if bssid and (details.get("802-11-wireless.bssid") or "") in ("", "--"):
@@ -1099,6 +1554,7 @@ def activate(profile, bssid=None, status_cb=None):
             except Exception:
                 pass
         log.warning("wifi activate '%s' failed: %s", profile, _err_detail(e))
+        _restore_ap_after_failure(ap_snap, notify)
         notify("failed", _readable_error(e))
         raise WifiError(_readable_error(e))
     notify("connected", disp)
@@ -1305,7 +1761,10 @@ def get_ap_config():
             raise nmcli.NotExistException(AP_PROFILE)
         details = nmcli.connection.show(ref, show_secrets=True)
     except nmcli.NotExistException:
-        return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), enabled=False, configured=False,
+        # security default follows the adapter: offering "mixed" where the radio cannot deliver
+        # WPA3 would put a value in the form that is not even in its own list of choices
+        return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), security=default_ap_security(),
+                    enabled=False, configured=False,
                     has_password=False, last_error=_last_ap_error)
     km = details.get("802-11-wireless-security.key-mgmt")
     pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
@@ -1316,7 +1775,10 @@ def get_ap_config():
         # PMF=disable keeps SAE out of the beacon. A profile with pmf unset (ours from before
         # this rule, or one from provisioning) does advertise WPA2+WPA3, so it reads as mixed
         # — re-saving as WPA2-PSK writes pmf=disable and makes it plain WPA2 for real.
-        security = "wpa2" if pmf in ("1", "disable") else "mixed"
+        # On an adapter that cannot add SAE at all, every wpa-psk profile is plain WPA2 in the
+        # air whatever pmf says, so it reads as WPA2 — and "mixed" is not offered (see
+        # ap_security_kinds).
+        security = "wpa2" if (pmf in ("1", "disable") or not sae_supported()) else "mixed"
     else:
         security = "open"
     band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
@@ -1448,15 +1910,36 @@ def set_ap(config, status_cb=None):
         # reject BEFORE touching NM: a forbidden channel (usually inherited from
         # provisioning or an import, our picker never offers one) otherwise surfaces as an
         # unrelated "802.1X supplicant took too long to authenticate"
-        verr = verr or ("Channel {} is not available for the access point in region {} — "
-                        "choose another channel or Auto".format(chan_req, get_country() or "00"))
+        cc = get_country() or "00"
+        chans_now = allowed_channels()
+        entry = next((e for e in chans_now.get(band_req, []) if e["ch"] == chan_req), None)
+        if entry and entry.get("power_denied"):
+            verr = verr or ("Channel {} is not usable for the access point in region {}: the "
+                            "adapter cannot transmit at the power this region allows there — "
+                            "choose another channel or Auto".format(chan_req, cc))
+        elif outdoor_station() and entry and entry.get("no_outdoor"):
+            verr = verr or ("Channel {} is indoor-only in region {} and this station is "
+                            "configured as outdoor — choose another channel or Auto"
+                            .format(chan_req, cc))
+        else:
+            verr = verr or ("Channel {} is not available for the access point in region {} — "
+                            "choose another channel or Auto".format(chan_req, cc))
     if enabled and verr:
         raise WifiError(verr)
+
+    # The access point needs its own interface before a profile can point at it. Only when
+    # actually starting it: saving settings with the toggle off must not fail on hardware that
+    # cannot host a second interface, and must not create one for nothing.
+    if enabled:
+        ensure_ap_iface()
 
     options = {
         "802-11-wireless.mode": "ap",
         "802-11-wireless.ssid": config.get("ssid") or _default_ap_ssid(),
         "802-11-wireless.hidden": "yes" if config.get("hidden") else "no",
+        # pin the profile to the AP interface: also migrates a profile from before the access
+        # point moved off wlan0, so old settings survive the change instead of being orphaned
+        "connection.interface-name": AP_IFACE if enabled or ap_iface_present() else "",
         "ipv4.method": "shared",
         "ipv4.addresses": "{}/{}".format(ip, prefix),
         "802-11-wireless-security.key-mgmt": "",
@@ -1489,7 +1972,7 @@ def set_ap(config, status_cb=None):
                 nmcli.connection.modify(ap_ref, mod_opts)
             else:
                 add_opts = {k: v for k, v in options.items() if v != ""}
-                nmcli.connection.add("wifi", add_opts, WIFI_IFACE, AP_PROFILE,
+                nmcli.connection.add("wifi", add_opts, AP_IFACE, AP_PROFILE,
                                      autoconnect=False)
                 ap_ref = _ap_ref()          # address the fresh profile by uuid from now on
                 created_ap = True

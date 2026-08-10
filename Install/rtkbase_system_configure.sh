@@ -24,7 +24,7 @@ Ciao(){
 }
 
 DeleteHotSpots(){
-   HOTSPOT_LIST=$(nmcli --get-values NAME connection show | grep ${HOTSPOT})
+   HOTSPOT_LIST=$(nmcli --get-values NAME connection show | grep "^${HOTSPOT}")
    #echo HOTSPOT_LIST=${HOTSPOT_LIST}
    for hotspot_name in ${HOTSPOT_LIST}; do
        nmcli connection delete id ${hotspot_name}
@@ -34,10 +34,9 @@ DeleteHotSpots(){
 WPS() {
   nm-online -s >/dev/null
   HAVE_INTERNET=`nmcli networking connectivity check`
-  HAVE_HOTSPOT=`nmcli  --fields NAME connection show --active | grep ${HOTSPOT}`
-  #echo before WPS  HAVE_INTERNET=${HAVE_INTERNET} HAVE_HOTSPOT=${HAVE_HOTSPOT}
-  if [[ "${HAVE_INTERNET}" != "full" ]] && [[ "${HAVE_HOTSPOT}" == "" ]]; then
-     DeleteHotSpots
+  HAVE_ACTIVE_HOTSPOT=`nmcli  --fields NAME connection show --active | grep "^${HOTSPOT}"`
+  #echo before WPS  HAVE_INTERNET=${HAVE_INTERNET} HAVE_ACTIVE_HOTSPOT=$HAVE_ACTIVE_HOTSPOT}
+  if [[ "${HAVE_INTERNET}" != "full" ]] && [[ "${HAVE_ACTIVE_HOTSPOT}" == "" ]]; then
      echo Start WPS PBC
      trap Ciao EXIT HUP INT QUIT ABRT KILL TERM
      echo Start WPS PBC >${WPS_FLAG}
@@ -53,16 +52,25 @@ WPS() {
         HAVE_WIFI=`nmcli --get-values TYPE,AUTOCONNECT connection show  | grep -w "802-11-wireless:yes"`
         #echo HAVE_WIFI=${HAVE_WIFI}
         if [[ -z "${HAVE_WIFI}" ]]; then
-           HOSTNAME=$(hostname)
-           #echo HOSTNAME=${HOSTNAME}
-           nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
-           ExitCodeCheck $?
-           nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
-           ExitCodeCheck $?
-           nmcli connection down id ${HOTSPOT}
-           ExitCodeCheck $?
-           nmcli connection up id ${HOTSPOT}
-           ExitCodeCheck $?
+           HAVE_HOTSPOT=`nmcli  --fields NAME connection show | grep "^${HOTSPOT}"`
+           CNT_HOTSPOT=`nmcli --fields NAME connection show | grep -c "^${HOTSPOT}"`
+           #echo CNT_HOTSPOT=${CNT_HOTSPOT} HAVE_HOTSPOT=${HAVE_HOTSPOT}
+           if [[ "${CNT_HOTSPOT}" == "1" ]]; then
+              nmcli connection up id ${HAVE_HOTSPOT}
+              ExitCodeCheck $?
+           else
+              DeleteHotSpots
+              HOSTNAME=$(hostname)
+              #echo HOSTNAME=${HOSTNAME}
+              nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+              ExitCodeCheck $?
+              nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
+              ExitCodeCheck $?
+              nmcli connection down id ${HOTSPOT}
+              ExitCodeCheck $?
+              nmcli connection up id ${HOTSPOT}
+              ExitCodeCheck $?
+          fi
         fi
      fi
   fi
@@ -184,7 +192,6 @@ then
    nm-online -s >/dev/null
    nmcli radio wifi on
    if [[ -z "${AP}" ]]; then
-      DeleteHotSpots
       HAVE_OLD_SSID1=`nmcli --get-values NAME connection show | grep -w "${SSIDprinted}"`
       if [ -n "${HAVE_OLD_SSID1}" ]; then
          #echo nmcli connection delete id "${SSIDprinted}"

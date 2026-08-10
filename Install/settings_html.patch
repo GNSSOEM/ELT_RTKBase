@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..40fed54 100644
+index 9690796..1c5de19 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -803,7 +803,7 @@ index 9690796..40fed54 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1254,288 @@
+@@ -794,12 +1254,293 @@
    </div>
  </div>
  
@@ -905,6 +905,8 @@ index 9690796..40fed54 100644
 +            </div>
 +            <div class="form-group">
 +              <label class="mb-1" for="wifi-ap-sec">Security</label>
++              <!-- options are rebuilt from wifi status: an adapter that cannot add SAE to a
++                   WPA2 access point does not get the "WPA2 + WPA3" choice at all -->
 +              <select class="form-control" id="wifi-ap-sec">
 +                <option value="mixed" selected>WPA2 + WPA3 (recommended)</option>
 +                <option value="wpa3">WPA3-SAE</option>
@@ -953,6 +955,9 @@ index 9690796..40fed54 100644
 +            <!-- shown when the stored profile pins a channel the adapter cannot beacon on
 +                 (typically inherited from provisioning or an import) -->
 +            <small class="text-warning" id="wifi-ap-chan-warn" style="display:none"></small>
++            <!-- station declared outdoor in settings.conf and the regulator leaves no usable
++                 channel in the selected band -->
++            <small class="text-warning" id="wifi-ap-outdoor-note" style="display:none"></small>
 +            <div class="wifi-grp-title">Network</div>
 +            <div class="form-row">
 +              <div class="form-group col-sm-7">

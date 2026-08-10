@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..e9358fe 100644
+index 5b64baa..51f1e09 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..e9358fe 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1270 @@ $(document).ready(function () {
+@@ -758,5 +960,1319 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1082,10 +1082,15 @@ index 5b64baa..e9358fe 100644
 +    // IR-allowed standard channel of the band.
 +    function wifiApChannels(band) {
 +        var all = ((wifi.status && wifi.status.channels) || {})[band] || [];
++        var outdoor = !!(wifi.status && wifi.status.outdoor);
 +        var chans = [];
 +        for (var i = 0; i < all.length; i++) {
 +            var e = all[i];
 +            if (e.disabled || e.no_ir || e.dfs) continue;
++            // an outdoor station may not use channels the regulator marks indoor-only
++            if (outdoor && e.no_outdoor) continue;
++            // the radio refuses to beacon where the region caps power below its own table
++            if (e.power_denied) continue;
 +            // `iw list` also enumerates non-standard 5 GHz center frequencies (e.g. ch 34,
 +            // the Japanese legacy J52 grid) — the AP cannot start on those; keep only the
 +            // standard 20 MHz grid: 36–144 and 149–177 in steps of 4
@@ -1125,6 +1130,16 @@ index 5b64baa..e9358fe 100644
 +                'Pick another channel or Auto.').show();
 +        } else {
 +            $('#wifi-ap-chan-warn').hide();
++        }
++        // Outdoor station and the regulator leaves nothing usable in this band: say so instead
++        // of showing a picker with only "Auto" in it (client remarks 15/25).
++        var cc = (wifi.status && wifi.status.country) || '';
++        if (!chans.length && wifi.status && wifi.status.outdoor) {
++            $('#wifi-ap-outdoor-note').text('Outdoor Wi-Fi is not allowed on ' + band +
++                ' GHz in region ' + (cc || '—') + ' — this station is configured as outdoor. ' +
++                'Use the other band.').show();
++        } else {
++            $('#wifi-ap-outdoor-note').hide();
 +        }
 +    }
 +
@@ -1343,10 +1358,31 @@ index 5b64baa..e9358fe 100644
 +        wifi.updating = false;
 +    }
 +
++    // Security choices come from the backend: an adapter whose supplicant has no SAE cannot
++    // put WPA3 next to WPA2 on one access point, so offering "WPA2 + WPA3" there would promise
++    // something the radio never delivers (it beacons plain WPA2). Rebuilt on every render
++    // because a fresh 'wifi status' replaces the list.
++    var WIFI_SEC_LABEL = {
++        mixed: 'WPA2 + WPA3 (recommended)',
++        wpa3: 'WPA3-SAE',
++        wpa2: 'WPA2-PSK',
++        open: 'Open (no password)'
++    };
++    function wifiRepopApSecurity(selected) {
++        var kinds = (wifi.status && wifi.status.ap_security_kinds) || ['mixed', 'wpa3', 'wpa2', 'open'];
++        var sel = $('#wifi-ap-sec');
++        if (kinds.indexOf(selected) < 0) selected = kinds[0];
++        sel.html(kinds.map(function (k) {
++            return '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' +
++                   wifiEsc(WIFI_SEC_LABEL[k] || k) + '</option>';
++        }).join(''));
++        return selected;
++    }
++
 +    function wifiRenderApForm(cfg) {
 +        wifi.updating = true;
 +        $('#wifi-ap-ssid').val(cfg.ssid);
-+        $('#wifi-ap-sec').val(cfg.security);
++        $('#wifi-ap-sec').val(wifiRepopApSecurity(cfg.security));
 +        // Show the stored key only under the CSS masking (type=text — invisible to the
 +        // browser's password manager, so no save prompts). With the type=password fallback
 +        // the field stays empty (•••• placeholder); an empty submit keeps the stored key.
@@ -1485,6 +1521,17 @@ index 5b64baa..e9358fe 100644
 +        $('#wifi-cm-dns2-err').text(bad ? 'Invalid DNS server address: ' + bad : '').toggle(!!bad);
 +        return !bad;
 +    }
++    // Joining a network takes the radio away from the access point, so an operator working
++    // THROUGH that hotspot loses this page mid-request. Warn once, in both connect paths, and
++    // say how they get back in — the hotspot returns by itself if the network cannot be joined.
++    function wifiConfirmLosingHotspot(ssid) {
++        if (!(wifi.status && (wifi.status.role === 'ap' || wifi.status.ap_active))) return true;
++        return confirm('The access point will be switched off to join "' + ssid + '".\n\n' +
++            'If you are connected to the station through it, this page will lose its ' +
++            'connection. On success the station is reachable on the new network; if it ' +
++            'cannot join, the access point comes back automatically.');
++    }
++
 +    function wifiDoConnect() {
 +        var m = wifi.cm;
 +        if (m.mode === 'changepwd') {
@@ -1528,6 +1575,7 @@ index 5b64baa..e9358fe 100644
 +        var sec = (m.mode === 'hidden') ? msg.security : m.security;
 +        var pwdErr = wifiValidatePwd(sec, msg.password);
 +        if (pwdErr) { wifiShowPwdErr(pwdErr); return; }
++        if (!wifiConfirmLosingHotspot(msg.ssid)) return;
 +        socket.emit('wifi connect', msg);
 +        $('#wifiConnectModal').modal('hide');
 +        wifiSetBusy(true, 'Connecting to ' + msg.ssid + '…', '', 'result');
@@ -1733,6 +1781,7 @@ index 5b64baa..e9358fe 100644
 +            if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
 +            var prof = row.data('profile');
 +            if (prof) {   // saved network: password is stored — just re-activate, don't prompt
++                if (!wifiConfirmLosingHotspot(row.data('ssid'))) return;
 +                // the row's BSSID rides along: a pre-BSSID profile gets pinned to this AP
 +                socket.emit('wifi activate', {profile: prof, bssid: row.data('bssid') || null});
 +                wifiSetBusy(true, 'Connecting to ' + row.data('ssid') + '…', '', 'result');

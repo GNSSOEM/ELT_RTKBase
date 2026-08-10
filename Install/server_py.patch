@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..52c858d
+index e36bbc4..527f29f
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,10 @@ from RTKLIB import RTKLIB
@@ -887,3 +887,14 @@ index e36bbc4..52c858d
  def arg_parse():
      parser = argparse.ArgumentParser(
          description="RTKBase Web server",
+@@ -1042,6 +1624,10 @@ if __name__ == "__main__":
+         manager_thread = Thread(target=manager, daemon=True)
+         manager_thread.start()
+ 
++        #Raise the hotspot when the station is left with no network at all, so it stays
++        #reachable (opt-in per station: [network] hotspot_rescue in settings.conf)
++        wifi_manager.start_rescue_watchdog()
++
+         app.secret_key = rtkbaseconfig.get_secret_key()
+         #socketio.run(app, host = "::", port = args.port or rtkbaseconfig.get("general", "web_port", fallback=80), debug=args.debug) # IPv6 "::" is mapped to IPv4
+         gunicorn_options = {

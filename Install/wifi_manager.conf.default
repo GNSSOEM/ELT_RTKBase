@@ -1,0 +1,30 @@
+# Wi-Fi settings of THIS station — things that cannot be detected, only declared.
+#
+# This file ships with the software and holds the defaults. To change a setting on a
+# station, put the same section with the changed key in
+#
+#     /usr/local/rtkbase/wifi_manager.conf
+#
+# which is read after this one and wins. That path is deliberately outside the software
+# directory: a software update replaces this file, and RTKBase's "Reset settings" rewrites
+# settings.conf — neither touches the station's own copy. Provisioning writes it; the
+# configurator only reads.
+#
+# Values accept true/false, yes/no, on/off, 1/0, with or without quotes.
+
+[wifi]
+
+# The station is installed outdoors.
+# Regulators mark part of 5 GHz indoor-only (in Latvia, for instance, that is 5150-5350,
+# i.e. channels 36-64). With this on, such channels are not offered for the access point
+# and are refused if a profile still carries one. Nothing can detect this — only whoever
+# mounted the station knows.
+outdoor = false
+
+# Raise the access point when the station is left with no network at all.
+# When there is no Wi-Fi connection and no cable carrier for a few minutes, the hotspot
+# comes up so the station stays reachable, and goes down again once the station is back
+# online. Client networks keep their autoconnect, so the station rejoins by itself.
+# Useful for stations without Ethernet; off by default, because a station that is meant to
+# be silent should stay silent.
+hotspot_rescue = false

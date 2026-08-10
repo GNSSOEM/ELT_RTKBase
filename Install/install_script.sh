@@ -30,6 +30,8 @@ CONBOBOX_JS=combobox.js
 SETTINGS_NOW=${RTKBASE_GIT}/settings.conf
 SETTINGS_SAVE=${RTKBASE_GIT}/settings.save
 SETTINGS_DEFAULT=${RTKBASE_GIT}/settings.conf.default
+WIFI_CONF=${RTKBASE_GIT}/wifi_manager.conf
+WIFI_CONF_DEFAULT=wifi_manager.conf.default
 NMEACONF=NmeaConf
 RTCM3LED=Rtcm3Led
 RTCM3_TAIL=RTCM3_OUT.txt
@@ -1353,6 +1355,8 @@ configure_for_unicore(){
    copy_file "${CONFF9P}" "${RTKBASE_RECV}"
    copy_file "${CFGF9P}" "${RTKBASE_RECV}"
 
+   copy_file "${WIFI_CONF_DEFAULT}" "${RTKBASE_GIT}"
+
    copy_file "${FAVICON}" "${WEB_IMAGES}"
    copy_root "${WIFI_MANAGER}" "${RTKBASE_WEB}"
    copy_root "${BOOTSTRAP_SELECT_CSS}" "${WEB_LIB}"
@@ -1552,6 +1556,16 @@ configure_settings(){
 
       #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
       chown ${RTKBASE_USER}:${RTKBASE_USER} ${SETTINGS_NOW}
+      ExitCodeCheck $?
+   fi
+
+   if [ ! -f ${WIFI_CONF} ]; then
+      #echo cp ${RTKBASE_GIT}/${WIFI_CONF_DEFAULT} ${WIFI_CONF}
+      cp ${RTKBASE_GIT}/${WIFI_CONF_DEFAULT} ${WIFI_CONF}
+      ExitCodeCheck $?
+
+      #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
+      chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
       ExitCodeCheck $?
    fi
 }
@@ -1893,7 +1907,7 @@ BASE_EXTRACT="${NMEACONF} ${CONF980} ${CONF982} ${CONFBYNAV} ${UNICORE_CONFIGURE
               ${UNINSTALL_SH_PATCH} ${ARCHIVE_AND_CLEAN_PATCH} ${CREATE_ARCHIVE} \
               ${WIFI_MANAGER} ${BOOTSTRAP_SELECT_CSS} ${BOOTSTRAP_SELECT_JS} \
               ${CONBOBOX_CSS} ${CONBOBOX_JS} ${CHECK_TIMESYNC_PATCH} ${STR2STR_FILE_PATCH} \
-              ${GNSS_RULES_PATCH} ${CONFG5RTCM3} ${CONFG5SBF}"
+              ${GNSS_RULES_PATCH} ${CONFG5RTCM3} ${CONFG5SBF} ${WIFI_CONF_DEFAULT}"
 
 FILES_EXTRACT="${BASE_EXTRACT} uninstall.sh"
 FILES_DELETE="${CONFIG} ${CONFIG_ORIG} ${CONFIG_ORIG2}"
