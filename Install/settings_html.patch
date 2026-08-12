@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..1c5de19 100644
+index 9690796..c670502 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -803,7 +803,7 @@ index 9690796..1c5de19 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1254,293 @@
+@@ -794,12 +1254,303 @@
    </div>
  </div>
  
@@ -870,8 +870,9 @@ index 9690796..1c5de19 100644
 +            <b>Required</b> for Access Point mode.</small>
 +        </div>
 +
-+        <div class="alert alert-warning py-2 px-3" id="wifiApOnNote">⚠ WiFi networks are unavailable while
-+          Access Point mode is on — the device has a single radio.</div>
++        <div class="alert alert-info py-2 px-3" id="wifiApOnNote">The device has a single radio with one
++          channel: joining a network moves the access point onto that network's channel, and switches it
++          off for the connection if it cannot run there.</div>
 +
 +        <div id="wifi-client-area">
 +          <div class="d-flex align-items-center justify-content-between mt-1">
@@ -958,6 +959,12 @@ index 9690796..1c5de19 100644
 +            <!-- station declared outdoor in settings.conf and the regulator leaves no usable
 +                 channel in the selected band -->
 +            <small class="text-warning" id="wifi-ap-outdoor-note" style="display:none"></small>
++            <!-- one radio, one channel: a connected client network owns it and the point
++                 follows; the picker states where the point goes once that link ends -->
++            <small class="d-block mb-1" id="wifi-ap-air" style="display:none"></small>
++            <small class="text-danger d-block mb-1" id="wifi-ap-illegal" style="display:none"></small>
++            <small class="text-info d-block mb-1" id="wifi-ap-channel-note" style="display:none"></small>
++            <small class="text-warning d-block mb-1" id="wifi-ap-yielded" style="display:none"></small>
 +            <div class="wifi-grp-title">Network</div>
 +            <div class="form-row">
 +              <div class="form-group col-sm-7">
@@ -970,6 +977,9 @@ index 9690796..1c5de19 100644
 +              </div>
 +            </div>
 +            <p class="text-danger mb-2" id="wifi-ap-ip-err" style="display:none"></p>
++            <!-- the chosen subnet was taken by a network this station is on, so the access
++                 point stands one block further; the address here comes back when it frees up -->
++            <small class="text-warning d-block mb-2" id="wifi-ap-ip-moved" style="display:none"></small>
 +            <div class="text-right">
 +              <button class="btn btn-primary" type="button" id="wifi-ap-save">Save</button>
 +            </div>

@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..51f1e09 100644
+index 5b64baa..23e1248 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..51f1e09 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1319 @@ $(document).ready(function () {
+@@ -758,5 +960,1402 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -939,9 +939,12 @@ index 5b64baa..51f1e09 100644
 +        if (!sec || sec === 'open') return null;
 +        pwd = pwd || '';
 +        if (sec === 'wep') {
-+            if (pwd.length === 5 || pwd.length === 13 ||
-+                /^[0-9a-fA-F]{10}$/.test(pwd) || /^[0-9a-fA-F]{26}$/.test(pwd)) return null;
-+            return 'WEP key must be 5 or 13 characters (or 10/26 hex digits)';
++            // Any length is accepted: 5/13 characters and 10/26 hex digits are literal keys,
++            // anything else is handed to the adapter as a passphrase it derives the key from
++            // (an access point with a 12-digit key was impossible to enter before).
++            if (!pwd.length) return 'Enter the WEP key';
++            if (pwd.length > 64) return 'WEP key or passphrase must be 64 characters or fewer';
++            return null;
 +        }
 +        if (pwd.length < 8 || pwd.length > 63) return 'Password must be 8–63 characters';
 +        return null;
@@ -951,7 +954,11 @@ index 5b64baa..51f1e09 100644
 +    function wifiPwdSetHint(sec) {
 +        $('#wifi-cm-pwd-hint').text(
 +            !sec || sec === 'open' ? '' :
-+            sec === 'wep' ? 'WEP key: 5 or 13 characters, or 10/26 hex digits'
++            sec === 'wep' ? 'Enter the key exactly as the access point shows it. A WEP key '
++                          + 'itself is 5 or 13 characters, or the same key written as 10 or 26 '
++                          + 'hex digits (0-9, a-f). Any other length — 12 digits, for example — '
++                          + 'is a passphrase the access point derives the key from, and is '
++                          + 'accepted as such.'
 +                          : 'Passphrase: 8–63 characters (64 hex digits for a raw key)');
 +    }
 +    function wifiShowPwdErr(msg) {
@@ -1039,10 +1046,13 @@ index 5b64baa..51f1e09 100644
 +        var bcast = (net | host) >>> 0;
 +        if (ip === net || ip === bcast) return fail(ipEl, 'This is a network or broadcast address — use a host address.');
 +        var conf = wifiOccupiedConflict(ip, prefix);
-+        if (conf && !ids.softOccupied) return fail(ipEl, 'Subnet overlaps ' + conf.net + ' (' + conf.conn + '). Choose a different subnet.');
++        // the device name says WHERE the subnet is; the profile name ("Wired connection 2")
++        // does not, and the operator has to guess which cable that is
++        var confWhere = conf ? (conf.dev || conf.conn) : '';
++        if (conf && !ids.softOccupied) return fail(ipEl, 'Subnet overlaps ' + conf.net + ' (' + confWhere + '). Choose a different subnet.');
 +        // client STA: overlapping an occupied subnet can be intentional (Ethernet and
 +        // WiFi in one L2 network with a shared DHCP) — warn without blocking
-+        var warnMsg = conf ? 'Subnet overlaps ' + conf.net + ' (' + conf.conn + ') — make sure the networks are really one (shared DHCP), otherwise routing breaks.' : null;
++        var warnMsg = conf ? 'Subnet overlaps ' + conf.net + ' (' + confWhere + ') — make sure the networks are really one (shared DHCP), otherwise routing breaks.' : null;
 +        // exact clash with an address already assigned to this device (header interfaces
 +        // list; skip wlan0 — re-using its own current address is fine)
 +        var ifs = (wifi.status && wifi.status.interfaces) || [];
@@ -1268,6 +1278,13 @@ index 5b64baa..51f1e09 100644
 +            return;
 +        }
 +        var h = '';
++        if (wifi.list.link_stale) {
++            // the radio dropped the link while NetworkManager still points at the network —
++            // the access point holds the only channel the adapter has
++            h += '<div class="small text-warning mb-2">The connection to the Wi-Fi network was'
++               + ' dropped by the adapter' + (wifi.list.ap_active ? ' — the access point is using'
++               + ' the radio' : '') + '. Reconnect to restore it.</div>';
++        }
 +        if (wifi.list.connected.length) {
 +            h += '<div class="wifi-grp-title">Connected</div><div class="wifi-list">' +
 +                 wifi.list.connected.map(function (n) { return wifiRowHTML(n, 'connected'); }).join('') + '</div>';
@@ -1296,7 +1313,9 @@ index 5b64baa..51f1e09 100644
 +        // card stays usable (turn it off) instead of locking under the no-region gate.
 +        var apActive = !!(wifi.list && wifi.list.ap_active) || !!(wifi.status && wifi.status.ap_active);
 +        var apOn = role === 'ap' || apActive;
-+        $('#wifi-net-list').toggleClass('wifi-disabled-area', apOn);
++        // The list stays usable with the access point on: the point follows the client onto
++        // its channel, so joining a network is no longer a thing the radio forbids — the
++        // confirmation before joining spells out what happens to the point.
 +        $('#wifiApOnNote').toggle(apOn);
 +        // Radio off suspends ALL WiFi (NM deactivates a live hotspot too; radio on brings
 +        // it back via autoconnect) — the whole AP card locks, nothing to manage meanwhile.
@@ -1397,6 +1416,44 @@ index 5b64baa..51f1e09 100644
 +        $('#wifi-ap-band').val(cfg.band || 'all');
 +        $('#wifi-ap-ip').val(cfg.ip);
 +        $('#wifi-ap-mask').html(wifiMaskOptions(cfg.prefix || 24));
++        // the adapter has one channel: while a client network is up, the point stands on ITS
++        // channel, and the picker above only says where the point goes once that link ends
++        // Where the beacon really is. The form holds intent; these two part company when the
++        // client link owns the channel or the rescue path picked one, and until now nothing in
++        // the dialog said so (remarks 48/51/56).
++        var air = cfg.air_channel
++            ? (cfg.air_band ? cfg.air_band + ' GHz ch ' + cfg.air_channel : 'ch ' + cfg.air_channel)
++            : '';
++        var askedFor = +(cfg.channel || 0);
++        var mismatch = air && askedFor && +cfg.air_channel !== askedFor;
++        $('#wifi-ap-air')
++            .text(!air ? '' : mismatch
++                ? 'The access point is on ' + air + ', not on the channel selected here.'
++                : 'The access point is on ' + air + '.')
++            .toggleClass('text-warning', !!mismatch)
++            .toggleClass('text-muted', !mismatch)
++            .toggle(!!air);
++        // A channel legal in one region is not in another, and changing the region does not
++        // move a running point (remarks 53/58).
++        $('#wifi-ap-illegal')
++            .text(cfg.channel_illegal
++                ? 'Not allowed here: ' + cfg.channel_illegal
++                  + '. Pick another channel or Auto and save.' : '')
++            .toggle(!!cfg.channel_illegal);
++        $('#wifi-ap-channel-note')
++            .text(cfg.channel_active ? 'The access point currently runs on ' + cfg.channel_active
++                                       + ' — it follows the channel of the connected Wi-Fi'
++                                       + ' network. Your choice applies when nothing is connected.'
++                                     : '')
++            .toggle(!!cfg.channel_active);
++        $('#wifi-ap-yielded')
++            .text(cfg.yielded ? 'The access point is not running: ' + cfg.yielded + '.' : '')
++            .toggle(!!cfg.yielded);
++        $('#wifi-ap-ip-moved')
++            .text(cfg.ip_active ? 'This subnet is in use by a network the station is connected'
++                                  + ' to, so the access point currently runs on ' + cfg.ip_active
++                                  + '. It returns to the address above once the subnet is free.' : '')
++            .toggle(!!cfg.ip_active);
 +        $('#wifi-ap-pwd-field').toggle(cfg.security !== 'open');
 +        $('#wifi-ap-switch').prop('checked', !!cfg.enabled);
 +        $('#wifi-ap-body').toggle(!!cfg.enabled);
@@ -1524,10 +1581,34 @@ index 5b64baa..51f1e09 100644
 +    // Joining a network takes the radio away from the access point, so an operator working
 +    // THROUGH that hotspot loses this page mid-request. Warn once, in both connect paths, and
 +    // say how they get back in — the hotspot returns by itself if the network cannot be joined.
-+    function wifiConfirmLosingHotspot(ssid) {
++    // channel of the network being joined, taken from the list the backend already sent
++    function wifiTargetChan(ssid, bssid) {
++        var all = (wifi.list ? (wifi.list.connected || []).concat(wifi.list.saved || [],
++                                                                 wifi.list.available || []) : []);
++        for (var i = 0; i < all.length; i++) {
++            var n = all[i];
++            var hit = bssid ? (n.bssid || '').toUpperCase() === String(bssid).toUpperCase()
++                            : n.ssid === ssid;
++            if (hit && n.chan && n.band) return {band: n.band, chan: n.chan};
++        }
++        return null;
++    }
++
++    function wifiConfirmLosingHotspot(ssid, bssid) {
 +        if (!(wifi.status && (wifi.status.role === 'ap' || wifi.status.ap_active))) return true;
-+        return confirm('The access point will be switched off to join "' + ssid + '".\n\n' +
-+            'If you are connected to the station through it, this page will lose its ' +
++        var t = wifiTargetChan(ssid, bssid);
++        // the adapter holds one channel for both roles, so joining moves the access point onto
++        // the network's channel — or, where it may not run there, switches it off
++        if (t && wifiApChannels(t.band).indexOf(t.chan) >= 0) {
++            return confirm('The access point will move to channel ' + t.chan + ' to join "' +
++                ssid + '" — the adapter has a single channel for both.\n\n' +
++                'Devices using the access point will have to reconnect, so this page may pause ' +
++                'briefly if it is one of them. If the network cannot be joined, the access ' +
++                'point returns to its own channel.');
++        }
++        return confirm('The access point will be switched off to join "' + ssid + '"' +
++            (t ? ', which is on channel ' + t.chan + ' — the access point cannot run there' : '') +
++            '.\n\nIf you are connected to the station through it, this page will lose its ' +
 +            'connection. On success the station is reachable on the new network; if it ' +
 +            'cannot join, the access point comes back automatically.');
 +    }
@@ -1575,7 +1656,7 @@ index 5b64baa..51f1e09 100644
 +        var sec = (m.mode === 'hidden') ? msg.security : m.security;
 +        var pwdErr = wifiValidatePwd(sec, msg.password);
 +        if (pwdErr) { wifiShowPwdErr(pwdErr); return; }
-+        if (!wifiConfirmLosingHotspot(msg.ssid)) return;
++        if (!wifiConfirmLosingHotspot(msg.ssid, msg.bssid)) return;
 +        socket.emit('wifi connect', msg);
 +        $('#wifiConnectModal').modal('hide');
 +        wifiSetBusy(true, 'Connecting to ' + msg.ssid + '…', '', 'result');
@@ -1625,7 +1706,9 @@ index 5b64baa..51f1e09 100644
 +        wifi.list = list;
 +        wifiRenderList();
 +        wifiApplyGates();
-+        $('#wifi-rescan-button').prop('disabled', !list.radio || list.role === 'ap' || list.ap_active);
++        // Rescan works with the point up: it runs on its own interface, the client one can
++        // still scan. Only the radio being off leaves nothing to scan with.
++        $('#wifi-rescan-button').prop('disabled', !list.radio);
 +    });
 +
 +    socket.on('ap config', function (cfg) {
@@ -1781,7 +1864,7 @@ index 5b64baa..51f1e09 100644
 +            if (row.data('limited')) { wifiToast(wifiLimitedMsg({usable: row.data('usable')}), true); return; }
 +            var prof = row.data('profile');
 +            if (prof) {   // saved network: password is stored — just re-activate, don't prompt
-+                if (!wifiConfirmLosingHotspot(row.data('ssid'))) return;
++                if (!wifiConfirmLosingHotspot(row.data('ssid'), row.data('bssid'))) return;
 +                // the row's BSSID rides along: a pre-BSSID profile gets pinned to this AP
 +                socket.emit('wifi activate', {profile: prof, bssid: row.data('bssid') || null});
 +                wifiSetBusy(true, 'Connecting to ' + row.data('ssid') + '…', '', 'result');

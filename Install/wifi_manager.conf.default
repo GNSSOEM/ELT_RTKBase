@@ -3,12 +3,14 @@
 # This file ships with the software and holds the defaults. To change a setting on a
 # station, put the same section with the changed key in
 #
-#     /usr/local/rtkbase/wifi_manager.conf
+#     /usr/local/rtkbase/rtkbase/wifi_manager.conf
 #
-# which is read after this one and wins. That path is deliberately outside the software
-# directory: a software update replaces this file, and RTKBase's "Reset settings" rewrites
-# settings.conf — neither touches the station's own copy. Provisioning writes it; the
-# configurator only reads.
+# which is read after this one and wins. It sits next to settings.conf, so it is a station's
+# own file in the same sense settings.conf is: "Reset settings" does not touch it, and keeping
+# it across a software update is the installer's business. Provisioning writes it; the
+# configurator only reads. Both paths come from the code — if the software is installed
+# somewhere else, the file goes next to that installation's settings.conf, not to this
+# absolute path.
 #
 # Values accept true/false, yes/no, on/off, 1/0, with or without quotes.
 

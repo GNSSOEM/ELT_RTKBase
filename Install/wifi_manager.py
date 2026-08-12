@@ -10,6 +10,8 @@ Persistence is NetworkManager profiles only (client: WiFi_<SSID>, AP: Hotspot).
 The wlan0 role derives from the profiles' autoconnect flags — no settings.conf flag.
 """
 
+import fcntl
+import functools
 import ipaddress
 import json
 import logging
@@ -18,6 +20,7 @@ import re
 import shutil
 import socket
 import subprocess
+import threading
 import time
 
 import nmcli
@@ -81,6 +84,33 @@ def _save_seen_channels():
 
 _seen_channels = _load_seen_channels()
 
+# What the operator asked the access point to be, when the NM profile cannot hold it. The
+# profile carries what the radio is actually doing, because that is what NetworkManager
+# raises on boot; but the point sometimes has to move off the operator's choice — its subnet
+# collides with a network the station joined. Without this file that choice is lost and the
+# point never comes back once the conflict is gone.
+_AP_PREFS_FILE = os.path.join(system_path, "wifi_ap_prefs.json")
+
+
+def _load_ap_prefs():
+    try:
+        with open(_AP_PREFS_FILE) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_ap_prefs(prefs):
+    try:
+        os.makedirs(os.path.dirname(_AP_PREFS_FILE), exist_ok=True)
+        tmp = _AP_PREFS_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(prefs, f)
+        os.replace(tmp, _AP_PREFS_FILE)
+    except Exception as e:
+        log.warning("could not persist AP preferences: %s", e)
+
 # Regdomain state for hosts without `iw` (x86 bench, some DIY): set_country() stores
 # the CC here so the UI flow still works; allowed channels come from _FALLBACK_REG.
 _fallback_country = None
@@ -96,6 +126,90 @@ _own_ap_bssids = set()
 # disappears; reopening the dialog must still tell WHY the AP is not running). Cleared
 # on a successful start and on an intentional disable. In-process only by design.
 _last_ap_error = None
+
+# Why the access point is switched on but not running: the network the station joined sits on
+# a channel the point may not use, and the radio has only one channel to give. Shown in the AP
+# card, cleared the moment the point can stand somewhere again. In-process only, like the above.
+_ap_yielded = ""
+
+# When the coupling last moved the access point on its own. A realign costs the client
+# link for a moment, so it is rate-limited: two disagreeing views in a row are a reason
+# to act, a flapping link is not.
+_last_realign = 0.0
+
+# The radio is a single resource and the watchdog is not the only one moving it: an operator
+# joining a network moves the point too. Without this, a watchdog tick landing in the middle of
+# a connection moves the point again and tears down the association being negotiated — the
+# attempt then dies on a 45-second timeout for no visible reason. Reentrant because the
+# operations nest (connect lowers the point through set_ap).
+_radio_lock = threading.RLock()
+_radio_depth = 0
+
+# ...and the in-process lock alone is not enough. The web service starts its background thread
+# before gunicorn forks its worker, and under gevent that thread is a greenlet, so the fork
+# leaves a copy running in BOTH processes — measured on the station: two PIDs realigning the
+# channel, one of them straight through an operator's connection, which died on
+# `ip-config -> failed`. A lock file is the part both processes can see.
+_RADIO_LOCKFILE = os.path.join(system_path, "wifi_radio.lock")
+_radio_fd = None
+
+
+def _radio_flock(wait_s=0.0):
+    """Take the cross-process radio lock. True when held — or when there is no file to use.
+
+    Fails open on a filesystem problem: refusing every Wi-Fi operation because a lock file
+    cannot be created would be worse than the race it guards against.
+    """
+    global _radio_fd
+    if _radio_fd is None:
+        try:
+            _radio_fd = os.open(_RADIO_LOCKFILE, os.O_CREAT | os.O_RDWR, 0o644)
+        except OSError as e:
+            log.warning("no radio lock file (%s) — continuing without the cross-process guard", e)
+            return True
+    deadline = time.time() + wait_s
+    while True:
+        try:
+            fcntl.flock(_radio_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            if time.time() >= deadline:
+                return False
+            time.sleep(0.2)
+
+
+def _radio_funlock():
+    if _radio_fd is not None:
+        try:
+            fcntl.flock(_radio_fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+
+# An explicit "disconnect" means stay off, and the watchdog must not undo it. Without this the
+# pass would see a saved network with autoconnect on, decide the station belongs there, and put
+# the connection the operator just dropped straight back up. NetworkManager blocks its own
+# autoconnect after a manual disconnect for the same reason; in-process, like NM's own state.
+_client_off_by_operator = False
+
+
+def _holds_radio(fn):
+    """Operations that own the radio while they run; the watchdog stands aside for them."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        global _radio_depth
+        with _radio_lock:
+            if _radio_depth == 0 and not _radio_flock(wait_s=30):
+                # another process is mid-operation; this one was asked for by the operator, so
+                # it goes ahead rather than failing — but the wait goes on record
+                log.warning("radio is busy in another process — running %s anyway", fn.__name__)
+            _radio_depth += 1
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                _radio_depth -= 1
+                if _radio_depth == 0:
+                    _radio_funlock()
+    return wrapper
 
 # Last successfully read interface list (network_infos.get_interfaces_infos). That upstream
 # helper is all-or-nothing: one nmcli.device.show() raising on an interface in a transient
@@ -223,12 +337,12 @@ def _fallback_channels(cc):
     return {"2.4": c24, "5": c5}
 
 
-# Our own settings file, deliberately NOT settings.conf: RTKBase's "Reset settings"
-# rewrites that one from settings.conf.default and drops every key the default lacks — which
-# for a regulatory setting fails in the wrong direction (an outdoor station would quietly
-# become indoor again). This file lives beside HOTSPOT.flg in the parent of the git tree, so
-# neither a settings reset nor a software update touches it. Provisioning writes it; the
-# configurator only ever reads it.
+# Our own settings file, deliberately NOT settings.conf: RTKBase's "Reset settings" rewrites
+# that one from settings.conf.default and drops every key the default lacks — which for a
+# regulatory setting fails in the wrong direction (an outdoor station would quietly become
+# indoor again). It sits next to settings.conf and follows the same convention: the shipped
+# .default documents the keys, the live file holds this station's overrides and is created
+# from the default by the installer. Provisioning writes it; the configurator only reads.
 #
 #   [wifi]
 #   outdoor = true          # station installed outdoors
@@ -366,13 +480,94 @@ def _iw(*args):
     return out
 
 
+def sta_link():
+    """What the radio actually has on the client interface, read from `iw dev <iface> link`.
+
+    NetworkManager lags here. Starting the access point drops the client link inside the
+    firmware — the radio holds one channel, and the point takes it — and NM keeps reporting
+    the profile as activated for about three and a half seconds afterwards (measured), address
+    still on the interface. The dialog refreshes faster than that, so it lands inside the
+    window and shows a working connection to a network the station has already left.
+
+    Returns the association as {"ssid", "bssid", "freq"}, {} when the radio says it is not
+    associated, and None when we cannot tell (no `iw`, call failed) — the caller then leaves
+    NM's answer alone rather than inventing a disconnect.
+    """
+    if not shutil.which("iw"):
+        return None
+    try:
+        out = _iw("dev", WIFI_IFACE, "link")
+    except Exception as e:
+        log.warning("iw link failed: %s", e)
+        return None
+    if "not connected" in out.lower():
+        return {}
+    link = {}
+    for line in out.splitlines():
+        line = line.strip()
+        low = line.lower()
+        if low.startswith("connected to"):
+            link["bssid"] = line.split()[2].upper()
+        elif low.startswith("ssid:"):
+            link["ssid"] = line.split(":", 1)[1].strip()
+        elif low.startswith("freq:"):
+            freq = line.split(":", 1)[1].strip().split()[0]
+            if freq.isdigit():
+                link["freq"] = int(freq)
+    return link
+
+
+def ap_air_channel():
+    """(band, chan) the access point is really beaconing on — ("", 0) when it is not.
+
+    The profile says where the point was asked to stand; this says where it stands. The two
+    part company more often than one would like: the radio has a single channel, so a client
+    link can pull the beacon onto its own channel, and the rescue path can raise the point on
+    a channel of its own choosing. Read from the interface, so it is the truth and not intent.
+    """
+    if not shutil.which("iw"):
+        return "", 0
+    try:
+        out = _iw("dev", AP_IFACE, "info")
+    except Exception:
+        return "", 0            # no such interface: nothing is beaconing
+    if not re.search(r"^\s*type AP\s*$", out, re.MULTILINE):
+        return "", 0
+    m = re.search(r"^\s*channel (\d+) \((\d+) MHz\)", out, re.MULTILINE)
+    if not m:
+        return "", 0
+    return freq_to_band(int(m.group(2))) or "", int(m.group(1))
+
+
+def _link_says_in_use(entry, link):
+    """Does the radio's own association match this row of the network list?
+
+    True/False when the radio can answer, None when it cannot (see sta_link) — then the row
+    keeps whatever NM said. Matching prefers the BSSID: after roaming, NM still points at the
+    profile while the radio sits on a different BSS of the same SSID.
+    """
+    if link is None:
+        return None
+    if not link:
+        return False
+    bssid = (link.get("bssid") or "").upper()
+    if bssid and entry.get("bssid"):
+        return (entry["bssid"] or "").upper() == bssid
+    return bool(link.get("ssid")) and entry.get("ssid") == link.get("ssid")
+
+
 def _ap_iface_macs():
-    """MAC addresses of the AP-mode interfaces that share the radio of WIFI_IFACE.
+    """Every MAC of the interfaces that share the radio of WIFI_IFACE.
 
     Our own beacons must never appear as a joinable network. A hotspot can run on a virtual
     AP interface of the SAME radio (`iw dev wlan0 interface add ap0 type __ap`, which is how
     the station provisioning sets one up) whose address differs from wlan0's — filtering by
     the wlan0 address alone let the station's own hotspot show up in the list as a stranger.
+
+    Not restricted to interfaces currently in AP mode: when a start fails, the interface can
+    read back as `managed` while the firmware still beacons — that is exactly when the
+    station's own network appeared in the list as somebody else's. An address that belongs to
+    this radio is never a network to join, whatever mode the interface reports.
 
     Deliberately scoped to that one radio: an access point running on a *different* adapter
     of the same host is a separate device as far as wlan0 is concerned, and hiding it would
@@ -386,28 +581,21 @@ def _ap_iface_macs():
         return set()
     # `iw dev` lists interfaces grouped under the radio ("phy#N") that owns them
     radios = {}
-    phy = addr = None
+    phy = None
     for line in out.splitlines():
         line = line.strip()
         if line.startswith("phy#"):
-            phy = radios.setdefault(line, {"ifaces": set(), "ap_macs": set()})
-            addr = None
-        elif line.startswith("Interface ") or line.startswith("Unnamed"):
-            addr = None
-            if phy is not None and line.startswith("Interface "):
-                phy["ifaces"].add(line.split()[1])
-        elif line.startswith("addr "):
-            addr = line.split()[1].upper()
-        elif line.startswith("type "):
-            if line.split()[1] == "AP" and addr and phy is not None:
-                phy["ap_macs"].add(addr)
-            addr = None
+            phy = radios.setdefault(line, {"ifaces": set(), "macs": set()})
+        elif line.startswith("Interface ") and phy is not None:
+            phy["ifaces"].add(line.split()[1])
+        elif line.startswith("addr ") and phy is not None:
+            phy["macs"].add(line.split()[1].upper())
     for radio in radios.values():
         if WIFI_IFACE in radio["ifaces"]:
-            return set(radio["ap_macs"])
+            return set(radio["macs"])
     # radio of WIFI_IFACE not found (no Wi-Fi at all, or the interface was renamed): keep the
-    # safe side of the trade-off and treat every AP interface as ours
-    return {mac for radio in radios.values() for mac in radio["ap_macs"]}
+    # safe side of the trade-off and treat every wireless address of this host as ours
+    return {mac for radio in radios.values() for mac in radio["macs"]}
 
 
 RESCUE_CHECK_S = 30          # how often the watchdog looks at the station
@@ -497,8 +685,204 @@ def rescue_tick(isolated, ap_active, isolated_for, online_for):
     return None, isolated_for, online_for
 
 
+def freq_to_chan(freq):
+    """Channel number for a 2.4/5 GHz centre frequency in MHz, or 0 when it is neither."""
+    try:
+        freq = int(freq)
+    except (TypeError, ValueError):
+        return 0
+    if freq == 2484:
+        return 14
+    if 2412 <= freq <= 2472:
+        return (freq - 2407) // 5
+    if 5000 < freq < 5900:
+        return (freq - 5000) // 5
+    return 0
+
+
+def couple_tick(link, ap_active, ap_band, ap_chan, loaned, pending=None):
+    """What the coupling needs next, given the radio's own view. Pure, so it is testable.
+
+    link: sta_link() — None when the radio cannot answer, {} when nothing is associated.
+    loaned: the point stands on a channel borrowed for a client link, not the operator's own.
+    pending: (band, chan) of a network the station is meant to be on but is not.
+
+    Two ways the point ends up in the client's way. It can hold a channel while the link sits
+    on another one — and it can hold a channel while the client cannot get onto its network at
+    all, because a point on the wrong channel starves the handshake and NetworkManager reports
+    that as a missing key. The second one is what actually happens on a single-channel radio:
+    the client never reaches the state where both are up on different channels, it just keeps
+    failing. Both are answered the same way — move the point to where the client needs to be.
+
+    Returns ("follow", band, chan) | ("return", None, None) | (None, None, None). Nothing is
+    decided from NetworkManager's state: it lags the radio by seconds, and acting on that lag
+    would move the point for a link that no longer exists.
+    """
+    if link is None:
+        return None, None, None
+    if link:
+        band, chan = freq_to_band(link.get("freq")), freq_to_chan(link.get("freq"))
+        if band and chan and ap_active and (ap_band, ap_chan) != (band, chan):
+            return "follow", band, chan
+        return None, None, None
+    if pending and ap_active and tuple(pending) != (ap_band, ap_chan):
+        return "follow", pending[0], pending[1]
+    if ap_active and loaned:
+        return "return", None, None
+    return None, None, None
+
+
+def _pending_client():
+    """A saved network the station should be on but is not: {"band", "chan", "profile"} or None.
+
+    Only networks whose beacon is in the current scan count. NetworkManager retries such a
+    profile on its own, and every attempt dies while our point holds a different channel; a
+    profile whose network is simply out of range must not pull the point off the operator's
+    channel for nothing.
+    """
+    try:
+        profiles = _wifi_profiles()
+    except Exception as e:
+        log.warning("could not list profiles: %s", e)
+        return None
+    by_bssid, by_ssid = {}, {}
+    for name, details in profiles.items():
+        if name == AP_PROFILE or _is_ap(details):
+            continue
+        if details.get("connection.autoconnect") != "yes":
+            continue
+        bssid = (details.get("802-11-wireless.bssid") or "").upper()
+        if bssid and bssid != "--":
+            by_bssid[bssid] = name
+        else:
+            by_ssid[details.get("802-11-wireless.ssid") or
+                    (name[len(CLIENT_PREFIX):] if name.startswith(CLIENT_PREFIX)
+                     else name)] = name
+    if not (by_bssid or by_ssid):
+        return None
+    try:
+        scan = nmcli.device.wifi()
+    except Exception as e:
+        log.warning("could not scan while looking for a network to rejoin: %s", e)
+        return None
+    best = None
+    for n in scan:
+        bssid = (n.bssid or "").upper()
+        if bssid in _own_ap_bssids:
+            continue                     # our own beacon is not a network to rejoin
+        profile = by_bssid.get(bssid) or by_ssid.get(n.ssid)
+        if not profile:
+            continue
+        band, chan = freq_to_band(n.freq), freq_to_chan(n.freq)
+        if not (band and chan and ap_channel_ok(band, chan)):
+            continue                     # the point cannot follow there anyway
+        if best is None or (n.signal or 0) > best["signal"]:
+            best = {"signal": n.signal or 0, "band": band, "chan": chan, "profile": profile}
+    return best
+
+
+def _ap_live_channel():
+    """(band, channel) the access-point profile currently carries."""
+    ref = _ap_ref()
+    if not ref:
+        return None, 0
+    try:
+        details = nmcli.connection.show(ref)
+    except Exception as e:
+        log.warning("could not read the AP channel: %s", e)
+        return None, 0
+    band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"))
+    chan = details.get("802-11-wireless.channel")
+    return band, int(chan) if (chan or "").isdigit() else 0
+
+
+def _active_client_profile():
+    """Name of the client profile NetworkManager currently has up, if any."""
+    try:
+        profiles = _wifi_profiles()
+    except Exception as e:
+        log.warning("could not list profiles: %s", e)
+        return None
+    for name, details in profiles.items():
+        if name == AP_PROFILE or _is_ap(details):
+            continue
+        if details.get("GENERAL.STATE") == "activated":
+            return name
+    return None
+
+
+def couple_reconcile():
+    """Keep the point and the client on one channel when the connection was made elsewhere.
+
+    Connections do not only come from this dialog: NetworkManager autoconnects at boot, the
+    client roams, and the station's own WPS script joins networks with plain nmcli. Any of
+    those can leave the point on one channel and the client on another, which starves the
+    handshake and looks like a wrong password. Here that is repaired after the fact.
+
+    Moving the point drops the client link (the radio hands the channel over), so the client
+    profile is activated again right after — in that order it comes back, since the point is
+    already standing where the client is going.
+    """
+    global _last_realign
+    if not _radio_lock.acquire(blocking=False):
+        return None            # an operator operation owns the radio — it knows better
+    try:
+        if not _radio_flock():
+            return None        # ...or one in another process, including the twin watchdog
+        try:
+            return _couple_reconcile_locked()
+        finally:
+            _radio_funlock()
+    finally:
+        _radio_lock.release()
+
+
+def _couple_reconcile_locked():
+    global _last_realign
+    prefs = _load_ap_prefs()
+    ap_band, ap_chan = _ap_live_channel()
+    link = sta_link()
+    ap_live = _ap_active()
+    # only worth asking when the station is not connected and the point is up — that is the
+    # state where our own beacon can be the reason the client cannot get back on
+    waiting = (_pending_client()
+               if (link == {} and ap_live and not _client_off_by_operator) else None)
+    action, band, chan = couple_tick(link, ap_live, ap_band, ap_chan,
+                                     bool(prefs.get("band_written")),
+                                     (waiting["band"], waiting["chan"]) if waiting else None)
+    if action == "follow":
+        if time.time() - _last_realign < RESCUE_CHECK_S * 2:
+            return None          # one move per two ticks: never trade a link for a loop
+        if not ap_channel_ok(band, chan):
+            log.info("client is on %s GHz ch%s, where the access point may not run — leaving "
+                     "the point where it is", band, chan)
+            return None
+        profile = _active_client_profile()
+        _last_realign = time.time()
+        log.warning("access point is on %s ch%s while the client needs %s ch%s — realigning",
+                    ap_band, ap_chan, band, chan)
+        if not _ap_follow_channel(band, chan):
+            return None
+        # the client goes up explicitly: moving the point drops an existing link, and a client
+        # that was failing on the wrong channel should not wait for NM's next retry
+        for name in (profile, waiting["profile"] if waiting else None):
+            if not name:
+                continue
+            try:
+                nmcli.connection.up(name, wait=45)
+                break
+            except Exception as e:
+                log.warning("could not bring '%s' up after realigning: %s", name,
+                            _err_detail(e))
+        return "follow"
+    if action == "return":
+        return "return" if ap_return_to_preferred() else None
+    return None
+
+
 def rescue_watchdog(stop=None):
-    """Client remark 3: a station whose network is gone must not become unreachable.
+    """A station whose network is gone must not become unreachable, and the access point must
+    not sit on a channel the client is not using.
 
     Survives a reboot because the web service itself starts at boot — no extra unit to
     install. Deliberately conservative: it only acts on a station configured for it
@@ -511,6 +895,10 @@ def rescue_watchdog(stop=None):
     while not (stop and stop.is_set()):
         time.sleep(RESCUE_CHECK_S)
         try:
+            # the coupling is not part of the rescue feature and runs on every station: an
+            # access point and a client on different channels break each other whatever the
+            # rescue flag says
+            couple_reconcile()
             if not rescue_enabled():
                 isolated_for = online_for = 0
                 continue
@@ -930,7 +1318,8 @@ def _ap_active():
 
 
 def radio_wifi_on():
-    """Spec §7.4: NM does not persist the radio state reliably — force it on."""
+    """NM does not persist the radio state reliably (since ~Debian 12.12 a station with no
+    Wi-Fi profile comes back from reboot with the radio off) — force it on."""
     if not nmcli.radio.wifi():
         nmcli.radio.wifi_on()
 
@@ -954,10 +1343,14 @@ def occupied_subnets():
             continue
         addr = _first_key(details, "IP4.ADDRESS") or details.get("ipv4.addresses")
         if addr:
+            # the device, not just the profile name: "Wired connection 2" says nothing about
+            # WHERE the subnet is, while "septentrio" or "eth0" names it at a glance
+            dev = (conn.device if conn.device not in ("", "--") else
+                   details.get("connection.interface-name") or "")
             for part in addr.split(","):
                 part = part.strip()
                 if "/" in part:
-                    nets.append({"net": part, "conn": conn.name})
+                    nets.append({"net": part, "conn": conn.name, "dev": dev})
     # Also take the LIVE addresses of ethernet devices: an unmanaged NIC (no NM connection —
     # e.g. the bench's enp0s3, or anything configured outside NM) still occupies its subnet,
     # and `nmcli device show` reports IP4.ADDRESS even for unmanaged devices.
@@ -972,7 +1365,7 @@ def occupied_subnets():
                 continue
             addr = _first_key(det, "IP4.ADDRESS")
             if addr and "/" in addr and addr not in seen:
-                nets.append({"net": addr, "conn": dev.device})
+                nets.append({"net": addr, "conn": dev.device, "dev": dev.device})
                 seen.add(addr)
     except Exception as e:
         log.warning("device subnet scan failed: %s", e)
@@ -997,6 +1390,135 @@ def local_ip_addresses():
     except Exception as e:
         log.warning("local ip scan failed: %s", e)
     return ips
+
+
+def live_ipv4_networks(exclude=(AP_IFACE,)):
+    """Subnets this station's interfaces really hold right now, read from `ip -j addr`.
+
+    occupied_subnets() covers ethernet profiles, which is what the form needs to validate
+    against. This one is wider on purpose: it also sees the subnet handed out by the Wi-Fi
+    network the station has joined, which is invisible to NM's profile view and is exactly
+    where the access point can end up standing on its own feet.
+    """
+    nets = []
+    try:
+        data = json.loads(subprocess.check_output(["ip", "-j", "addr"], text=True,
+                                                  timeout=10))
+    except Exception as e:
+        log.warning("could not read live addresses: %s", e)
+        return nets
+    for it in data:
+        name = it.get("ifname")
+        if not name or name == "lo" or name in tuple(exclude):
+            continue
+        for a in it.get("addr_info", []):
+            if a.get("family") != "inet" or not a.get("local"):
+                continue
+            try:
+                iface = ipaddress.IPv4Interface("{}/{}".format(a["local"],
+                                                               a.get("prefixlen", 32)))
+            except ValueError:
+                continue
+            nets.append({"net": str(iface.network), "conn": name})
+    return nets
+
+
+def _ap_subnet_candidates(net, prefix):
+    """Blocks to offer the access point: the next ones of its own size, then the other private
+    ranges. Stepping alone is not enough — a /16 choice has nowhere to step to inside
+    192.168/16, the very next block is already outside private space."""
+    base, size = int(net.network_address), net.num_addresses
+    for step in range(1, 33):
+        try:
+            yield ipaddress.IPv4Network((base + step * size, prefix))
+        except (ValueError, ipaddress.AddressValueError):
+            break
+    for other in ("10.42.0.0", "172.31.0.0"):
+        try:
+            yield ipaddress.IPv4Network("{}/{}".format(other, prefix), strict=False)
+        except ValueError:
+            continue
+
+
+def ap_addr_effective(ip, prefix, taken=None):
+    """Where the access point should really stand: (ip, prefix, what_forced_the_move).
+
+    Every station ships the same hotspot subnet, so a station that joins another station's
+    hotspot is handed an address out of the block its own point already owns — the radio link
+    is fine and routing is not. A customer LAN numbered the same way collides identically.
+    The point moves one block at a time until it is clear, keeping the operator's host
+    position (…50.1 -> …51.1). Silent by design: the operator's address stays the preference
+    and comes back when the conflict does not, and the status shows where the point actually
+    is, so nothing has to be guessed.
+    """
+    try:
+        want = ipaddress.IPv4Interface("{}/{}".format(str(ip).strip(), int(prefix)))
+    except (ValueError, AttributeError, TypeError):
+        return ip, prefix, None
+    if taken is None:
+        taken = live_ipv4_networks() + occupied_subnets()
+
+    def clash(net):
+        for item in taken:
+            try:
+                other = ipaddress.IPv4Network(item["net"], strict=False)
+            except (ValueError, KeyError, TypeError):
+                continue
+            if net.overlaps(other):
+                return item
+        return None
+
+    first = clash(want.network)
+    if not first:
+        return str(want.ip), int(prefix), None
+    host_off = int(want.ip) - int(want.network.network_address)
+    for cand in _ap_subnet_candidates(want.network, int(prefix)):
+        if not cand.is_private or cand.is_link_local or clash(cand):
+            continue
+        return str(ipaddress.IPv4Address(int(cand.network_address) + host_off)), int(prefix), first
+    log.warning("no free subnet for the access point near %s/%s", ip, prefix)
+    return str(want.ip), int(prefix), None
+
+
+def _ap_channel_preferred(live_band, live_chan, prefs=None):
+    """(band, channel, moved_to) for the form — the same rule as the address.
+
+    While a client link is up the point does not stand on the channel the operator picked but
+    on the one the network uses, because the radio has only one. The form keeps showing the
+    choice; `moved_to` says where the point actually is. And as with the address, a remembered
+    choice only counts while the profile still holds the channel we put there.
+    """
+    prefs = _load_ap_prefs() if prefs is None else prefs
+    want_band, want_chan = prefs.get("band"), prefs.get("channel")
+    if not want_band or want_chan is None:
+        return live_band, live_chan, ""
+    if (prefs.get("band_written"), prefs.get("channel_written")) != (live_band, live_chan):
+        return live_band, live_chan, ""
+    if (want_band, want_chan) == (live_band, live_chan):
+        return live_band, live_chan, ""
+    return want_band, int(want_chan), "{} GHz ch{}".format(live_band, live_chan)
+
+
+def _ap_addr_preferred(live_ip, live_prefix, prefs=None):
+    """(ip, prefix, moved_to) for the form: the operator's address, and where the point is.
+
+    The preference only wins when the profile still holds the very address we shifted it to.
+    Anything else in the profile — provisioning, an import, a hand edit — is the operator's
+    current intent by definition, and a stale preference must not shadow it.
+    """
+    prefs = _load_ap_prefs() if prefs is None else prefs
+    want, want_pfx = prefs.get("ip"), prefs.get("prefix")
+    if not want or not want_pfx:
+        return live_ip, live_prefix, ""
+    try:
+        written = (str(prefs.get("ip_written")), int(prefs.get("prefix_written") or 0))
+    except (TypeError, ValueError):
+        return live_ip, live_prefix, ""
+    if written != (live_ip, live_prefix):
+        return live_ip, live_prefix, ""
+    if (want, int(want_pfx)) == (live_ip, live_prefix):
+        return live_ip, live_prefix, ""
+    return want, int(want_pfx), "{}/{}".format(live_ip, live_prefix)
 
 
 # --------------------------------------------------------------------------
@@ -1045,7 +1567,8 @@ def validate_ip_config(ip, prefix, gateway=None, dns=None, occupied=None, local_
         except ValueError:
             continue
         if net.overlaps(other):
-            return "Subnet overlaps {} ({})".format(item["net"], item["conn"])
+            return "Subnet overlaps {} ({})".format(
+                item["net"], item.get("dev") or item["conn"])
     return None
 
 
@@ -1078,13 +1601,24 @@ def list_networks(rescan=False):
     profiles = _wifi_profiles()
     role = get_role(profiles)
     ap_live = _ap_active()
+    # read once: the radio's answer decides which row is really connected (see sta_link)
+    link = sta_link()
+    link_stale = False
+    # Two profiles for one network are normal here — one pinned to a BSSID, one not (their
+    # provisioning makes the plain one, our BSSID pinning the other). Only the profile
+    # NetworkManager actually has up may read as connected: the radio's own answer matches BOTH
+    # of them by SSID or BSSID, and promoting on that alone showed one network as connected
+    # twice (remark 47).
+    nm_has_active = any(d.get("GENERAL.STATE") == "activated" for _, d in profiles.items())
 
     scan = []
     if nmcli.radio.wifi():
-        # While our AP holds the (single) radio, scanning is impossible — a forced
-        # --rescan just blocks for its timeout with the client list disabled anyway.
-        # Serve the cached list instead.
-        do_rescan = rescan and not ap_live
+        # A running access point no longer blocks scanning. It used to: the point lived on
+        # the client interface itself, so a forced --rescan had nothing to scan with. Now it
+        # runs on its own AP interface and the client interface can still leave the channel
+        # for a moment — measured on the station, a forced rescan takes ~4 s, returns the full
+        # list including other bands, and the beacon does not even blink.
+        do_rescan = rescan
         try:
             scan = nmcli.device.wifi(rescan=True) if do_rescan else nmcli.device.wifi()
         except Exception as e:
@@ -1125,7 +1659,11 @@ def list_networks(rescan=False):
         bssid = (n.bssid or "").upper()
         if bssid and (bssid == my_mac or bssid in _own_ap_bssids):
             continue
-        if ap_live and n.in_use:
+        # nmcli marks our own hotspot IN-USE while it runs, and that row is not a network to
+        # join. It is only ours when the radio has no client link on that BSS: with the point
+        # and a client up together (they share one channel), the IN-USE row IS the connection
+        # and dropping it would hide the network the station is actually on.
+        if ap_live and n.in_use and not (link and (link.get("bssid") or "").upper() == bssid):
             continue
         by_bssid[bssid or n.ssid] = n
     changed = False
@@ -1158,6 +1696,7 @@ def list_networks(rescan=False):
             profs_by_ssid[ssid] = (name, details)
 
     def entry(ssid, scan_item, prof):
+        nonlocal link_stale
         name, details = prof if prof else (None, {})
         bssid = ((scan_item.bssid if scan_item else None)
                  or details.get("802-11-wireless.bssid") or "").upper()
@@ -1205,6 +1744,17 @@ def list_networks(rescan=False):
             e["in_use"] = True
             addr = _first_key(details, "IP4.ADDRESS")
             e["ip"] = addr
+        verdict = _link_says_in_use(e, link)
+        if verdict is False and e["in_use"]:
+            # NM still points at this network, the radio has already left it — usually the
+            # access point taking the channel. The stored address goes too: it is no longer
+            # reachable and would read as a working connection.
+            link_stale = True
+            e.pop("ip", None)
+            e["in_use"] = False
+        elif verdict is True and not e["in_use"] and not nm_has_active:
+            # the radio is on a network no profile claims (activated outside NM's bookkeeping)
+            e["in_use"] = True
         return e
 
     connected, saved, available = [], [], []
@@ -1235,6 +1785,36 @@ def list_networks(rescan=False):
             connected.append(e)
         else:
             saved.append(e)
+    # One link is one row. Two profiles for the same network are normal here — theirs without
+    # a BSSID, ours pinned to one — and both used to surface: as two "connected" rows (nmcli
+    # marks the BSS in use, and the radio's answer matches both), or as the same network sitting
+    # in Connected and in Saved at once, which is what the operator objected to (remark 47).
+    # The row that stays is the one NetworkManager actually has up; a second profile of that
+    # very access point is not shown at all, and comes back in Saved once disconnected. A
+    # genuinely different access point of the same SSID keeps its own row.
+    link_bssid = ((link or {}).get("bssid") or "").upper()
+    if len(connected) > 1:
+        active = {n for n, d in profiles.items() if d.get("GENERAL.STATE") == "activated"}
+        keep = (next((e for e in connected if e.get("profile") in active), None)
+                or next((e for e in connected
+                         if link_bssid and (e.get("bssid") or "").upper() == link_bssid), None)
+                or connected[0])
+        for e in connected:
+            if e is keep:
+                continue
+            e["in_use"] = False
+            e.pop("ip", None)
+            (saved if e["saved"] else available).append(e)
+        connected = [keep]
+    if connected and link_bssid:
+        conn = connected[0]
+
+        def _same_access_point(e):
+            bssid = (e.get("bssid") or "").upper()
+            return e["ssid"] == conn["ssid"] and (not bssid or bssid == link_bssid)
+
+        saved = [e for e in saved if not _same_access_point(e)]
+        available = [e for e in available if not _same_access_point(e)]
     saved.sort(key=lambda e: e["ssid"].lower())
 
     return {
@@ -1245,6 +1825,9 @@ def list_networks(rescan=False):
         # its role reads "client" (Hotspot activated but autoconnect!=yes, e.g. NM blocked
         # autoconnect after failures). The UI needs the real state to keep the card usable.
         "ap_active": ap_live,
+        # NM claimed a connection the radio does not have — the UI says so instead of showing
+        # a network as connected while nothing flows through it
+        "link_stale": link_stale,
         "connected": connected, "saved": saved, "available": available,
     }
 
@@ -1382,7 +1965,7 @@ def _restore_ap_after_failure(snap, notify):
         return
     try:
         notify("restoring-hotspot", None)
-        set_ap(dict(snap, enabled=True, password=""))
+        set_ap(dict(snap, enabled=True, password=""), intent=False)
         log.warning("connection failed — the access point was restored")
     except Exception as e:
         log.warning("could not restore the access point: %s", e)
@@ -1393,7 +1976,175 @@ def _lower_ap_for_connect(snap, notify):
     if not snap:
         return
     notify("stopping-hotspot", None)
-    set_ap(dict(snap, enabled=False, password=""))
+    set_ap(dict(snap, enabled=False, password=""), intent=False)
+
+
+def _target_channel(ssid, bssid=None):
+    """(band, channel) of the network about to be joined, from the scan or the last sighting."""
+    # a profile with no pin reads back as "--" from nmcli; treated as "no BSSID", otherwise the
+    # lookup matches nothing and the point is taken down instead of following
+    bssid = (bssid or "").strip().upper()
+    bssid = bssid if bssid not in ("", "--") else None
+    try:
+        scan = nmcli.device.wifi()
+    except Exception as e:
+        log.warning("could not read the scan for the target channel: %s", e)
+        scan = []
+    for n in scan:
+        if ((n.bssid or "").upper() == bssid) if bssid else (n.ssid == ssid):
+            band = freq_to_band(n.freq)
+            if n.chan and band:
+                return band, int(n.chan)
+    seen = _seen_channels.get(bssid) or _seen_channels.get(ssid)
+    if seen:
+        chan, freq = seen
+        band = freq_to_band(freq)
+        if chan and band:
+            return band, int(chan)
+    return None, None
+
+
+def _ap_follow_channel(band, chan):
+    """Move the access point to `chan` and raise it there. True when it is up on that channel.
+
+    Deliberately not set_ap(): that switches roles — it clears autoconnect on the client
+    networks so the radio stays with the point — and following a client must not do that. Only
+    the channel changes here; who autoconnects stays as the operator left it.
+    """
+    ref = _ap_ref()
+    if not ref:
+        return False
+    nm_band = {"2.4": "bg", "5": "a"}.get(band)
+    if not nm_band:
+        return False
+    try:
+        details = nmcli.connection.show(ref)
+    except Exception as e:
+        log.warning("could not read the AP profile before following: %s", e)
+        return False
+    was_band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
+    was_chan = details.get("802-11-wireless.channel")
+    was_chan = int(was_chan) if (was_chan or "").isdigit() else 0
+    prefs = _load_ap_prefs()
+    # the operator's channel is whatever stands in the profile now, unless the profile is
+    # already holding a channel we put there ourselves for an earlier client link
+    keep_band, keep_chan, _ = _ap_channel_preferred(was_band, was_chan, prefs)
+    try:
+        nmcli.connection.modify(ref, {"802-11-wireless.band": nm_band,
+                                      "802-11-wireless.channel": str(chan)})
+        ensure_ap_iface()
+        nmcli.connection.up(ref, wait=30)
+    except Exception as e:
+        log.warning("could not move the access point to ch%s: %s", chan, _err_detail(e))
+        return False
+    _save_ap_prefs(dict(prefs, band=keep_band, channel=keep_chan,
+                        band_written=band, channel_written=int(chan)))
+    log.info("access point follows the client to %s GHz ch%s (operator's choice: %s ch%s)",
+             band, chan, keep_band, keep_chan)
+    return True
+
+
+def ap_return_to_preferred():
+    """Put a following access point back on the channel the operator chose.
+
+    Called when the client link is gone: nothing owns the channel any more, so the borrowed
+    one has no reason to stay. Silent no-op when the point is not standing on a channel we
+    borrowed for it, or when it is not running at all.
+    """
+    prefs = _load_ap_prefs()
+    band, chan = prefs.get("band"), prefs.get("channel")
+    if not prefs.get("band_written") or band is None or chan is None:
+        return False
+    if not _ap_active():
+        # nothing to move; the borrowed channel is dropped so a later read does not report
+        # the point as standing somewhere it is not
+        _save_ap_prefs({k: v for k, v in prefs.items()
+                        if k not in ("band_written", "channel_written")})
+        return False
+    ref = _ap_ref()
+    if not ref:
+        return False
+    nm_band = {"2.4": "bg", "5": "a"}.get(band, "")
+    try:
+        nmcli.connection.modify(ref, {"802-11-wireless.band": nm_band,
+                                      "802-11-wireless.channel": str(chan) if chan and nm_band
+                                                                 else ""})
+        nmcli.connection.up(ref, wait=30)
+    except Exception as e:
+        log.warning("could not put the access point back on %s ch%s: %s", band, chan,
+                    _err_detail(e))
+        return False
+    _save_ap_prefs({k: v for k, v in prefs.items()
+                    if k not in ("band_written", "channel_written")})
+    log.info("access point back on the operator's channel: %s ch%s", band, chan)
+    return True
+
+
+def _ap_prepare_for_client(snap, ssid, bssid, notify):
+    """Put the access point where the client is about to go — or take it down for the attempt.
+
+    The radio holds one channel. A point standing on another one lets the client associate and
+    then starves the handshake, and NM reports that as "Secrets were required, but not
+    provided" — a wrong-password message for a right password. Raising the point AFTER the
+    client is connected is no better: that drops the fresh link. So the point moves first.
+
+    When the target channel is one the point may not use — DFS, no-IR, not enough power for
+    the region — it cannot follow at all and goes down for the duration; the dialog asks the
+    operator about that before we get here. Returns "followed", "lowered", or None when there
+    was no point to begin with.
+    """
+    global _ap_yielded
+    if not snap:
+        return None
+    band, chan = _target_channel(ssid, bssid)
+    if band and chan and ap_channel_ok(band, chan) and _ap_follow_channel(band, chan):
+        _ap_yielded = ""
+        notify("moving-hotspot", "{} GHz ch{}".format(band, chan))
+        return "followed"
+    _lower_ap_for_connect(snap, notify)
+    _ap_yielded = ("{} is on {} GHz channel {}, which the access point cannot use here"
+                   .format(ssid, band, chan) if band and chan else
+                   "the channel of {} could not be determined".format(ssid))
+    return "lowered"
+
+
+def _ap_start_error(message, want_band, want_chan):
+    """The start error, with what the radio actually did appended when the two disagree.
+
+    NetworkManager reports a failed hotspot start as "802.1X supplicant took too long to
+    authenticate" — a message about authentication for what is really a channel problem: the
+    radio has one channel, a client link owns it, and the beacon lands there instead of where
+    it was asked to. Left alone, the operator reads it as a password fault and looks in the
+    wrong place, so what actually happened is spelled out next to it.
+    """
+    air_band, air_chan = ap_air_channel()
+    if not air_chan:
+        return message
+    if want_chan and (want_band, want_chan) != (air_band, air_chan):
+        return ("{} — the access point is on {} GHz channel {}, not the requested {} GHz "
+                "channel {}: the adapter has a single channel and something else is using it"
+                .format(message, air_band, air_chan, want_band, want_chan))
+    return ("{} — the access point is on {} GHz channel {} despite this"
+            .format(message, air_band, air_chan))
+
+
+def _wep_key_options(password):
+    """WEP key options for a profile: the key itself plus how NetworkManager should read it.
+
+    WEP has two literal key forms — 5 or 13 characters, 10 or 26 hex digits — and anything
+    else used to be refused outright. But access points also accept a *passphrase* and derive
+    the key from it, which is what a key of any other length means in practice (the operator
+    had a 12-digit key from an access point doing exactly that and no way to enter it). So the
+    literal forms stay literal, and everything else is handed over as a passphrase instead of
+    being rejected.
+    """
+    key = password or ""
+    if re.fullmatch(r"[0-9a-fA-F]{10}|[0-9a-fA-F]{26}", key) or len(key) in (5, 13):
+        kind = "key"
+    else:
+        kind = "passphrase"
+    return {"802-11-wireless-security.wep-key-type": kind,
+            "802-11-wireless-security.wep-key0": key}
 
 
 def _validate_psk(password):
@@ -1418,6 +2169,34 @@ def _drop_security(options):
     return mod
 
 
+def _up_client(name, ssid, bssid, ap_state, notify, wait=45):
+    """Activate a client profile, with one retry when the network moved off the channel.
+
+    A stale scan row sends the access point to the wrong channel, and the client then fails
+    with NM's "Secrets were required" — indistinguishable from a wrong key by its message. The
+    retry only fires when a fresh look says the network is somewhere else than where the point
+    was put, so a genuinely wrong password still fails once, not twice.
+    """
+    try:
+        nmcli.connection.up(name, wait=wait)
+        return
+    except Exception:
+        if ap_state != "followed":
+            raise
+        band, chan = _target_channel(ssid, bssid)
+        prefs = _load_ap_prefs()
+        if not (band and chan) or (band, int(chan)) == (prefs.get("band_written"),
+                                                       prefs.get("channel_written")):
+            raise
+        log.warning("retrying '%s': it is on %s GHz ch%s, the access point was on ch%s",
+                    ssid, band, chan, prefs.get("channel_written"))
+        if not (ap_channel_ok(band, chan) and _ap_follow_channel(band, chan)):
+            raise
+        notify("moving-hotspot", "{} GHz ch{}".format(band, chan))
+        nmcli.connection.up(name, wait=wait)
+
+
+@_holds_radio
 def connect(ssid, password=None, security=None, hidden=False, remember=True,
             ipconf=None, bssid=None, status_cb=None):
     """Create/update the profile for ssid and activate it.
@@ -1429,12 +2208,15 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     Returns the final network list. Raises WifiError with a readable message on failure.
     """
     notify = status_cb or (lambda *a: None)
+    global _client_off_by_operator
+    _client_off_by_operator = False
     bssid = (bssid or "").strip().upper() or None
     # Connecting from access-point mode used to be refused outright, which left the operator
-    # to switch the hotspot off by hand and lose the station when the network did not work
-    # (remark 3). Now the hotspot is lowered for the attempt and restored if it fails.
+    # to switch the hotspot off by hand and lose the station when the network did not work.
+    # Now the hotspot follows the client onto its channel — the radio has only one — and is
+    # restored where the operator put it if the attempt fails.
     ap_snap = _ap_snapshot_for_safe_apply() if (get_role() == "ap" or _ap_active()) else None
-    _lower_ap_for_connect(ap_snap, notify)
+    ap_state = _ap_prepare_for_client(ap_snap, ssid, bssid, notify)
 
     if ipconf and ipconf.get("method") == "manual":
         # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
@@ -1480,8 +2262,7 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         options["802-11-wireless.hidden"] = "yes"
     if security == "wep":
         options["802-11-wireless-security.key-mgmt"] = "none"
-        options["802-11-wireless-security.wep-key-type"] = "key"
-        options["802-11-wireless-security.wep-key0"] = password or ""
+        options.update(_wep_key_options(password or ""))
     elif key_mgmt:
         options["802-11-wireless-security.key-mgmt"] = key_mgmt
         options["802-11-wireless-security.psk"] = password or ""
@@ -1499,7 +2280,7 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         else:
             nmcli.connection.add("wifi", options, WIFI_IFACE, name,
                                  autoconnect=remember)
-        nmcli.connection.up(name, wait=45)
+        _up_client(name, ssid, bssid, ap_state, notify)
     except Exception as e:
         if not existed:
             try:
@@ -1514,6 +2295,7 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     return list_networks()
 
 
+@_holds_radio
 def activate(profile, bssid=None, status_cb=None):
     """Bring up an already-saved client profile without touching its credentials.
 
@@ -1526,12 +2308,15 @@ def activate(profile, bssid=None, status_cb=None):
     the pin appears in the profile (and therefore in export) from here on.
     """
     notify = status_cb or (lambda *a: None)
+    global _client_off_by_operator
+    _client_off_by_operator = False
     details = _guard_client_profile(profile)
-    # same safe-apply as connect(): the hotspot is the way in, so it comes back if the
-    # network cannot be joined (remark 3)
+    # same as connect(): the hotspot follows onto the client's channel, and is put back where
+    # the operator had it if the network cannot be joined — it is the way into the station
     ap_snap = _ap_snapshot_for_safe_apply() if (get_role() == "ap" or _ap_active()) else None
-    _lower_ap_for_connect(ap_snap, notify)
     bssid = (bssid or "").strip().upper() or None
+    ap_state = _ap_prepare_for_client(ap_snap, details.get("802-11-wireless.ssid") or profile,
+                                      bssid or details.get("802-11-wireless.bssid"), notify)
     pinned_now = False
     if bssid and (details.get("802-11-wireless.bssid") or "") in ("", "--"):
         try:
@@ -1544,7 +2329,7 @@ def activate(profile, bssid=None, status_cb=None):
             or (profile[len(CLIENT_PREFIX):] if profile.startswith(CLIENT_PREFIX) else profile))
     notify("connecting", disp)
     try:
-        nmcli.connection.up(profile, wait=45)
+        _up_client(profile, disp, bssid or details.get("802-11-wireless.bssid"), ap_state, notify)
     except Exception as e:
         if pinned_now:
             # don't leave the profile pinned to an AP it never actually joined — that
@@ -1561,7 +2346,10 @@ def activate(profile, bssid=None, status_cb=None):
     return list_networks()
 
 
+@_holds_radio
 def disconnect():
+    global _client_off_by_operator
+    _client_off_by_operator = True
     try:
         nmcli.device.disconnect(WIFI_IFACE)
     except Exception as e:
@@ -1577,6 +2365,8 @@ def disconnect():
         if not state.startswith("connected") and "deactivating" not in state:
             break
         time.sleep(0.3)
+    # the client no longer owns the channel, so the point goes back where the operator put it
+    ap_return_to_preferred()
     return list_networks()
 
 
@@ -1596,7 +2386,9 @@ def change_password(profile, password):
     if details.get("802-11-wireless-security.key-mgmt") == "none":
         if not (password or ""):
             raise WifiError("This network needs a WEP key")
-        opts = {"802-11-wireless-security.wep-key0": password}
+        # the key type travels with the key: a profile that held a literal key and now gets a
+        # passphrase (or the other way round) would keep the old type and stop working
+        opts = _wep_key_options(password)
     else:
         _validate_psk(password or "")
         opts = {"802-11-wireless-security.psk": password}
@@ -1781,10 +2573,29 @@ def get_ap_config():
         security = "wpa2" if (pmf in ("1", "disable") or not sae_supported()) else "mixed"
     else:
         security = "open"
-    band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
+    live_band = {"bg": "2.4", "a": "5"}.get(details.get("802-11-wireless.band"), "all")
     addr = details.get("ipv4.addresses") or "{}/{}".format(AP_DEFAULTS["ip"], AP_DEFAULTS["prefix"])
-    ip, _, prefix = addr.partition("/")
+    live_ip, _, live_pfx = addr.partition("/")
+    live_pfx = int(live_pfx) if live_pfx.isdigit() else 24
+    prefs = _load_ap_prefs()
+    ip, prefix, moved = _ap_addr_preferred(live_ip, live_pfx, prefs)
     chan = details.get("802-11-wireless.channel")
+    live_chan = int(chan) if chan and chan.isdigit() else 0
+    band, chan_pref, chan_moved = _ap_channel_preferred(live_band, live_chan, prefs)
+    # the in-process reason is the good one; after a service restart it is gone, and the state
+    # itself still tells the story — the operator asked for a point and there is none, with no
+    # start failure to blame. That only happens when we stood it down for a client link.
+    air_band, air_chan = ap_air_channel()
+    # A channel that was fine in one region is not in another, and switching the region does
+    # not move a running point. Judged on where the point actually IS, not on what the form
+    # holds, because those differ exactly in the cases worth reporting.
+    illegal = ""
+    if air_chan and air_band and not ap_channel_ok(air_band, air_chan):
+        illegal = ("channel {} is not allowed for an access point in region {}"
+                   .format(air_chan, get_country() or "00"))
+    yielded = _ap_yielded or (
+        "the connected network uses a channel the access point cannot use"
+        if prefs.get("wanted") and not _ap_active() and not _last_ap_error else "")
     return {
         "ssid": details.get("802-11-wireless.ssid") or _default_ap_ssid(),
         "last_error": _last_ap_error,
@@ -1800,8 +2611,19 @@ def get_ap_config():
                              or details.get("802-11-wireless-security.sae-password")),
         "hidden": details.get("802-11-wireless.hidden") in ("yes", "true"),
         "band": band,
-        "channel": int(chan) if chan and chan.isdigit() else 0,
-        "ip": ip, "prefix": int(prefix) if prefix.isdigit() else 24,
+        "channel": chan_pref,
+        "ip": ip, "prefix": prefix,
+        # set only while the point had to give the operator's choice away: the form shows what
+        # was chosen, the UI adds where the point actually stands
+        "ip_active": moved,
+        "channel_active": chan_moved,
+        # where the beacon really is, and whether that spot is legal here (remarks 48/51/53/56)
+        "air_band": air_band,
+        "air_channel": air_chan,
+        "channel_illegal": illegal,
+        # why the point is not running even though it is switched on: the network the station
+        # joined sits on a channel the point may not use
+        "yielded": yielded,
         # "on" if the role says AP OR the profile is actually activated right now — so a live
         # AP whose autoconnect got cleared still shows the toggle as on (and thus off-able)
         "enabled": get_role() == "ap" or details.get("GENERAL.STATE") == "activated",
@@ -1856,8 +2678,15 @@ def _ap_restore(ref, snap, autoconnect, reactivate):
             log.warning("AP rollback: previous access point not restarted: %s", e)
 
 
-def set_ap(config, status_cb=None):
-    """Create/update the Hotspot profile and switch the wlan0 role."""
+@_holds_radio
+def set_ap(config, status_cb=None, intent=True):
+    """Create/update the Hotspot profile and switch the wlan0 role.
+
+    intent=False for our own internal use of this function — lowering the point for a client
+    attempt and putting it back. Only the operator's toggle states whether the station is
+    meant to run an access point at all, and that answer has to survive the roles being
+    juggled in between, so it is recorded separately from NM's autoconnect flags.
+    """
     notify = status_cb or (lambda *a: None)
     enabled = bool(config.get("enabled"))
 
@@ -1902,6 +2731,8 @@ def set_ap(config, status_cb=None):
             verr = verr or "AP password must be 8–63 characters"
     ip = config.get("ip", AP_DEFAULTS["ip"])
     prefix = int(config.get("prefix", AP_DEFAULTS["prefix"]))
+    # validated against what the operator typed — an error has to point at their own value,
+    # not at the block the point may be shifted into below
     ip_err = validate_ip_config(ip, prefix, occupied=occupied_subnets())
     verr = verr or ip_err
     chan_req = int(config.get("channel") or 0)
@@ -1933,6 +2764,24 @@ def set_ap(config, status_cb=None):
     if enabled:
         ensure_ap_iface()
 
+    # The address the operator typed is the preference; the profile gets the block that is
+    # actually free, because that is the one NetworkManager will raise on boot. Both are
+    # remembered: reading the form back has to tell our own shift apart from an address
+    # someone else (provisioning, an import) wrote into the profile.
+    eff_ip, eff_prefix, moved_by = ap_addr_effective(ip, prefix)
+    if moved_by:
+        log.warning("access point moved to %s/%s: %s/%s overlaps %s (%s)",
+                    eff_ip, eff_prefix, ip, prefix, moved_by.get("net"), moved_by.get("conn"))
+    if not verr:
+        # writing the channel from the form (or from a snapshot, which carries the operator's
+        # own channel) ends any loan the point was on — otherwise stale loan keys would linger
+        prefs = {k: v for k, v in _load_ap_prefs().items()
+                 if k not in ("band_written", "channel_written")}
+        if intent:
+            prefs["wanted"] = enabled
+        _save_ap_prefs(dict(prefs, ip=ip, prefix=prefix, ip_written=eff_ip,
+                            prefix_written=eff_prefix, band=band_req, channel=chan_req))
+
     options = {
         "802-11-wireless.mode": "ap",
         "802-11-wireless.ssid": config.get("ssid") or _default_ap_ssid(),
@@ -1941,7 +2790,7 @@ def set_ap(config, status_cb=None):
         # point moved off wlan0, so old settings survive the change instead of being orphaned
         "connection.interface-name": AP_IFACE if enabled or ap_iface_present() else "",
         "ipv4.method": "shared",
-        "ipv4.addresses": "{}/{}".format(ip, prefix),
+        "ipv4.addresses": "{}/{}".format(eff_ip, eff_prefix),
         "802-11-wireless-security.key-mgmt": "",
         "802-11-wireless-security.pmf": "",
         "802-11-wireless-security.proto": "",
@@ -1986,11 +2835,13 @@ def set_ap(config, status_cb=None):
                 continue
             nmcli.connection.modify(name, {"connection.autoconnect": "no" if enabled else "yes"})
         nmcli.connection.modify(ap_ref, {"connection.autoconnect": "yes" if enabled else "no"})
-        global _last_ap_error
+        global _last_ap_error, _ap_yielded
         if enabled:
             notify("starting", "hotspot")
             nmcli.connection.up(ap_ref, wait=30)
             _set_hotspot_flag(True)
+            # standing again: whatever made the point yield the radio no longer applies
+            _ap_yielded = ""
         else:
             if _ap_active():
                 try:
@@ -2000,7 +2851,7 @@ def set_ap(config, status_cb=None):
             _set_hotspot_flag(False)
         _last_ap_error = None
     except Exception as e:
-        _last_ap_error = _readable_error(e)
+        _last_ap_error = _ap_start_error(_readable_error(e), band, chan_req)
         # transactional: undo the role switch (and the settings, restarting the previous
         # access point when one was running) so a failed start cannot strand the station
         # with every client network's autoconnect cleared
