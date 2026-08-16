@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..527f29f
+index e36bbc4..79a56f5
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -46,6 +46,10 @@ from RTKLIB import RTKLIB
@@ -599,7 +599,7 @@ index e36bbc4..527f29f
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1305,287 @@ def update_settings(json_msg):
+@@ -1004,6 +1305,304 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -697,6 +697,23 @@ index e36bbc4..527f29f
 +            wifi_emit_list(rescan=True)   # `nmcli ... --rescan yes` blocks until the scan finishes
 +        except Exception as e:
 +            wifi_emit_error("rescan", e)
++    socketio.start_background_task(task)
++
++@socketio.on("wifi probe hidden", namespace="/test")
++def wifi_probe_hidden(json_msg):
++    """Ask a hidden network what it is, so the dialog can fill the security in instead of
++    asking the operator to know it."""
++    ssid = (json_msg or {}).get("ssid") or ""
++
++    def task():
++        try:
++            hit = wifi_manager.probe_hidden(ssid)
++        except Exception as e:
++            wifi_emit_error("probe", e)
++            return
++        socketio.emit("wifi hidden probe",
++                      dict({"ssid": ssid, "found": bool(hit)}, **(hit or {})),
++                      namespace="/test")
 +    socketio.start_background_task(task)
 +
 +@socketio.on("wifi radio", namespace="/test")
@@ -887,12 +904,12 @@ index e36bbc4..527f29f
  def arg_parse():
      parser = argparse.ArgumentParser(
          description="RTKBase Web server",
-@@ -1042,6 +1624,10 @@ if __name__ == "__main__":
+@@ -1042,6 +1641,10 @@ if __name__ == "__main__":
          manager_thread = Thread(target=manager, daemon=True)
          manager_thread.start()
  
 +        #Raise the hotspot when the station is left with no network at all, so it stays
-+        #reachable (opt-in per station: [network] hotspot_rescue in settings.conf)
++        #reachable (opt-in per station: [wifi] hotspot_rescue in wifi_manager.conf)
 +        wifi_manager.start_rescue_watchdog()
 +
          app.secret_key = rtkbaseconfig.get_secret_key()

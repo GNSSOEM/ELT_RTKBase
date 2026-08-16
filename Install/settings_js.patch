@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..23e1248 100644
+index 5b64baa..c7c9e6e 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..23e1248 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1402 @@ $(document).ready(function () {
+@@ -758,5 +960,1466 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -887,9 +887,9 @@ index 5b64baa..23e1248 100644
 +            if ($('#wifi-net-list .dropdown-menu.show').length
 +                || $('#wifiModal [aria-expanded="true"]').length
 +                || $('#wifiConnectModal').is(':visible')) return;
-+            // silent: no "Scanning…" placeholder. Also ticks in AP mode — the backend skips
-+            // the impossible scan there (single radio) and serves the cached list, but the
-+            // status refresh keeps the header (AP IP, interfaces) up to date.
++            // silent: no "Scanning…" placeholder. Also ticks in AP mode — the point lives
++            // on its own interface, so the client interface still scans under a running
++            // access point, and the beacon does not blink.
 +            socket.emit('wifi rescan');
 +        }, 15000);
 +    }
@@ -1099,8 +1099,9 @@ index 5b64baa..23e1248 100644
 +            if (e.disabled || e.no_ir || e.dfs) continue;
 +            // an outdoor station may not use channels the regulator marks indoor-only
 +            if (outdoor && e.no_outdoor) continue;
-+            // the radio refuses to beacon where the region caps power below its own table
-+            if (e.power_denied) continue;
++            // declared unusable for this station's adapter in wifi_manager.conf: the firmware
++            // refuses the channel even though every regulatory table allows it
++            if (e.unavailable) continue;
 +            // `iw list` also enumerates non-standard 5 GHz center frequencies (e.g. ch 34,
 +            // the Japanese legacy J52 grid) — the AP cannot start on those; keep only the
 +            // standard 20 MHz grid: 36–144 and 149–177 in steps of 4
@@ -1142,9 +1143,15 @@ index 5b64baa..23e1248 100644
 +            $('#wifi-ap-chan-warn').hide();
 +        }
 +        // Outdoor station and the regulator leaves nothing usable in this band: say so instead
-+        // of showing a picker with only "Auto" in it (client remarks 15/25).
++        // of showing a picker with only "Auto" in it.
 +        var cc = (wifi.status && wifi.status.country) || '';
-+        if (!chans.length && wifi.status && wifi.status.outdoor) {
++        if (wifi.status && wifi.status.outdoor_nowhere) {
++            // every band is indoor-only here — saying "use the other band" would be a lie
++            $('#wifi-ap-outdoor-note').text('In region ' + (cc || '—') + ' the regulator marks '
++                + 'every band indoor-only, and this station is configured as outdoor — an '
++                + 'access point cannot run here at all. Client connections are not affected.')
++                .show();
++        } else if (!chans.length && wifi.status && wifi.status.outdoor) {
 +            $('#wifi-ap-outdoor-note').text('Outdoor Wi-Fi is not allowed on ' + band +
 +                ' GHz in region ' + (cc || '—') + ' — this station is configured as outdoor. ' +
 +                'Use the other band.').show();
@@ -1236,6 +1243,17 @@ index 5b64baa..23e1248 100644
 +                ? ' <span class="badge badge-danger wifi-badge" title="' + wifiEsc(wifiLimitedMsg(n)) + '">Unavailable in ' + wifiEsc(wifi.list.country) + '</span>'
 +                : ' <span class="badge badge-secondary wifi-badge" title="' + wifiEsc(wifiLimitedMsg(n)) + '">Region required</span>';
 +        }
++        // Informational only — a client may legally join both kinds; the badges say why an
++        // access point could not stand there.
++        if (n.indoor_only) {
++            badges += ' <span class="badge badge-info wifi-badge" title="The regulator marks this'
++                   + ' channel indoor-only, and this station is configured as outdoor. Joining is'
++                   + ' fine — the access point cannot use it.">indoor-only</span>';
++        }
++        if (n.dfs) {
++            badges += ' <span class="badge badge-secondary wifi-badge" title="Radar channel'
++                   + ' (DFS). Joining is fine — the access point cannot use it.">DFS</span>';
++        }
 +        var meta = [];
 +        if (n.band) meta.push(n.band + ' GHz · ch ' + n.chan);
 +        meta.push(n.security === 'open' ? 'open' : (n.security_label || n.security));
@@ -1281,9 +1299,10 @@ index 5b64baa..23e1248 100644
 +        if (wifi.list.link_stale) {
 +            // the radio dropped the link while NetworkManager still points at the network —
 +            // the access point holds the only channel the adapter has
-+            h += '<div class="small text-warning mb-2">The connection to the Wi-Fi network was'
-+               + ' dropped by the adapter' + (wifi.list.ap_active ? ' — the access point is using'
-+               + ' the radio' : '') + '. Reconnect to restore it.</div>';
++            h += '<div class="small text-warning mb-2">The Wi-Fi network connection was dropped'
++               + ' by the adapter' + (wifi.list.ap_active ? ' — the access point took the radio'
++               : '') + '. Wi-Fi itself is still on; the station reconnects by itself if the'
++               + ' network has auto-connect, otherwise reconnect from the list.</div>';
 +        }
 +        if (wifi.list.connected.length) {
 +            h += '<div class="wifi-grp-title">Connected</div><div class="wifi-list">' +
@@ -1343,7 +1362,10 @@ index 5b64baa..23e1248 100644
 +            if (!apFormLock) wifiRepopRadio();   // restore the band-derived Auto states
 +        }
 +        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
-+        $('#wifi-rescan-button').prop('disabled', !radioOn || apOn || noAdapter);
++        // Only the radio being off (or no adapter) blocks a rescan: the access point lives
++        // on its own interface, so scanning works while it runs — same rule as the
++        // 'wifi list' handler, or the button would flip with whichever event came last.
++        $('#wifi-rescan-button').prop('disabled', !radioOn || noAdapter);
 +        $('#wifi-region-hint').toggle(!hasCountry);
 +    }
 +
@@ -1420,7 +1442,7 @@ index 5b64baa..23e1248 100644
 +        // channel, and the picker above only says where the point goes once that link ends
 +        // Where the beacon really is. The form holds intent; these two part company when the
 +        // client link owns the channel or the rescue path picked one, and until now nothing in
-+        // the dialog said so (remarks 48/51/56).
++        // the dialog said so.
 +        var air = cfg.air_channel
 +            ? (cfg.air_band ? cfg.air_band + ' GHz ch ' + cfg.air_channel : 'ch ' + cfg.air_channel)
 +            : '';
@@ -1434,7 +1456,7 @@ index 5b64baa..23e1248 100644
 +            .toggleClass('text-muted', !mismatch)
 +            .toggle(!!air);
 +        // A channel legal in one region is not in another, and changing the region does not
-+        // move a running point (remarks 53/58).
++        // move a running point.
 +        $('#wifi-ap-illegal')
 +            .text(cfg.channel_illegal
 +                ? 'Not allowed here: ' + cfg.channel_illegal
@@ -1661,6 +1683,25 @@ index 5b64baa..23e1248 100644
 +        $('#wifiConnectModal').modal('hide');
 +        wifiSetBusy(true, 'Connecting to ' + msg.ssid + '…', '', 'result');
 +    }
++
++    socket.on('wifi hidden probe', function (res) {
++        // an answer for an SSID the operator has since edited is stale — drop it; the probe
++        // is a real scan of the air and takes seconds, so it is compared against what the
++        // field holds NOW, not only against what was asked
++        if (!res || res.ssid !== wifi.probeSsid
++            || res.ssid !== $('#wifi-cm-ssid').val().trim()) return;
++        if (!res.found) { $('#wifi-cm-sec-detected').hide(); return; }
++        if (res.security) {
++            $('#wifi-cm-sec').val(res.security);
++            $('#wifi-cm-pwd-field').toggle(res.security !== 'open');
++            wifiPwdSetHint(res.security);
++        }
++        $('#wifi-cm-sec-detected')
++            .text('Detected: ' + (res.security_label || res.security) +
++                  (res.chan ? ', ' + res.band + ' GHz ch ' + res.chan : '') +
++                  '. Change it if the network says otherwise.')
++            .show();
++    });
 +
 +    // ---- socket handlers ----
 +    socket.on('wifi status', function (status) {
@@ -1946,6 +1987,19 @@ index 5b64baa..23e1248 100644
 +            for (var i = 0; i < all.length; i++) if (all[i].ssid === ssid && all[i].bssid) { seen = true; break; }
 +        }
 +        $('#wifi-cm-ssid-visible').toggle(seen);
++        // A hidden network answers a probe addressed to its name, and the answer says which
++        // security it uses — so the operator does not have to know. Asked once the
++        // typing stops; the selector stays editable, the answer only fills it in.
++        clearTimeout(wifi.probeTimer);
++        $('#wifi-cm-sec-detected').hide();
++        // always reset: a probe already in flight for the previous text must not come back
++        // and silently rewrite the Security selector for a field that no longer holds it
++        wifi.probeSsid = '';
++        if (!ssid || ssid.length < 2) return;
++        wifi.probeSsid = ssid;
++        wifi.probeTimer = setTimeout(function () {
++            socket.emit('wifi probe hidden', {ssid: ssid});
++        }, 700);
 +    });
 +    $('#wifi-cm-sec').on('change', function () {
 +        $('#wifi-cm-pwd-field').toggle($(this).val() !== 'open');
@@ -2028,8 +2082,18 @@ index 5b64baa..23e1248 100644
 +        }
 +    });
 +    $('#wifi-ap-save').on('click', function () {
++        // One radio, one channel: an explicitly chosen channel wins over a client connection on
++        // another one, and the connection goes. That used to happen silently.
++        var on = $('#wifi-ap-switch').prop('checked');
++        var chosen = +($('#wifi-ap-channel').val() || 0);
++        var conn = (wifi.list && (wifi.list.connected || [])[0]) || null;
++        if (on && chosen && conn && conn.chan && conn.chan !== chosen &&
++            !confirm('The station is connected to "' + conn.ssid + '" on channel ' + conn.chan +
++                     '. The access point on channel ' + chosen + ' will drop that connection — ' +
++                     'the adapter has a single channel.\n\nChoose Auto to let the access point ' +
++                     'follow the network instead. Continue?')) return;
 +        wifi.apDirty = false;   // the edits are being saved — no discard warning needed
-+        wifiSubmitAp($('#wifi-ap-switch').prop('checked'));
++        wifiSubmitAp(on);
 +    });
 +    // Unsaved-changes guard: the AP form applies on Save only, so closing the dialog with
 +    // edits pending silently discards them. Track user edits (programmatic re-renders run

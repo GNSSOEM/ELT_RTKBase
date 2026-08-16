@@ -23,10 +23,43 @@
 # mounted the station knows.
 outdoor = false
 
+# Channels this station's adapter cannot use for an access point.
+# Some adapters accept a channel in every regulatory table and then refuse it in firmware. On
+# a Raspberry Pi with the Broadcom radio (brcmfmac) the whole upper 5 GHz band behaves that
+# way: the kernel log shows
+#
+#     brcmf_cfg80211_reg_notifier: Firmware rejected country setting
+#     brcmf_cfg80211_start_ap: Set Channel failed: chspec=53397, -52
+#
+# (0xD095 is channel 149 at 20 MHz), and the interface only sees a supplicant timeout. Nothing
+# in `iw reg get` or `iw phy` predicts it — both list those channels as allowed at full power —
+# so it has to be declared here. Listed channels are not offered in the access-point form and
+# are refused on save; client connections are not affected.
+#
+# Deliberately without a value: an adapter that is fine keeps every channel its region allows.
+# For the Raspberry Pi radio of these stations, measured one channel at a time in region ID —
+# 149, 153, 157 and 161 all refused to start, while 36 and 48 came up normally:
+#
+#     unavailable_channels = 149, 153, 157, 161, 165
+#
+# 165 is in the list by band, not by measurement: the kernel does not offer it in the regions
+# we could test, so it was never actually attempted.
+#
+# One more reason a channel can belong here: the radio's own regulatory table may allow more
+# power than the country does — in Latvia, for instance, the country caps 5745-5825 at 13 dBm
+# while the radio's table says 20. An adapter that cannot transmit below its own table's limit
+# either refuses to start or, worse, transmits above what the country allows. We do not guess
+# which of the two happens: the earlier rule that hid such channels automatically was removed
+# after measurement showed the refusal has nothing to do with the power gap (the upper 5 GHz
+# band is refused even where the country allows MORE than the radio). If a channel is unlawful
+# for this station, list it here.
+#
+unavailable_channels =
+
 # Raise the access point when the station is left with no network at all.
 # When there is no Wi-Fi connection and no cable carrier for a few minutes, the hotspot
 # comes up so the station stays reachable, and goes down again once the station is back
 # online. Client networks keep their autoconnect, so the station rejoins by itself.
 # Useful for stations without Ethernet; off by default, because a station that is meant to
 # be silent should stay silent.
-hotspot_rescue = false
+hotspot_rescue = true

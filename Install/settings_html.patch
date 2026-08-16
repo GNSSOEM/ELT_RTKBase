@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..c670502 100644
+index 9690796..a117af1 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,50 @@
@@ -803,7 +803,7 @@ index 9690796..c670502 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1254,303 @@
+@@ -794,12 +1254,304 @@
    </div>
  </div>
  
@@ -1029,9 +1029,10 @@ index 9690796..c670502 100644
 +                 key network (5/13 chars or 10/26 hex, key-mgmt none) — one combined item
 +                 forced WEP semantics onto WPA passphrases, rejecting valid 8-char keys -->
 +            <option value="wpa1">WPA (legacy)</option>
-+            <option value="wep">WEP</option>
++            <option value="wep">WEP (legacy)</option>
 +            <option value="open">Open (no password)</option>
 +          </select>
++            <small class="text-info d-block mb-1" id="wifi-cm-sec-detected" style="display:none"></small>
 +        </div>
 +        <div class="form-group" id="wifi-cm-pwd-field">
 +          <label class="mb-1" for="wifi-cm-pwd">Password</label>
