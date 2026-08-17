@@ -8,9 +8,10 @@
 # which is read after this one and wins. It sits next to settings.conf, so it is a station's
 # own file in the same sense settings.conf is: "Reset settings" does not touch it, and keeping
 # it across a software update is the installer's business. Provisioning writes it; the
-# configurator only reads. Both paths come from the code — if the software is installed
-# somewhere else, the file goes next to that installation's settings.conf, not to this
-# absolute path.
+# configurator reads it all and writes back the keys the web UI owns a control for
+# (hotspot_rescue, via the access-point mode switch) — one key at a time, leaving every other
+# line as it was. Both paths come from the code — if the software is installed somewhere
+# else, the file goes next to that installation's settings.conf, not to this absolute path.
 #
 # Values accept true/false, yes/no, on/off, 1/0, with or without quotes.
 
@@ -60,6 +61,9 @@ unavailable_channels =
 # When there is no Wi-Fi connection and no cable carrier for a few minutes, the hotspot
 # comes up so the station stays reachable, and goes down again once the station is back
 # online. Client networks keep their autoconnect, so the station rejoins by itself.
-# Useful for stations without Ethernet; off by default, because a station that is meant to
-# be silent should stay silent.
+# Especially useful for stations without Ethernet. Shipped on, so a fresh station left
+# with no network raises its point instead of going dark; set to false for a station that
+# is meant to stay silent.
+# This is the one key the web UI writes too: the access-point mode switch ("Auto" sets it
+# to true, leaving to "Off"/"On" sets it back to false), so it can change at runtime.
 hotspot_rescue = true

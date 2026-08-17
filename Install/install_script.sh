@@ -1563,11 +1563,25 @@ configure_settings(){
       #echo cp ${RTKBASE_GIT}/${WIFI_CONF_DEFAULT} ${WIFI_CONF}
       cp ${RTKBASE_GIT}/${WIFI_CONF_DEFAULT} ${WIFI_CONF}
       ExitCodeCheck $?
-
-      #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
-      chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
-      ExitCodeCheck $?
    fi
+
+   HAVE_PI4=`cat /proc/cpuinfo | grep Model | grep "Pi 4"`
+   #echo HAVE_PI4=${HAVE_PI4}
+   if [[ -n "${HAVE_PI4}" ]]; then
+      if ! grep -q "^unavailable_channels = 149, 153, 157, 161, 165" ${WIFI_CONF}; then
+         if grep "^\#*unavailable_channels =" ${WIFI_CONF}; then
+            #echo sed -i "s/^\#*unavailable_channels =.*/unavailable_channels = 149, 153, 157, 161, 165/" ${WIFI_CONF}
+            sed -i "s/^\#*unavailable_channels =.*/unavailable_channels = 149, 153, 157, 161, 165/" ${WIFI_CONF}
+            echo Set unavailable_channels to ${WIFI_CONF}
+         else
+            echo "unavailable_channels = 149, 153, 157, 161, 165" >> ${WIFI_CONF}
+            echo Add unavailable_channels to ${WIFI_CONF}
+         fi
+      fi
+   fi
+   #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
+   chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
+   ExitCodeCheck $?
 }
 
 configure_gnss(){

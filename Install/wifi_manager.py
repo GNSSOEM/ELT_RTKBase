@@ -375,7 +375,9 @@ def _fallback_channels(cc):
 # regulatory setting fails in the wrong direction (an outdoor station would quietly become
 # indoor again). It sits next to settings.conf and follows the same convention: the shipped
 # .default documents the keys, the live file holds this station's overrides and is created
-# from the default by the installer. Provisioning writes it; the configurator only reads.
+# from the default by the installer. Provisioning writes it; the configurator reads it all
+# and writes back the keys the UI owns a control for (hotspot_rescue, via the access-point
+# mode switch) — surgically, see set_station_flag, so hand-written lines survive.
 #
 #   [wifi]
 #   outdoor = true          # station installed outdoors
@@ -419,6 +421,52 @@ def station_flag(key, default=False, section="wifi"):
         return False
     log.warning("%s: %s=%r is not a boolean", WIFI_CONF, key, raw)
     return default
+
+
+def set_station_flag(key, value, section="wifi"):
+    """Write one boolean into the station's own wifi_manager.conf.
+
+    The file is also written by provisioning and edited by hand, so the edit is surgical:
+    only the key's own line changes, every other line — comments, quoting style, unknown
+    keys, other sections — survives byte for byte. A configparser round-trip would lose
+    all of that, hence the line-based pass.
+    """
+    word = "true" if value else "false"
+    try:
+        with open(WIFI_CONF) as f:
+            lines = f.readlines()
+    except OSError:
+        lines = []
+    key_re = re.compile(r"^\s*{}\s*=".format(re.escape(key)))
+    sec_re = re.compile(r"^\s*\[([^]]+)\]")
+    out, current, section_end, replaced = [], None, None, False
+    for line in lines:
+        m = sec_re.match(line)
+        if m:
+            current = m.group(1).strip().lower()
+        elif current == section and not replaced and key_re.match(line):
+            line = "{} = {}\n".format(key, word)
+            replaced = True
+        if current == section:
+            section_end = len(out) + 1     # insertion point: right after this line
+        out.append(line)
+    if not replaced:
+        entry = "{} = {}\n".format(key, word)
+        if section_end is not None:
+            out.insert(section_end, entry)
+        else:
+            if out and not out[-1].endswith("\n"):
+                out[-1] += "\n"
+            if out:
+                out.append("\n")
+            out.extend(["[{}]\n".format(section), entry])
+    try:
+        tmp = WIFI_CONF + ".tmp"
+        with open(tmp, "w") as f:
+            f.writelines(out)
+        os.replace(tmp, WIFI_CONF)
+    except OSError as e:
+        raise WifiError("could not write {}: {}".format(WIFI_CONF, e))
 
 
 def unavailable_channels():
@@ -535,7 +583,23 @@ def ap_air_channel():
     The supplicant answers about the point itself: `mode=AP` with `wpa_state=COMPLETED` means a
     beacon is up, and `freq` is where it is. `iw` stays as a fallback for a host without
     wpa_cli, where a wrong channel is still better than no indication at all.
+
+    One more liar: with a CLIENT LINK live on the same radio, the firmware quietly moves the
+    beacon onto the client's channel and tells nobody — the supplicant keeps reporting the
+    channel the point was configured with (seen in the field: form says 5 GHz ch 132, the
+    beacon sits on 2.4 ch 1 next to the client, and this function repeated the 132). A single
+    radio cannot beacon away from its own association, so while a client link is up, ITS
+    channel is the point's channel — the supplicant's number is trusted only when no client
+    holds the radio.
     """
+    def follow_client(band, chan):
+        link = sta_link()
+        freq = link.get("freq") if link else None
+        if freq:
+            return freq_to_band(freq) or "", freq_to_chan(freq)
+        return band, chan
+
+
     wpa_cli = shutil.which("wpa_cli")
     if wpa_cli:
         try:
@@ -552,7 +616,7 @@ def ap_air_channel():
                     and mode.group(1) == "AP" and freq):
                 return "", 0        # the supplicant says no beacon; that is the answer
             freq = int(freq.group(1))
-            return freq_to_band(freq) or "", freq_to_chan(freq)
+            return follow_client(freq_to_band(freq) or "", freq_to_chan(freq))
     if not shutil.which("iw"):
         return "", 0
     try:
@@ -564,7 +628,7 @@ def ap_air_channel():
     m = re.search(r"^\s*channel (\d+) \((\d+) MHz\)", out, re.MULTILINE)
     if not m:
         return "", 0
-    return freq_to_band(int(m.group(2))) or "", int(m.group(1))
+    return follow_client(freq_to_band(int(m.group(2))) or "", int(m.group(1)))
 
 
 def probe_hidden(ssid):
@@ -696,6 +760,22 @@ _rescue_raised = False       # only ever lower an access point the watchdog itse
 def rescue_enabled():
     """Should the station raise its hotspot when it ends up with no network at all?"""
     return station_flag("hotspot_rescue")
+
+
+def ap_mode(role_is_ap, ap_live, rescue):
+    """The operator-facing state of the access point: 'off' | 'auto' | 'on'.
+
+    'on' is the operator's own point: the AP role, or a live point without the role
+    (NetworkManager clears autoconnect after repeated failures) — that one must still read
+    'on' so the UI keeps a way to switch it off. A live point next to the rescue flag is
+    the watchdog's doing and stays 'auto': the operator never chose 'on' there, and the
+    point will leave on its own once the station is back online.
+    """
+    if role_is_ap:
+        return "on"
+    if rescue:
+        return "auto"
+    return "on" if ap_live else "off"
 
 
 def ethernet_carrier():
@@ -2807,8 +2887,8 @@ def get_ap_config():
         # security default follows the adapter: offering "mixed" where the radio cannot deliver
         # WPA3 would put a value in the form that is not even in its own list of choices
         return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), security=default_ap_security(),
-                    enabled=False, configured=False,
-                    has_password=False, last_error=_last_ap_error)
+                    enabled=False, mode="auto" if rescue_enabled() else "off",
+                    configured=False, has_password=False, last_error=_last_ap_error)
     km = details.get("802-11-wireless-security.key-mgmt")
     pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
     if km == "sae":
@@ -2842,6 +2922,8 @@ def get_ap_config():
         illegal = ("channel {} is not allowed for an access point in region {}"
                    .format(air_chan, get_country() or "00"))
     yielded = _ap_yield_reason(prefs)
+    role_ap = get_role() == "ap"
+    ap_live = details.get("GENERAL.STATE") == "activated"
     return {
         "ssid": details.get("802-11-wireless.ssid") or _default_ap_ssid(),
         "last_error": _last_ap_error,
@@ -2872,7 +2954,8 @@ def get_ap_config():
         "yielded": yielded,
         # "on" if the role says AP OR the profile is actually activated right now — so a live
         # AP whose autoconnect got cleared still shows the toggle as on (and thus off-able)
-        "enabled": get_role() == "ap" or details.get("GENERAL.STATE") == "activated",
+        "enabled": role_ap or ap_live,
+        "mode": ap_mode(role_ap, ap_live, rescue_enabled()),
         "configured": True,
     }
 
@@ -2935,6 +3018,12 @@ def set_ap(config, status_cb=None, intent=True):
     """
     notify = status_cb or (lambda *a: None)
     enabled = bool(config.get("enabled"))
+    # The operator's control has three states: off / auto / on. Only 'on' is the AP role;
+    # 'auto' arms the rescue watchdog and otherwise behaves as off. Internal callers
+    # (restore, channel juggling) keep passing plain `enabled` and never carry a mode.
+    mode = config.get("mode")
+    if mode:
+        enabled = mode == "on"
 
     # Validation gates TURNING THE AP ON (and saving its settings). Turning it OFF must
     # always be possible — even from an out-of-band state (AP enabled by hand, no region,
@@ -3001,13 +3090,16 @@ def set_ap(config, status_cb=None, intent=True):
         else:
             verr = verr or ("Channel {} is not available for the access point in region {} — "
                             "choose another channel or Auto".format(chan_req, cc))
-    if enabled and verr:
+    # 'auto' saves the profile the watchdog will later raise, and test-starts it below —
+    # both need settings as valid as an actual start does
+    if (enabled or mode == "auto") and verr:
         raise WifiError(verr)
 
     # The access point needs its own interface before a profile can point at it. Only when
-    # actually starting it: saving settings with the toggle off must not fail on hardware that
-    # cannot host a second interface, and must not create one for nothing.
-    if enabled:
+    # actually starting it (or test-starting for 'auto'): saving settings with the control
+    # off must not fail on hardware that cannot host a second interface, and must not
+    # create one for nothing.
+    if enabled or mode == "auto":
         ensure_ap_iface()
 
     # The address the operator typed is the preference; the profile gets the block that is
@@ -3078,7 +3170,10 @@ def set_ap(config, status_cb=None, intent=True):
     # follows the client's channel these days, so the two coexist and clearing was only taking
     # away the station's ability to rejoin its network on its own.
     try:
-        nmcli.connection.modify(ap_ref, {"connection.autoconnect": "yes" if enabled else "no"})
+        # no profile AND switching off: nothing to modify or lower — a point that was never
+        # configured is already off, and that must not stop the mode from being recorded
+        if ap_ref:
+            nmcli.connection.modify(ap_ref, {"connection.autoconnect": "yes" if enabled else "no"})
         global _last_ap_error, _ap_yielded, _last_ap_action
         _last_ap_action = time.time()
         if enabled:
@@ -3088,12 +3183,20 @@ def set_ap(config, status_cb=None, intent=True):
             # standing again: whatever made the point yield the radio no longer applies
             _ap_yielded = ""
         else:
-            if _ap_active():
+            if ap_ref and _ap_active():
                 try:
                     nmcli.connection.down(ap_ref)
                 except Exception:
                     pass
             _set_hotspot_flag(False)
+            if mode == "auto":
+                # prove the point can come up with exactly these settings before arming the
+                # watchdog — nothing short of a real start catches a channel the firmware
+                # refuses. Up and straight down: the station is not isolated, the point
+                # must not stay.
+                notify("starting", "hotspot")
+                nmcli.connection.up(ap_ref, wait=30)
+                nmcli.connection.down(ap_ref)
         _last_ap_error = None
     except Exception as e:
         _last_ap_error = _ap_start_error(_readable_error(e), band, chan_req)
@@ -3110,9 +3213,16 @@ def set_ap(config, status_cb=None, intent=True):
                 log.warning("AP rollback: could not remove the new profile: %s", de)
             _ap_restore(None, None, {}, reactivate=False)
         else:
-            _ap_restore(ap_ref, prev_ap if enabled else None,
-                        prev_autoconnect, reactivate=enabled and was_ap_active)
+            # a failed 'auto' test start rolls back like a failed start: the new settings
+            # proved unusable, so the previous ones (and a previously running point) return
+            wrote = enabled or mode == "auto"
+            _ap_restore(ap_ref, prev_ap if wrote else None,
+                        prev_autoconnect, reactivate=wrote and was_ap_active)
         raise WifiError(_last_ap_error)
+    if mode and intent:
+        # recorded only after the role switch went through: a failed switch raised above,
+        # and writing the flag there would desync the station config from reality
+        set_station_flag("hotspot_rescue", mode == "auto")
     return get_ap_config()
 
 
