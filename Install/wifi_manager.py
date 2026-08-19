@@ -542,10 +542,14 @@ def sta_link():
     window and shows a working connection to a network the station has already left.
 
     Returns the association as {"ssid", "bssid", "freq"}, {} when the radio says it is not
-    associated, and None when we cannot tell (no `iw`, call failed) — the caller then leaves
-    NM's answer alone rather than inventing a disconnect.
+    associated, and None when we cannot tell (no `iw`, no interface, call failed) — the
+    caller then leaves NM's answer alone rather than inventing a disconnect.
     """
     if not shutil.which("iw"):
+        return None
+    # no interface at all (a host without Wi-Fi): honest "cannot tell", quietly — the
+    # background asks every tick, and a warning per tick is log litter, not information
+    if not os.path.isdir("/sys/class/net/" + WIFI_IFACE):
         return None
     try:
         out = _iw("dev", WIFI_IFACE, "link")
@@ -644,6 +648,7 @@ def probe_hidden(ssid):
     ssid = (ssid or "").strip()
     if not ssid or not shutil.which("iw"):
         return None
+    log.info("wifi: hidden probe for '%s'", ssid)
     out = None
     for attempt in range(3):
         try:
@@ -753,8 +758,37 @@ def _ap_iface_macs():
 RESCUE_CHECK_S = 30          # how often the watchdog looks at the station
 RESCUE_ISOLATED_S = 180      # unreachable this long -> raise the hotspot
 RESCUE_ONLINE_S = 60         # reachable again this long -> lower what we raised
+STARTUP_GRACE_S = 10         # keep the background off the radio right after service start:
+                             # provisioning and NetworkManager are still settling the boot
+NM_RUN_DIR = "/run/NetworkManager"   # exists once NetworkManager has started this boot
+RESCUE_HEARTBEAT_TICKS = 20  # one "alive" journal line this many ticks (~10 min)
 
 _rescue_raised = False       # only ever lower an access point the watchdog itself raised
+_last_isolated = None        # isolation state at the previous look, None = never looked
+
+
+def _heartbeat_due(tick):
+    """True on the ticks that get an "alive" line: the first one (so the journal confirms
+    the watchdog started at all — its silent freeze is otherwise indistinguishable from
+    idling), then every RESCUE_HEARTBEAT_TICKS."""
+    return tick % RESCUE_HEARTBEAT_TICKS == 1
+
+
+def _note_isolation(isolated):
+    """One journal line per isolation change; returns "lost" | "online" | None.
+
+    The journal must answer "was the station ever without a network, and when" without
+    logging every tick. Booting straight into isolation is a change worth a line too;
+    booting online is not."""
+    global _last_isolated
+    prev, _last_isolated = _last_isolated, isolated
+    if isolated and not prev:
+        log.info("wifi: station lost all networks (no wifi link, no wired carrier)")
+        return "lost"
+    if prev and not isolated:
+        log.info("wifi: station back online")
+        return "online"
+    return None
 
 
 def rescue_enabled():
@@ -762,20 +796,20 @@ def rescue_enabled():
     return station_flag("hotspot_rescue")
 
 
-def ap_mode(role_is_ap, ap_live, rescue):
-    """The operator-facing state of the access point: 'off' | 'auto' | 'on'.
+def ap_flags(role_is_ap, ap_live, rescue):
+    """Truth for the two independent controls: (enabled, raised_by_auto).
 
-    'on' is the operator's own point: the AP role, or a live point without the role
-    (NetworkManager clears autoconnect after repeated failures) — that one must still read
-    'on' so the UI keeps a way to switch it off. A live point next to the rescue flag is
-    the watchdog's doing and stays 'auto': the operator never chose 'on' there, and the
-    point will leave on its own once the station is back online.
+    `enabled` is the operator's own point: the AP role, or a live point with neither the
+    role nor the rescue flag (NetworkManager clears autoconnect after repeated failures) —
+    that one must still read ON so the toggle keeps a way to switch it off. A live point
+    next to the rescue flag is the watchdog's doing: the operator never chose ON there, so
+    the toggle stays OFF and `raised_by_auto` tells the air indicator whose beacon it is.
     """
     if role_is_ap:
-        return "on"
-    if rescue:
-        return "auto"
-    return "on" if ap_live else "off"
+        return True, False
+    if ap_live:
+        return (not rescue), rescue
+    return False, False
 
 
 def ethernet_carrier():
@@ -937,7 +971,9 @@ def _pending_client():
     if not (by_bssid or by_ssid):
         return None
     try:
-        scan = nmcli.device.wifi()
+        # pinned to the client interface: other wifi devices' caches (the AP's own) must not
+        # nominate a network the client interface cannot actually see
+        scan = nmcli.device.wifi(ifname=WIFI_IFACE)
     except Exception as e:
         log.warning("could not scan while looking for a network to rejoin: %s", e)
         return None
@@ -1073,8 +1109,10 @@ def _rescue_step(isolated_for, online_for):
         if not _radio_flock():
             return isolated_for, online_for
         try:
+            isolated = station_isolated()
+            _note_isolation(isolated)
             action, isolated_for, online_for = rescue_tick(
-                station_isolated(), _ap_active(), isolated_for, online_for)
+                isolated, _ap_active(), isolated_for, online_for)
             if action == "up":
                 log.warning("no network for %ss — raising the rescue hotspot",
                             RESCUE_ISOLATED_S)
@@ -1100,6 +1138,17 @@ def rescue_watchdog(stop=None):
     network at all, and it only lowers a hotspot it raised itself, so an access point
     switched on by the operator is never touched.
     """
+    # the service starts together with the boot-time provisioning; give it (and
+    # NetworkManager) the first seconds of the radio without our background on top
+    time.sleep(STARTUP_GRACE_S)
+    # A cold boot brings NetworkManager up well after us. Until its run dir exists, every
+    # nmcli call is doomed to exit 8 ("NM is not running") — and those exits litter the
+    # boot log, so the wait must not spawn a single subprocess. The directory test is the
+    # cheapest honest probe there is.
+    while not (stop and stop.is_set()) and not os.path.isdir(NM_RUN_DIR):
+        time.sleep(RESCUE_CHECK_S)
+    if not os.path.isdir(NM_RUN_DIR):
+        return      # stopped while NetworkManager never appeared — nothing to reconcile
     if _radio_lock.acquire(blocking=False):
         try:
             if _radio_flock(wait_s=5):
@@ -1110,14 +1159,22 @@ def rescue_watchdog(stop=None):
         finally:
             _radio_lock.release()
     isolated_for = online_for = 0
+    ticks = 0
     while not (stop and stop.is_set()):
         time.sleep(RESCUE_CHECK_S)
         try:
+            ticks += 1
+            rescue = rescue_enabled()
+            if _heartbeat_due(ticks):
+                # the only periodic line: proves the watchdog is alive (a frozen one is
+                # otherwise indistinguishable from one with nothing to do)
+                log.debug("wifi: watchdog alive (rescue=%s, isolated for %ss, online for %ss)",
+                         "on" if rescue else "off", isolated_for, online_for)
             # the coupling is not part of the rescue feature and runs on every station: an
             # access point and a client on different channels break each other whatever the
             # rescue flag says
             couple_reconcile()
-            if not rescue_enabled():
+            if not rescue:
                 isolated_for = online_for = 0
                 continue
             isolated_for, online_for = _rescue_step(isolated_for, online_for)
@@ -1195,6 +1252,7 @@ def set_country(cc):
     """Apply the regdomain: raspi-config on Pi, iw elsewhere."""
     global _fallback_country
     cc = (cc or "").strip().upper()
+    log.info("wifi: country change to %s requested", cc or "<empty>")
     if not re.fullmatch(r"[A-Z]{2}", cc):
         raise ValueError("invalid country code")
     if shutil.which("raspi-config"):
@@ -1205,9 +1263,10 @@ def set_country(cc):
     else:
         _fallback_country = cc      # bench/DIY without iw: remember for UI flow
     try:
-        nmcli.device.wifi_rescan()
+        nmcli.device.wifi_rescan(ifname=WIFI_IFACE)
     except Exception:
         pass
+    log.info("wifi: country set to %s", cc)
 
 
 def allowed_channels():
@@ -1581,14 +1640,41 @@ def _ap_active():
     return details.get("GENERAL.STATE") == "activated"
 
 
+def _radio_ensure_on():
+    """(usable, just_powered): raise a radio that went down on its own, leave an operator's
+    OFF alone.
+
+    A radio can be down without anyone asking for it: NM persists the radio state across
+    reboots (WirelessEnabled=false in its state file brings a station up with the radio off),
+    and rfkill can flip during early boot. Those are repaired here. The dialog's own toggle
+    is different — that OFF was a person's choice, recorded by set_radio(), and undoing it
+    on every list refresh would make the toggle useless.
+
+    just_powered tells the caller the scan cache is empty (nothing could scan while the
+    radio was down) — a plain cached list right after power-on would wrongly read as
+    "no networks found"."""
+    if nmcli.radio.wifi():
+        return True, False
+    if _load_ap_prefs().get("radio_off"):
+        return False, False
+    nmcli.radio.wifi_on()
+    return True, True
+
+
 def radio_wifi_on():
-    """NM does not persist the radio state reliably (since ~Debian 12.12 a station with no
-    Wi-Fi profile comes back from reboot with the radio off) — force it on."""
-    if not nmcli.radio.wifi():
-        nmcli.radio.wifi_on()
+    """Bring the radio back if it went down on its own (see _radio_ensure_on) — called when
+    the popup opens. An OFF chosen via the dialog's toggle is respected."""
+    _radio_ensure_on()
 
 
 def set_radio(on):
+    """The dialog's radio toggle. The choice is recorded where both web processes see it, so
+    an explicit OFF is not undone by the automatic raise on the next popup open or list
+    refresh — only the operator (or a join request) turns the radio back on."""
+    log.info("wifi: radio %s requested", "on" if on else "off")
+    prefs = _load_ap_prefs()
+    if bool(prefs.get("radio_off")) != (not on):
+        _save_ap_prefs(dict(prefs, radio_off=not on))
     if on:
         nmcli.radio.wifi_on()
     else:
@@ -1878,22 +1964,30 @@ def list_networks(rescan=False):
     nm_has_active = any(d.get("GENERAL.STATE") == "activated" for _, d in profiles.items())
 
     scan = []
-    if nmcli.radio.wifi():
+    usable, just_powered = _radio_ensure_on()
+    if usable:
         # A running access point no longer blocks scanning. It used to: the point lived on
         # the client interface itself, so a forced --rescan had nothing to scan with. Now it
         # runs on its own AP interface and the client interface can still leave the channel
         # for a moment — measured on the station, a forced rescan takes ~4 s, returns the full
         # list including other bands, and the beacon does not even blink.
-        do_rescan = rescan
+        #
+        # The scan is pinned to the client interface. Without ifname nmcli merges the scan
+        # caches of EVERY wifi device — with the client interface down, the list could be fed
+        # entirely by the AP interface's cache: networks that look joinable while no join can
+        # possibly work. A radio that was just powered on has an empty cache for the same
+        # reason nothing could scan — force a fresh scan then, whatever the caller asked.
+        do_rescan = rescan or just_powered
         try:
-            scan = nmcli.device.wifi(rescan=True) if do_rescan else nmcli.device.wifi()
+            scan = (nmcli.device.wifi(ifname=WIFI_IFACE, rescan=True) if do_rescan
+                    else nmcli.device.wifi(ifname=WIFI_IFACE))
         except Exception as e:
             # NM refuses a rescan too soon after the previous one; fall back to
             # the cached list rather than showing nothing.
             log.warning("wifi scan failed (rescan=%s): %s", do_rescan, e)
             if do_rescan:
                 try:
-                    scan = nmcli.device.wifi()
+                    scan = nmcli.device.wifi(ifname=WIFI_IFACE)
                 except Exception as e2:
                     log.warning("wifi cached scan failed: %s", e2)
 
@@ -2288,7 +2382,7 @@ def _target_channel(ssid, bssid=None):
     bssid = (bssid or "").strip().upper()
     bssid = bssid if bssid not in ("", "--") else None
     try:
-        scan = nmcli.device.wifi()
+        scan = nmcli.device.wifi(ifname=WIFI_IFACE)
     except Exception as e:
         log.warning("could not read the scan for the target channel: %s", e)
         scan = []
@@ -2544,6 +2638,11 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
     notify = status_cb or (lambda *a: None)
     _set_client_off(False)
     bssid = (bssid or "").strip().upper() or None
+    # the operation trail (never the password): every join attempt must be readable from
+    # the journal, not just the failed ones
+    log.info("wifi: connect '%s' requested (security=%s, bssid=%s, remember=%s, ip=%s)",
+             ssid, security or "auto", bssid or "any", remember,
+             (ipconf or {}).get("method") or "dhcp")
 
     if ipconf and ipconf.get("method") == "manual":
         # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
@@ -2559,8 +2658,14 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         if err:
             raise WifiError(err)
 
+    # Joining is an explicit "the radio must be up": a saved row can be clicked while the
+    # radio is down (the list keeps saved profiles), whether it went down on its own over a
+    # reboot or the operator's own toggle is being superseded by this request.
+    if not nmcli.radio.wifi():
+        set_radio(True)
+
     if security is None:
-        for n in nmcli.device.wifi():
+        for n in nmcli.device.wifi(ifname=WIFI_IFACE):
             # with a BSSID pin resolve security from that exact BSS, not a namesake
             if ((n.bssid or "").upper() == bssid) if bssid else (n.ssid == ssid):
                 security, _ = parse_security(n.security)
@@ -2627,6 +2732,7 @@ def connect(ssid, password=None, security=None, hidden=False, remember=True,
         _restore_ap_after_failure(ap_snap, notify)
         notify("failed", _readable_error(e))
         raise WifiError(_readable_error(e))
+    log.info("wifi: connected '%s'", ssid)
     notify("connected", ssid)
     return list_networks()
 
@@ -2645,6 +2751,11 @@ def activate(profile, bssid=None, status_cb=None):
     """
     notify = status_cb or (lambda *a: None)
     _set_client_off(False)
+    log.info("wifi: activate '%s' requested (bssid=%s)", profile,
+             (bssid or "").strip().upper() or "profile's own")
+    # same as connect(): a join request implies the radio — up it if anything took it down
+    if not nmcli.radio.wifi():
+        set_radio(True)
     details = _guard_client_profile(profile)
     # same as connect(): the hotspot follows onto the client's channel, and is put back where
     # the operator had it if the network cannot be joined — it is the way into the station
@@ -2677,12 +2788,14 @@ def activate(profile, bssid=None, status_cb=None):
         _restore_ap_after_failure(ap_snap, notify)
         notify("failed", _readable_error(e))
         raise WifiError(_readable_error(e))
+    log.info("wifi: connected '%s'", disp)
     notify("connected", disp)
     return list_networks()
 
 
 @_holds_radio
 def disconnect():
+    log.info("wifi: disconnect requested")
     _set_client_off(True)
     try:
         nmcli.device.disconnect(WIFI_IFACE)
@@ -2699,12 +2812,14 @@ def disconnect():
         if not state.startswith("connected") and "deactivating" not in state:
             break
         time.sleep(0.3)
+    log.info("wifi: disconnected")
     # the client no longer owns the channel, so the point goes back where the operator put it
     ap_return_to_preferred()
     return list_networks()
 
 
 def forget(profile):
+    log.info("wifi: forget '%s' requested", profile)
     _guard_client_profile(profile)
     try:
         nmcli.connection.delete(profile)
@@ -2716,6 +2831,7 @@ def forget(profile):
 
 
 def change_password(profile, password):
+    log.info("wifi: change password for '%s' requested", profile)   # the fact only, never the key
     details = _guard_client_profile(profile)
     if details.get("802-11-wireless-security.key-mgmt") == "none":
         if not (password or ""):
@@ -2730,6 +2846,7 @@ def change_password(profile, password):
         nmcli.connection.modify(profile, opts)
     except Exception as e:
         raise WifiError(_readable_error(e))
+    log.info("wifi: password changed for '%s'", profile)
     return list_networks()
 
 
@@ -2741,8 +2858,9 @@ def set_autoconnect(profile, on):
     while the access point was running, because the point and a client could not share the
     radio — now the point follows the client's channel, so the two work together and the
     switch does what it says whatever the point is doing."""
-    _guard_client_profile(profile)
     on = bool(on)
+    log.info("wifi: autoconnect %s for '%s'", "on" if on else "off", profile)
+    _guard_client_profile(profile)
     try:
         nmcli.connection.modify(profile, {"connection.autoconnect": "yes" if on else "no"})
     except Exception as e:
@@ -2752,6 +2870,8 @@ def set_autoconnect(profile, on):
 
 def set_ip_config(profile, ipconf):
     """Change the IP configuration of an existing (saved) profile."""
+    log.info("wifi: ip config change for '%s' requested (%s)", profile,
+             (ipconf or {}).get("method") or "dhcp")
     _guard_client_profile(profile)
     if ipconf and ipconf.get("method") == "manual":
         # client STA: overlap with an occupied ethernet subnet is NOT blocked (Ethernet
@@ -2887,7 +3007,7 @@ def get_ap_config():
         # security default follows the adapter: offering "mixed" where the radio cannot deliver
         # WPA3 would put a value in the form that is not even in its own list of choices
         return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), security=default_ap_security(),
-                    enabled=False, mode="auto" if rescue_enabled() else "off",
+                    enabled=False, auto=rescue_enabled(), on_air=False, raised_by_auto=False,
                     configured=False, has_password=False, last_error=_last_ap_error)
     km = details.get("802-11-wireless-security.key-mgmt")
     pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
@@ -2924,6 +3044,7 @@ def get_ap_config():
     yielded = _ap_yield_reason(prefs)
     role_ap = get_role() == "ap"
     ap_live = details.get("GENERAL.STATE") == "activated"
+    enabled, raised = ap_flags(role_ap, ap_live, rescue_enabled())
     return {
         "ssid": details.get("802-11-wireless.ssid") or _default_ap_ssid(),
         "last_error": _last_ap_error,
@@ -2952,10 +3073,12 @@ def get_ap_config():
         # why the point is not running even though it is switched on: the network the station
         # joined sits on a channel the point may not use
         "yielded": yielded,
-        # "on" if the role says AP OR the profile is actually activated right now — so a live
-        # AP whose autoconnect got cleared still shows the toggle as on (and thus off-able)
-        "enabled": role_ap or ap_live,
-        "mode": ap_mode(role_ap, ap_live, rescue_enabled()),
+        # two independent controls plus the air indicator (see ap_flags): the toggle is the
+        # operator's point, `auto` is the watchdog flag, `on_air` is the beacon itself
+        "enabled": enabled,
+        "auto": rescue_enabled(),
+        "on_air": bool(air_chan),
+        "raised_by_auto": raised,
         "configured": True,
     }
 
@@ -3018,12 +3141,20 @@ def set_ap(config, status_cb=None, intent=True):
     """
     notify = status_cb or (lambda *a: None)
     enabled = bool(config.get("enabled"))
-    # The operator's control has three states: off / auto / on. Only 'on' is the AP role;
-    # 'auto' arms the rescue watchdog and otherwise behaves as off. Internal callers
-    # (restore, channel juggling) keep passing plain `enabled` and never carry a mode.
-    mode = config.get("mode")
-    if mode:
-        enabled = mode == "on"
+    # Save carries the Auto toggle's position in `auto`; the point's own toggle and Auto are
+    # independent (a toggle-off does NOT disarm the watchdog — confirmed as intended: an
+    # isolated station gets its point back). Internal callers (restore, channel juggling)
+    # pass plain `enabled` and never carry `auto`, so the flag is left alone there.
+    auto = config.get("auto")
+    if intent:
+        # the operation trail (never the password); internal juggling (intent=False) is
+        # not an operator action and stays out of the journal
+        log.info("wifi: access point %s requested (ssid=%s, band=%s, chan=%s, security=%s%s)",
+                 "on" if enabled else "off",
+                 config.get("ssid") or "<current>", config.get("band", "all"),
+                 config.get("channel") or "auto",
+                 config.get("security", AP_DEFAULTS["security"]),
+                 "" if auto is None else (", auto={}".format("on" if auto else "off")))
 
     # Validation gates TURNING THE AP ON (and saving its settings). Turning it OFF must
     # always be possible — even from an out-of-band state (AP enabled by hand, no region,
@@ -3090,16 +3221,16 @@ def set_ap(config, status_cb=None, intent=True):
         else:
             verr = verr or ("Channel {} is not available for the access point in region {} — "
                             "choose another channel or Auto".format(chan_req, cc))
-    # 'auto' saves the profile the watchdog will later raise, and test-starts it below —
-    # both need settings as valid as an actual start does
-    if (enabled or mode == "auto") and verr:
+    # arming auto saves the profile the watchdog will later raise, and test-starts it
+    # below — both need settings as valid as an actual start does
+    if (enabled or auto) and verr:
         raise WifiError(verr)
 
     # The access point needs its own interface before a profile can point at it. Only when
     # actually starting it (or test-starting for 'auto'): saving settings with the control
     # off must not fail on hardware that cannot host a second interface, and must not
     # create one for nothing.
-    if enabled or mode == "auto":
+    if enabled or auto:
         ensure_ap_iface()
 
     # The address the operator typed is the preference; the profile gets the block that is
@@ -3189,7 +3320,7 @@ def set_ap(config, status_cb=None, intent=True):
                 except Exception:
                     pass
             _set_hotspot_flag(False)
-            if mode == "auto":
+            if auto:
                 # prove the point can come up with exactly these settings before arming the
                 # watchdog — nothing short of a real start catches a channel the firmware
                 # refuses. Up and straight down: the station is not isolated, the point
@@ -3213,17 +3344,61 @@ def set_ap(config, status_cb=None, intent=True):
                 log.warning("AP rollback: could not remove the new profile: %s", de)
             _ap_restore(None, None, {}, reactivate=False)
         else:
-            # a failed 'auto' test start rolls back like a failed start: the new settings
+            # a failed auto-arming test start rolls back like a failed start: the new settings
             # proved unusable, so the previous ones (and a previously running point) return
-            wrote = enabled or mode == "auto"
+            wrote = enabled or bool(auto)
             _ap_restore(ap_ref, prev_ap if wrote else None,
                         prev_autoconnect, reactivate=wrote and was_ap_active)
         raise WifiError(_last_ap_error)
-    if mode and intent:
+    if auto is not None and intent:
         # recorded only after the role switch went through: a failed switch raised above,
         # and writing the flag there would desync the station config from reality
-        set_station_flag("hotspot_rescue", mode == "auto")
+        set_station_flag("hotspot_rescue", bool(auto))
+    if intent:
+        log.info("wifi: access point %s", "up" if enabled
+                 else ("down, watchdog armed" if auto else "down"))
     return get_ap_config()
+
+
+def set_ap_auto(on):
+    """The Auto toggle alone: arm or disarm the rescue watchdog without touching the form.
+
+    Off is always allowed and applies immediately. If the beacon in the air right now is the
+    watchdog's own (the role is still client), the point goes down together with the flag —
+    a disarmed watchdog would never lower it, and leaving an ownerless beacon standing after
+    "auto off" is exactly the surprise the toggle exists to prevent. The operator's own
+    point (AP role) is not touched: the toggles are independent.
+
+    On arms only next to a point that is ON THE AIR right now — a live beacon is the proof
+    the stored settings can stand. For a sleeping or unsaved point arming goes through Save
+    (set_ap with `auto`) together with starting the point: the flag is recorded only after
+    that start succeeds, so the watchdog is never armed with settings that never came up.
+
+    Returns (config, lowered). The flag write itself changes neither the status header nor
+    the network list — `lowered` tells the caller when the heavy broadcasts are actually
+    due, so a plain toggle answers with one ap-config and nothing else.
+    """
+    if on:
+        if not _ap_ref():
+            raise WifiError("Auto mode needs a saved access point — "
+                            "set up and save the access point first")
+        if not _ap_active():
+            raise WifiError("Auto mode arms only while the access point is online — "
+                            "turn the access point on first")
+        set_station_flag("hotspot_rescue", True)
+        return get_ap_config(), False
+    set_station_flag("hotspot_rescue", False)
+    lowered = False
+    ref = _ap_ref()
+    if ref and _ap_active() and get_role() != "ap":
+        try:
+            nmcli.connection.down(ref)
+            lowered = True
+        except Exception as e:
+            log.warning("auto off: could not lower the rescue point: %s", e)
+        global _rescue_raised
+        _rescue_raised = False
+    return get_ap_config(), lowered
 
 
 def _set_hotspot_flag(up):
@@ -3297,6 +3472,7 @@ def _backup_value(k, v):
 
 def backup_profiles():
     """Export WiFi profiles (with secrets) + the regulatory region for replication."""
+    log.info("wifi: backup requested")
     out = {"version": 1, "country": get_country(), "profiles": []}
     for conn in nmcli.connection():
         if conn.conn_type != "wifi":
@@ -3312,10 +3488,12 @@ def backup_profiles():
                 if cv is not None:
                     keep[k] = cv
         out["profiles"].append(keep)
+    log.info("wifi: backup served (%d profiles)", len(out["profiles"]))
     return out
 
 
 def restore_profiles(data):
+    log.info("wifi: restore requested")
     if not isinstance(data, dict) or data.get("version") != 1:
         raise WifiError("Unsupported WiFi backup format")
     # restore the regulatory region first (best-effort — a missing/invalid code or a host
@@ -3355,6 +3533,7 @@ def restore_profiles(data):
             count += 1
         except Exception as e:
             raise WifiError("Restore failed on '{}': {}".format(name, _readable_error(e)))
+    log.info("wifi: restore done (%d profiles)", count)
     return count
 
 

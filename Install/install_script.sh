@@ -1670,6 +1670,20 @@ start_rtkbase_services(){
      ExitCodeCheck $?
   fi
 
+  NETWORK_MANAGER_VERSION=$(NetworkManager --version)
+  NETWORK_MANAGER_VERSION=${NETWORK_MANAGER_VERSION//./}
+  #echo NETWORK_MANAGER_VERSION=${NETWORK_MANAGER_VERSION}
+  if [[ "${NETWORK_MANAGER_VERSION}" < 1520 ]]; then
+     #echo sed -i '/^resolve-mode=/d' "${NETWORK_CONF}/${GLOBAL_DNS_CONF}"
+     sed -i '/^resolve-mode=/d' "${NETWORK_CONF}/${GLOBAL_DNS_CONF}"
+     ExitCodeCheck $?
+     if ! ischroot; then
+        #echo nmcli general reload
+        nmcli general reload
+        ExitCodeCheck $?
+     fi
+  fi
+
   #echo systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
   systemctl start --job-mode=ignore-dependencies "${START_SERVICE}"
   ExitCodeCheck $?

@@ -31,6 +31,56 @@ DeleteHotSpots(){
    done
 }
 
+CheckAp0(){
+   if ! ip link show ap0 >/dev/null 2>&1; then
+      #echo iw dev wlan0 interface add ap0 type __ap
+      iw dev wlan0 interface add ap0 type __ap
+      ExitCodeCheck $?
+   fi
+}
+
+wifi_rescan()
+{
+    local iface="wlan0"
+    local ssid="$1"
+    local dev old_scan new_scan
+    local i
+
+    dev=$(busctl call \
+        org.freedesktop.NetworkManager \
+        /org/freedesktop/NetworkManager \
+        org.freedesktop.NetworkManager \
+        GetDeviceByIpIface s "$iface" |
+        awk '{print $2}' | tr -d '"') || return 1
+
+    old_scan=$(busctl get-property \
+        org.freedesktop.NetworkManager \
+        "$dev" \
+        org.freedesktop.NetworkManager.Device.Wireless \
+        LastScan |
+        awk '{print $2}') || return 1
+
+    nmcli device wifi rescan ifname "$iface" ssid "$ssid" || return 1
+
+    for ((i=0; i<100; i++)); do
+        new_scan=$(busctl get-property \
+            org.freedesktop.NetworkManager \
+            "$dev" \
+            org.freedesktop.NetworkManager.Device.Wireless \
+            LastScan |
+            awk '{print $2}') || return 1
+
+        if (( new_scan > old_scan )); then
+            return 0
+        fi
+
+        sleep 0.1
+    done
+
+    #echo "Wi-Fi scan timeout" >&2
+    return 1
+}
+
 WPS() {
   nm-online -s >/dev/null
   HAVE_INTERNET=`nmcli networking connectivity check`
@@ -45,6 +95,7 @@ WPS() {
      ${BASEDIR}/PBC.sh 2>&1 1>/dev/null
      nmcli radio wifi on
      ExitCodeCheck $?
+     CheckAp0
      rm -f ${WPS_FLAG}
      HAVE_INTERNET=`nmcli networking connectivity check`
      #echo after WPS HAVE_INTERNET=${HAVE_INTERNET}
@@ -62,7 +113,7 @@ WPS() {
               DeleteHotSpots
               HOSTNAME=$(hostname)
               #echo HOSTNAME=${HOSTNAME}
-              nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+              nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
               ExitCodeCheck $?
               nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
               ExitCodeCheck $?
@@ -110,9 +161,7 @@ then
    exit ${exitcode}
 fi
 
-if ! ip link show ap0 >/dev/null 2>&1; then
-   iw dev wlan0 interface add ap0 type __ap
-fi
+CheckAp0
 
 PRECONFIGURED=preconfigured
 HAVE_PRECONFIGURED=`nmcli --fields NAME connection show | grep -w "${PRECONFIGURED}"`
@@ -124,7 +173,7 @@ if [[ -n "${HAVE_PRECONFIGURED}" ]]; then
    #echo PRECONFIGURED_SSID=${PRECONFIGURED_SSID} PRECONFIGURED_SSIDprinted=${PRECONFIGURED_SSIDprinted} PRECONFIGURED_FILE=${PRECONFIGURED_FILE} PRECONFIGURED_NEW_FILE=${PRECONFIGURED_NEW_FILE}
    if [[ "${PRECONFIGURED}" != "${PRECONFIGURED_SSIDprinted}" ]]; then
       #echo nmcli connection modify id "${PRECONFIGURED}" connection.id "${PRECONFIGURED_SSIDprinted}"
-      nmcli connection modify id "${PRECONFIGURED}" connection.id "${PRECONFIGURED_SSIDprinted}"
+      nmcli connection modify id "${PRECONFIGURED}" connection.id "${PRECONFIGURED_SSIDprinted}" connection.interface-name wlan0
       ExitCodeCheck $?
    fi
    if [[ "${PRECONFIGURED_FILE}" != "${PRECONFIGURED_NEW_FILE}" ]]; then
@@ -180,8 +229,7 @@ then
    WORK=Y
 fi
 
-if [[ -n "${SSID}" ]]
-then
+if [[ -n "${SSID}" ]]; then
    if [[ -z "${HIDDEN}" ]]; then
       HIDbool=no
    else
@@ -205,8 +253,9 @@ then
           nmcli connection delete id ${old_ssid_name}
           ExitCodeCheck $?
       done
+      wifi_rescan "${SSID}"
       #echo nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool}
-      nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
       HAVE_WIFI=`nmcli --get-values NAME connection show | grep -w "${SSIDprinted}"`
       if [[ -n "${HAVE_WIFI}" ]]; then
@@ -220,7 +269,7 @@ then
       fi
    else
       DeleteHotSpots
-      nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname ap0 | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g'
+      nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${SSID}" password "${KEY}" ifname ap0 | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?
       nmcli connection modify id ${HOTSPOT} connection.autoconnect yes connection.autoconnect-priority 100 802-11-wireless.hidden ${HIDbool}
       ExitCodeCheck $?

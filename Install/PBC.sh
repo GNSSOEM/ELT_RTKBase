@@ -72,9 +72,9 @@ iwconfig 2>/dev/null | tee /tmp/interfaces.txt
 $red▐█   Exit.$nocolour"
         error=2
         exit 1   
-    elif [ "$(grep -c IEEE /tmp/interfaces.txt)" == 1 ];
+    elif [ "$(grep -w IEEE /tmp/interfaces.txt | grep -c -v -w "^ap0")" == 1 ];
       then
-interface=$(head -n 1 /tmp/interfaces.txt | awk '{ print $1 }')  
+interface=$(grep -w IEEE /tmp/interfaces.txt | grep -v -w "^ap0" | awk '{ print $1 }')
         echo -e "$white▐█$purpple   One wifi interface has been detected and automaticaly selected: $green$interface$nocolour"
     else
         while [ -z "$interface" ]; 
