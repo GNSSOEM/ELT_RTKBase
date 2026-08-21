@@ -106,6 +106,21 @@ else
 fi
 }
 
+set_reg_domain(){
+  REGDOMAIN="$(iw reg get | sed -n "0,/country/s/^country \(.\+\):.*$/\1/p")"
+  #echo REGDOMAIN=${REGDOMAIN}
+  if [[ "${REGDOMAIN}" == "00" ]]; then
+     code2=$(curl -s "http://ip-api.com/json/?fields=countryCode"  | jq -r '.countryCode')
+     #echo code2=${code2}
+     if [[ "${#code2}" == "2" ]]; then
+        #echo iw reg set "${code2}"
+        iw reg set "${code2}"
+        ExitCodeCheck $?
+        echo Wifi country temporaly set to ${code2} -- code ${exitcode}
+     fi
+  fi
+}
+
 wasWPS=
 FIRST=YES
 ALL_CNT=0
@@ -170,6 +185,7 @@ while : ; do
       if [[ "${newstate}" != "${state}" ]]; then
          if [ "${newstate}" == "UP" ]; then
             set_gpio 1
+            set_reg_domain
          else
             set_gpio 0
          fi

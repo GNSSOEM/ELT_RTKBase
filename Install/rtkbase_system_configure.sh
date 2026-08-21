@@ -36,6 +36,7 @@ CheckAp0(){
       #echo iw dev wlan0 interface add ap0 type __ap
       iw dev wlan0 interface add ap0 type __ap
       ExitCodeCheck $?
+      sleep 3
    fi
 }
 
@@ -77,7 +78,7 @@ wifi_rescan()
         sleep 0.1
     done
 
-    #echo "Wi-Fi scan timeout" >&2
+    echo "Wi-Fi scan timeout"
     return 1
 }
 
@@ -116,8 +117,6 @@ WPS() {
               nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
               ExitCodeCheck $?
               nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
-              ExitCodeCheck $?
-              nmcli connection down id ${HOTSPOT}
               ExitCodeCheck $?
               nmcli connection up id ${HOTSPOT}
               ExitCodeCheck $?
@@ -281,8 +280,6 @@ if [[ -n "${SSID}" ]]; then
       else 
          WIFI_IP_SHOW=$(nmcli connection show id ${HOTSPOT} | grep "IP4.ADDRESS[1]" | awk -F ' ' '{print $2}')
       fi
-      nmcli connection down id ${HOTSPOT}
-      ExitCodeCheck $?
       nmcli connection up id ${HOTSPOT}
       ExitCodeCheck $?
       echo Wifi ${HOTSPOT} set to ${SSID} \(${WIFI_IP_SHOW}\)-- code ${exitcode}
