@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..c56c7a3
+index e36bbc4..6512f4d
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -33,6 +33,7 @@ monkey.patch_all()
@@ -607,7 +607,7 @@ index e36bbc4..c56c7a3
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1306,334 @@ def update_settings(json_msg):
+@@ -1004,6 +1306,344 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -899,6 +899,16 @@ index e36bbc4..c56c7a3
 +                pass
 +    socketio.start_background_task(task)
 +
++# background moves of the access point (the coupling follows the client's channel, the
++# watchdog raises/lowers the beacon) must reach an open dialog — otherwise its card keeps
++# showing the moment of the last click (п.73/85)
++def _wifi_ap_changed():
++    try:
++        socketio.emit("ap config", wifi_manager.get_ap_config(), namespace="/test")
++    except Exception as e:
++        print("ap config push:", e)
++wifi_manager.on_ap_changed = _wifi_ap_changed
++
 +@socketio.on("wifi set ap auto", namespace="/test")
 +def wifi_set_ap_auto(json_msg):
 +    # the Auto toggle alone (no form): off always applies, on only next to a saved point —
@@ -942,7 +952,7 @@ index e36bbc4..c56c7a3
  def arg_parse():
      parser = argparse.ArgumentParser(
          description="RTKBase Web server",
-@@ -1042,6 +1672,12 @@ if __name__ == "__main__":
+@@ -1042,6 +1682,12 @@ if __name__ == "__main__":
          manager_thread = Thread(target=manager, daemon=True)
          manager_thread.start()
  
@@ -955,7 +965,7 @@ index e36bbc4..c56c7a3
          app.secret_key = rtkbaseconfig.get_secret_key()
          #socketio.run(app, host = "::", port = args.port or rtkbaseconfig.get("general", "web_port", fallback=80), debug=args.debug) # IPv6 "::" is mapped to IPv4
          gunicorn_options = {
-@@ -1051,6 +1687,12 @@ if __name__ == "__main__":
+@@ -1051,6 +1697,12 @@ if __name__ == "__main__":
          'worker_class': 'gevent',
          'graceful_timeout': 10,
          'loglevel': 'debug' if args.debug else 'warning',

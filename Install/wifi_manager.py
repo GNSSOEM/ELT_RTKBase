@@ -635,6 +635,28 @@ def ap_air_channel():
     return follow_client(freq_to_band(int(m.group(2))) or "", int(m.group(1)))
 
 
+def wifi_iface_ap_channel():
+    """(band, chan) when an access point runs on the CLIENT interface itself, else None.
+
+    The single-interface legacy: provisioning that lost ap0 raises the point straight on
+    wlan0. The whole combined model (client on wlan0 + point on ap0) is impossible there —
+    the radio belongs to the beacon — so the watchdog, the coupling and the Auto-start
+    switch must all stand down, and the dialog has to say which mode the station is in.
+    """
+    if not shutil.which("iw"):
+        return None
+    try:
+        out = _iw("dev", WIFI_IFACE, "info")
+    except Exception:
+        return None
+    if not re.search(r"^\s*type AP\s*$", out, re.MULTILINE):
+        return None
+    m = re.search(r"^\s*channel (\d+) \((\d+) MHz\)", out, re.MULTILINE)
+    if not m:
+        return "", 0
+    return freq_to_band(int(m.group(2))) or "", int(m.group(1))
+
+
 def probe_hidden(ssid):
     """Ask a hidden network about itself: {"bssid", "band", "chan", "freq", "security",
     "security_label"} or None when nothing answers.
@@ -764,6 +786,24 @@ NM_RUN_DIR = "/run/NetworkManager"   # exists once NetworkManager has started th
 RESCUE_HEARTBEAT_TICKS = 20  # one "alive" journal line this many ticks (~10 min)
 
 _rescue_raised = False       # only ever lower an access point the watchdog itself raised
+
+# The dialog renders the point's card from get_ap_config snapshots it gets in RESPONSE to its
+# own requests — but the point also moves on its own: the coupling follows the client's
+# channel, the watchdog raises and lowers the beacon. Without a push the card keeps showing
+# the moment of the last click (form said ch64 while the point stood on ch11 — п.73/85).
+# The web layer registers a callable here; None means nobody is listening.
+on_ap_changed = None
+
+
+def _notify_ap_changed():
+    """Tell the web layer the point changed underneath it. Never breaks the operation."""
+    cb = on_ap_changed
+    if not cb:
+        return
+    try:
+        cb()
+    except Exception as e:
+        log.warning("ap change notify failed: %s", e)
 _last_isolated = None        # isolation state at the previous look, None = never looked
 
 
@@ -799,16 +839,16 @@ def rescue_enabled():
 def ap_flags(role_is_ap, ap_live, rescue):
     """Truth for the two independent controls: (enabled, raised_by_auto).
 
-    `enabled` is the operator's own point: the AP role, or a live point with neither the
-    role nor the rescue flag (NetworkManager clears autoconnect after repeated failures) —
-    that one must still read ON so the toggle keeps a way to switch it off. A live point
-    next to the rescue flag is the watchdog's doing: the operator never chose ON there, so
-    the toggle stays OFF and `raised_by_auto` tells the air indicator whose beacon it is.
+    The toggle reads ON whenever the point is up — the AP role, or a live beacon whoever
+    raised it (the watchdog, or NetworkManager left it standing with autoconnect cleared).
+    A beacon in the air with the switch showing OFF read as a contradiction in the field,
+    so WHO raised it is the business of the badges: `raised_by_auto` marks the watchdog's
+    own point, and a live point without the role carries the auto-connect-off mark.
     """
     if role_is_ap:
         return True, False
     if ap_live:
-        return (not rescue), rescue
+        return True, rescue
     return False, False
 
 
@@ -865,6 +905,7 @@ def _rescue_set_ap(up):
             nmcli.connection.up(ref, wait=30)
         else:
             nmcli.connection.down(ref)
+        _notify_ap_changed()
         return True
     except Exception as e:
         log.warning("rescue hotspot could not be %s: %s", "raised" if up else "lowered", e)
@@ -1164,6 +1205,12 @@ def rescue_watchdog(stop=None):
         time.sleep(RESCUE_CHECK_S)
         try:
             ticks += 1
+            # single-interface legacy (the point runs on the client interface itself): the
+            # radio belongs to the beacon, there is nothing to couple and nothing to rescue —
+            # touching it only breaks the one thing that works
+            if wifi_iface_ap_channel():
+                isolated_for = online_for = 0
+                continue
             rescue = rescue_enabled()
             if _heartbeat_due(ticks):
                 # the only periodic line: proves the watchdog is alive (a frozen one is
@@ -2123,6 +2170,20 @@ def list_networks(rescan=False):
         elif verdict is True and not e["in_use"] and not nm_has_active:
             # the radio is on a network no profile claims (activated outside NM's bookkeeping)
             e["in_use"] = True
+        if e["in_use"] and not e["chan"] and link and link.get("freq"):
+            # a connected hidden network has no scan row to carry its channel, but the radio
+            # knows exactly where the link is — the row must not read channel-less, and the
+            # indoor-only/DFS marks hang off the channel
+            e["freq"] = link["freq"]
+            e["chan"] = freq_to_chan(link["freq"])
+            e["band"] = freq_to_band(link["freq"])
+            ce = next((x for x in chans.get(e["band"], []) if x["ch"] == e["chan"]), None)
+            e["dfs"] = bool(ce and ce.get("dfs"))
+            e["indoor_only"] = bool(ce and ce.get("no_outdoor") and outdoor)
+            seen_key = e.get("bssid") or e["ssid"]
+            if _seen_channels.get(seen_key) != (e["chan"], e["freq"]):
+                _seen_channels[seen_key] = (e["chan"], e["freq"])
+                _save_seen_channels()
         return e
 
     connected, saved, available = [], [], []
@@ -2184,6 +2245,11 @@ def list_networks(rescan=False):
         saved = [e for e in saved if not _same_access_point(e)]
         available = [e for e in available if not _same_access_point(e)]
     saved.sort(key=lambda e: e["ssid"].lower())
+    # Signal jitters a few points between rescans, and two networks of comparable strength
+    # kept swapping places in the list. Order by tens of signal, alphabetically inside a
+    # ten: stable against the jitter, still strongest-first where it actually differs.
+    available.sort(key=lambda e: (-round((e.get("signal") or 0), -1),
+                                  e["ssid"].lower(), e.get("bssid") or ""))
 
     return {
         "radio": nmcli.radio.wifi(),
@@ -2446,6 +2512,7 @@ def _ap_follow_channel(band, chan):
                         band_written=band, channel_written=int(chan)))
     log.info("access point follows the client to %s GHz ch%s (operator's choice: %s ch%s)",
              band, chan, keep_band, keep_chan)
+    _notify_ap_changed()
     return True
 
 
@@ -2490,6 +2557,7 @@ def ap_return_to_preferred():
         return False
     _save_ap_prefs(_without_loan(prefs))
     log.info("access point back on the operator's channel: %s ch%s", band, chan)
+    _notify_ap_changed()
     return True
 
 
@@ -3006,8 +3074,11 @@ def get_ap_config():
     except nmcli.NotExistException:
         # security default follows the adapter: offering "mixed" where the radio cannot deliver
         # WPA3 would put a value in the form that is not even in its own list of choices
+        legacy = wifi_iface_ap_channel()
         return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), security=default_ap_security(),
-                    enabled=False, auto=rescue_enabled(), on_air=False, raised_by_auto=False,
+                    enabled=False, auto=rescue_enabled(), on_air=bool(legacy),
+                    raised_by_auto=False, autoconnect=False, single_iface=bool(legacy),
+                    air_band=(legacy or ("", 0))[0], air_channel=(legacy or ("", 0))[1],
                     configured=False, has_password=False, last_error=_last_ap_error)
     km = details.get("802-11-wireless-security.key-mgmt")
     pmf = _nmcli_enum_word((details.get("802-11-wireless-security.pmf") or "").strip())
@@ -3034,6 +3105,11 @@ def get_ap_config():
     live_chan = int(chan) if chan and chan.isdigit() else 0
     band, chan_pref, chan_moved = _ap_channel_preferred(live_band, live_chan, prefs)
     air_band, air_chan = ap_air_channel()
+    # single-interface legacy: the beacon lives on the client interface itself — the lamp
+    # must still tell the truth about the air, and the dialog must say which mode this is
+    legacy = wifi_iface_ap_channel()
+    if legacy and not air_chan:
+        air_band, air_chan = legacy
     # A channel that was fine in one region is not in another, and switching the region does
     # not move a running point. Judged on where the point actually IS, not on what the form
     # holds, because those differ exactly in the cases worth reporting.
@@ -3079,6 +3155,12 @@ def get_ap_config():
         "auto": rescue_enabled(),
         "on_air": bool(air_chan),
         "raised_by_auto": raised,
+        # the profile's own autoconnect (== the AP role): a live point without it will not
+        # come back by itself after a reboot or a failure — NetworkManager is not holding it
+        "autoconnect": role_ap,
+        # the point runs on the client interface itself (ap0 lost): combined mode —
+        # client connections, the watchdog, Auto-start — is impossible by construction
+        "single_iface": bool(legacy),
         "configured": True,
     }
 
@@ -3145,7 +3227,10 @@ def set_ap(config, status_cb=None, intent=True):
     # independent (a toggle-off does NOT disarm the watchdog — confirmed as intended: an
     # isolated station gets its point back). Internal callers (restore, channel juggling)
     # pass plain `enabled` and never carry `auto`, so the flag is left alone there.
-    auto = config.get("auto")
+    # internal callers (restore, lowering for a client attempt) pass the whole stored
+    # config back — get_ap_config carries `auto` these days, but only the OPERATOR'S Save
+    # may touch the watchdog flag or demand a proving test start
+    auto = config.get("auto") if intent else None
     if intent:
         # the operation trail (never the password); internal juggling (intent=False) is
         # not an operator action and stays out of the journal
@@ -3182,7 +3267,11 @@ def set_ap(config, status_cb=None, intent=True):
     created_ap = False        # a profile we add now must be removed again if the start fails
 
     verr = None
-    if not get_country():
+    # No region gates BRINGING UP a silent point. A point already on the air runs in the
+    # world domain ("00") legitimately — a limited mode, 2.4 GHz ch 1-11 — and its profile
+    # must stay editable there; the channel check below still holds the world-safe line
+    # (ap_channel_ok reads the adapter's table for the domain in effect).
+    if not get_country() and not was_ap_active and intent:
         verr = "Access Point mode requires a WiFi region (country)"
     security = config.get("security", AP_DEFAULTS["security"])
     if security not in _AP_KEY_MGMT:
@@ -3222,9 +3311,14 @@ def set_ap(config, status_cb=None, intent=True):
             verr = verr or ("Channel {} is not available for the access point in region {} — "
                             "choose another channel or Auto".format(chan_req, cc))
     # arming auto saves the profile the watchdog will later raise, and test-starts it
-    # below — both need settings as valid as an actual start does
+    # below — both need settings as valid as an actual start does. Validation is the
+    # operator's gate only: an internal restore puts back what was there, and refusing it
+    # would strand the station without its point (the kernel still holds the legal line —
+    # a start the domain forbids simply fails and rolls back).
     if (enabled or auto) and verr:
-        raise WifiError(verr)
+        if intent:
+            raise WifiError(verr)
+        log.warning("internal set_ap proceeds despite: %s", verr)
 
     # The access point needs its own interface before a profile can point at it. Only when
     # actually starting it (or test-starting for 'auto'): saving settings with the control
@@ -3357,6 +3451,10 @@ def set_ap(config, status_cb=None, intent=True):
     if intent:
         log.info("wifi: access point %s", "up" if enabled
                  else ("down, watchdog armed" if auto else "down"))
+    else:
+        # internal juggling (lowering for a client attempt, restoring after a failure)
+        # moves the point underneath an open dialog — push the fresh state to it
+        _notify_ap_changed()
     return get_ap_config()
 
 
@@ -3379,6 +3477,10 @@ def set_ap_auto(on):
     due, so a plain toggle answers with one ap-config and nothing else.
     """
     if on:
+        if wifi_iface_ap_channel():
+            raise WifiError("The access point is running on {} (single-interface mode) — "
+                            "client connections and Auto-start are unavailable"
+                            .format(WIFI_IFACE))
         if not _ap_ref():
             raise WifiError("Auto mode needs a saved access point — "
                             "set up and save the access point first")

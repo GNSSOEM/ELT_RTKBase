@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..9f3c442 100644
+index 5b64baa..90ed904 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..9f3c442 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1592 @@ $(document).ready(function () {
+@@ -758,5 +960,1654 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1127,7 +1127,9 @@ index 5b64baa..9f3c442 100644
 +        var cSel = $('#wifi-ap-channel');
 +        if (band === 'all') {
 +            cSel.prop('disabled', true).html('<option value="0">Auto</option>');
-+            $('#wifi-ap-chan-warn').hide();
++            $('#wifi-ap-chan-warn').text('').hide();
++            wifiApRadioLock();
++            wifiApOneVoice();
 +            return;
 +        }
 +        cSel.prop('disabled', !!wifi.apFormLock);
@@ -1148,7 +1150,7 @@ index 5b64baa..9f3c442 100644
 +                'available on this adapter in the current region — the access point cannot start on it. ' +
 +                'Pick another channel or Auto.').show();
 +        } else {
-+            $('#wifi-ap-chan-warn').hide();
++            $('#wifi-ap-chan-warn').text('').hide();
 +        }
 +        // Outdoor station and the regulator leaves nothing usable in this band: say so instead
 +        // of showing a picker with only "Auto" in it.
@@ -1164,8 +1166,43 @@ index 5b64baa..9f3c442 100644
 +                ' GHz in region ' + (cc || '—') + ' — this station is configured as outdoor. ' +
 +                'Use the other band.').show();
 +        } else {
-+            $('#wifi-ap-outdoor-note').hide();
++            $('#wifi-ap-outdoor-note').text('').hide();
 +        }
++        wifiApRadioLock();
++        wifiApOneVoice();
++    }
++
++    function wifiApRadioLock() {
++        // решение по п.52: при живом клиентском подключении выбор диапазона/канала
++        // иллюзорен — точка следует за клиентом; селекторы блокируются с текущими
++        // значениями (Save их не теряет), выбор возвращается без клиента
++        var conn = (wifi.list && wifi.list.connected) || [];
++        var lock = !!conn.length && !wifi.apFormLock;
++        $('#wifi-ap-band').prop('disabled', lock || !!wifi.apFormLock);
++        if ($('#wifi-ap-band').val() !== 'all') {
++            $('#wifi-ap-channel').prop('disabled', lock || !!wifi.apFormLock);
++        }
++        var chTxt = conn.length && conn[0].chan
++            ? (conn[0].band ? conn[0].band + ' GHz ch ' + conn[0].chan : 'ch ' + conn[0].chan)
++            : '';
++        $('#wifi-ap-radio-lock-note').text(lock
++            ? 'A network is connected' + (chTxt ? ' on ' + chTxt : '')
++              + ' — the access point follows its channel. Band and channel unlock when '
++              + 'nothing is connected.'
++            : '');
++    }
++
++    function wifiApOneVoice() {
++        // п.87: канальные строки говорили хором, местами противоречиво — в форме звучит
++        // ОДНА, по приоритету; фактический канал всегда виден в лампе шапки
++        var order = ['#wifi-ap-illegal', '#wifi-ap-chan-warn', '#wifi-ap-outdoor-note',
++                     '#wifi-ap-radio-lock-note', '#wifi-ap-channel-note', '#wifi-ap-air'];
++        var winner = null;
++        order.forEach(function (id) {
++            var el = $(id);
++            if (!winner && el.text().trim()) { winner = id; el.show(); }
++            else el.hide();
++        });
 +    }
 +
 +    // ---- rendering ----
@@ -1355,7 +1392,8 @@ index 5b64baa..9f3c442 100644
 +        // natively disable the mode control too — pointer-events on the card is not enough
 +        // (e.g. a stale status), and a disabled input can't open the form; the .disabled
 +        // class both greys the buttons and makes the buttons plugin ignore the click
-+        $('#wifi-ap-switch, #wifi-ap-auto-switch').prop('disabled', apGate);
++        $('#wifi-ap-switch').prop('disabled', apGate);
++        $('#wifi-ap-auto-switch').prop('disabled', apGate || !!wifi.apSingleIface);
 +        // No region while the card itself stays usable (a live AP keeps beaconing on its
 +        // old channel, or the form was opened before the region got unset): the form is
 +        // VIEW-ONLY — an AP can't be (re)configured without a regulatory domain, so every
@@ -1363,14 +1401,22 @@ index 5b64baa..9f3c442 100644
 +        // (turning the AP off is the way out of this state) and the password eye (reading
 +        // the key of the still-running AP). Applied on state CHANGE only, so the blanket
 +        // enable/disable doesn't fight wifiRepopRadio's own Mode/Channel handling.
-+        var apFormLock = !hasCountry;
++        // a live point without a region runs in the world domain — a limited but real
++        // mode, so its profile stays editable (решение по п.80); only a SILENT point
++        // with no region keeps the view-only lock
++        var apFormLock = !hasCountry && !apOn;
 +        if (apFormLock !== !!wifi.apFormLock) {
 +            wifi.apFormLock = apFormLock;
 +            $('#wifi-ap-body').find('input, select, button').not('#wifi-ap-eye')
 +                .prop('disabled', apFormLock);
 +            if (!apFormLock) wifiRepopRadio();   // restore the band-derived Auto states
 +        }
-+        $('#wifi-ap-need-region').toggle(!hasCountry && radioOn);
++        $('#wifi-ap-need-region')
++            .text(apOn
++                ? 'No WiFi region is selected — the access point runs in the limited '
++                  + 'world-safe mode (2.4 GHz ch 1–11). Select a region above for the full choice.'
++                : '⚠ Access Point mode requires a WiFi region (country) — select it above.')
++            .toggle(!hasCountry && radioOn);
 +        // Only the radio being off (or no adapter) blocks a rescan: the access point lives
 +        // on its own interface, so scanning works while it runs — same rule as the
 +        // 'wifi list' handler, or the button would flip with whichever event came last.
@@ -1492,7 +1538,11 @@ index 5b64baa..9f3c442 100644
 +        wifi.apConfigured = !!cfg.configured;
 +        wifi.apOnAir = !!cfg.on_air;
 +        wifi.apRaisedByAuto = !!cfg.raised_by_auto;
++        wifi.apSingleIface = !!cfg.single_iface;
 +        wifi.apPendingAuto = false;   // the form mirrors the stored config again
++        // single-interface legacy (the point runs on wlan0 itself): Auto-start cannot work
++        // there — the switch is disabled, the note below says which mode this is
++        $('#wifi-ap-auto-switch').prop('disabled', !!cfg.single_iface);
 +        wifiApSyncSwitches();
 +        // the on-air lamp never disappears: green while the beacon is up (with where it
 +        // is), quiet outlined "Off air" while it is not — a state, not a decoration
@@ -1511,6 +1561,10 @@ index 5b64baa..9f3c442 100644
 +                .attr('title', 'The access point is not broadcasting');
 +        }
 +        $('#wifi-ap-byauto').toggle(!!(cfg.on_air && cfg.raised_by_auto));
++        // a live point that will not come back by itself (autoconnect off — the watchdog's
++        // point, or NM cleared the flag after failures): say so instead of hiding it in
++        // the switch position (п.81 made the switch follow the air)
++        $('#wifi-ap-noautoconnect').toggle(!!(cfg.on_air && cfg.configured && !cfg.autoconnect));
 +        wifi.apStoredChannel = +(cfg.channel || 0);   // drives the not-available flag below
 +        wifi.apStoredBand = cfg.band || 'all';
 +        wifiRepopRadio();
@@ -1779,6 +1833,9 @@ index 5b64baa..9f3c442 100644
 +        wifi.list = list;
 +        wifiRenderList();
 +        wifiApplyGates();
++        // the client link state feeds the band/channel lock (п.52) and the verdict line
++        wifiApRadioLock();
++        wifiApOneVoice();
 +        // Rescan works with the point up: it runs on its own interface, the client one can
 +        // still scan. Only the radio being off leaves nothing to scan with.
 +        $('#wifi-rescan-button').prop('disabled', !list.radio);
@@ -2076,7 +2133,10 @@ index 5b64baa..9f3c442 100644
 +        // one quiet informational line under the card header; never an error tone —
 +        // "auto on, nothing saved yet" is a normal state on a freshly provisioned station
 +        var note = '';
-+        if (wifi.apPendingAuto) {
++        if (wifi.apSingleIface) {
++            note = 'The access point is running on wlan0 (single-interface mode) — '
++                 + 'client connections and Auto-start are unavailable.';
++        } else if (wifi.apPendingAuto) {
 +            note = 'Auto-start will be armed when you press Save below.';
 +        } else if (wifi.apStoredAuto && !wifi.apConfigured) {
 +            note = 'Auto-start is on, but not active yet — set up and Save the access point '
@@ -2112,7 +2172,9 @@ index 5b64baa..9f3c442 100644
 +            wifiApSyncSwitches();
 +        };
 +        if (enabled || auto) {
-+            if (!(wifi.status && wifi.status.country)) {
++            // a live point is legitimately editable with no region (limited world-safe
++            // mode) — the gate is only for bringing up a silent one
++            if (!(wifi.status && wifi.status.country) && !wifi.apOnAir) {
 +                return reject('Select a WiFi region (country) for the access point');
 +            }
 +            if (!wifiValidateStatic({ip: 'wifi-ap-ip', mask: 'wifi-ap-mask', err: 'wifi-ap-ip-err', selfDevice: 'ap0'})) {

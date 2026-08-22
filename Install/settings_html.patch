@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..c44be34 100644
+index 9690796..ef6532d 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,55 @@
@@ -808,7 +808,7 @@ index 9690796..c44be34 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1259,323 @@
+@@ -794,12 +1259,327 @@
    </div>
  </div>
  
@@ -909,6 +909,9 @@ index 9690796..c44be34 100644
 +              <span class="badge badge-info wifi-badge ml-1" id="wifi-ap-byauto" style="display:none"
 +                    data-toggle="tooltip" data-placement="bottom" data-trigger="hover" data-container="body"
 +                    title="Auto-start raised this access point because the station was left without a network. It goes down by itself once the station is back online.">auto-started</span>
++              <span class="badge badge-warning wifi-badge ml-1" id="wifi-ap-noautoconnect" style="display:none"
++                    data-toggle="tooltip" data-placement="bottom" data-trigger="hover" data-container="body"
++                    title="The access point profile has auto-connect off: NetworkManager will not bring it back by itself after a reboot or a failure. Auto-start (when on) still can. Save with the switch on to make the point permanent.">Auto-connect off</span>
 +            </div>
 +            <div class="custom-control custom-switch" data-toggle="tooltip" data-placement="bottom"
 +                 data-trigger="hover" data-container="body"
@@ -980,6 +983,7 @@ index 9690796..c44be34 100644
 +            <!-- shown when the stored profile pins a channel the adapter cannot beacon on
 +                 (typically inherited from provisioning or an import) -->
 +            <small class="text-warning" id="wifi-ap-chan-warn" style="display:none"></small>
++            <small class="text-muted" id="wifi-ap-radio-lock-note" style="display:none"></small>
 +            <!-- station declared outdoor in settings.conf and the regulator leaves no usable
 +                 channel in the selected band -->
 +            <small class="text-warning" id="wifi-ap-outdoor-note" style="display:none"></small>
