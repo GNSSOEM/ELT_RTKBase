@@ -40,48 +40,6 @@ CheckAp0(){
    fi
 }
 
-wifi_rescan()
-{
-    local iface="wlan0"
-    local ssid="$1"
-    local dev old_scan new_scan
-    local i
-
-    dev=$(busctl call \
-        org.freedesktop.NetworkManager \
-        /org/freedesktop/NetworkManager \
-        org.freedesktop.NetworkManager \
-        GetDeviceByIpIface s "$iface" |
-        awk '{print $2}' | tr -d '"') || return 1
-
-    old_scan=$(busctl get-property \
-        org.freedesktop.NetworkManager \
-        "$dev" \
-        org.freedesktop.NetworkManager.Device.Wireless \
-        LastScan |
-        awk '{print $2}') || return 1
-
-    nmcli device wifi rescan ifname "$iface" ssid "$ssid" || return 1
-
-    for ((i=0; i<100; i++)); do
-        new_scan=$(busctl get-property \
-            org.freedesktop.NetworkManager \
-            "$dev" \
-            org.freedesktop.NetworkManager.Device.Wireless \
-            LastScan |
-            awk '{print $2}') || return 1
-
-        if (( new_scan > old_scan )); then
-            return 0
-        fi
-
-        sleep 0.1
-    done
-
-    echo "Wi-Fi scan timeout"
-    return 1
-}
-
 WPS() {
   nm-online -s >/dev/null
   HAVE_INTERNET=`nmcli networking connectivity check`
@@ -252,7 +210,9 @@ if [[ -n "${SSID}" ]]; then
           nmcli connection delete id ${old_ssid_name}
           ExitCodeCheck $?
       done
-      wifi_rescan "${SSID}"
+      #echo iw dev wlan0 scan flush ssid "${SSID}" >/dev/null
+      iw dev wlan0 scan flush ssid "${SSID}" >/dev/null
+      ExitCodeCheck $?
       #echo nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool}
       nmcli device wifi connect "${SSID}" password "${KEY}" name ${SSIDprinted} ifname wlan0 hidden ${HIDbool} | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
       ExitCodeCheck $?

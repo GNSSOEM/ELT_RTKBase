@@ -257,14 +257,18 @@ _last_interfaces = None
 
 def capability():
     """What is available on this host; drives soft degradation in the UI."""
-    cap = {"nm": False, "nm_running": False, "iw": bool(shutil.which("iw")),
+    # "installed" and "running" are different diagnoses (п.96): the client's own scripts
+    # stop NetworkManager for a while, and the dialog used to blame the OS for it
+    cap = {"nm": bool(shutil.which("nmcli")), "nm_running": False,
+           "iw": bool(shutil.which("iw")),
            "raspi_config": bool(shutil.which("raspi-config")), "reason": None}
     try:
         nmcli.device()          # cheap round-trip through the nmcli binary
         cap["nm"] = True
         cap["nm_running"] = True
     except Exception as e:
-        cap["reason"] = "NetworkManager is not available: {}".format(e)
+        cap["reason"] = ("NetworkManager is not running: {}".format(e) if cap["nm"]
+                         else "NetworkManager is not available: {}".format(e))
     return cap
 
 
@@ -3273,6 +3277,14 @@ def set_ap(config, status_cb=None, intent=True):
     # (ap_channel_ok reads the adapter's table for the domain in effect).
     if not get_country() and not was_ap_active and intent:
         verr = "Access Point mode requires a WiFi region (country)"
+    # п.90: outdoor-станция в регионе, где регулятор метит ВСЕ диапазоны indoor-only (ID) —
+    # включать точку нельзя ни на каком канале, и Auto не лазейка: ядро наш outdoor-флаг не
+    # знает и подняло бы маяк на канале, запрещённом политикой станции. Гейт операторский:
+    # выключение и внутренние возвраты (intent=False) проходят как всегда.
+    if intent and (enabled or auto) and not verr and outdoor_nowhere():
+        verr = ("In region {} the regulator marks every band indoor-only, and this station "
+                "is configured as outdoor — an access point cannot run here at all. "
+                "Client connections are not affected.".format(get_country() or "00"))
     security = config.get("security", AP_DEFAULTS["security"])
     if security not in _AP_KEY_MGMT:
         verr = verr or "Unsupported AP security: {}".format(security)

@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..90ed904 100644
+index 5b64baa..da8c2c5 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..90ed904 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1654 @@ $(document).ready(function () {
+@@ -758,5 +960,1698 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1128,6 +1128,17 @@ index 5b64baa..90ed904 100644
 +        if (band === 'all') {
 +            cSel.prop('disabled', true).html('<option value="0">Auto</option>');
 +            $('#wifi-ap-chan-warn').text('').hide();
++            // outdoor-nowhere не зависит от диапазона — пересчитываем и здесь, иначе
++            // надпись залипает после правки конфига (п.93) и не появляется при Auto (п.90)
++            if (wifi.status && wifi.status.outdoor_nowhere) {
++                $('#wifi-ap-outdoor-note').text('In region '
++                    + ((wifi.status && wifi.status.country) || '—') + ' the regulator marks '
++                    + 'every band indoor-only, and this station is configured as outdoor — an '
++                    + 'access point cannot run here at all. Client connections are not affected.')
++                    .show();
++            } else {
++                $('#wifi-ap-outdoor-note').text('').hide();
++            }
 +            wifiApRadioLock();
 +            wifiApOneVoice();
 +            return;
@@ -1477,6 +1488,21 @@ index 5b64baa..90ed904 100644
 +
 +    function wifiRenderApForm(cfg) {
 +        wifi.updating = true;
++        try {
++            wifiRenderApFormBody(cfg);
++        } catch (e) {
++            // 89-повтор: исключение посреди рендера оставляло уже показанные строки без
++            // финального вердикта (хор) и глушило форму зависшим updating — падать молча
++            // нельзя, а вердикт и разблокировка обязаны случиться при любом исходе
++            if (window.console && console.error) console.error('AP form render failed:', e);
++        } finally {
++            wifiApOneVoice();
++            wifi.updating = false;
++            wifi.apDirty = false;   // the form now mirrors the stored config — nothing to lose
++        }
++    }
++
++    function wifiRenderApFormBody(cfg) {
 +        $('#wifi-ap-ssid').val(cfg.ssid);
 +        $('#wifi-ap-sec').val(wifiRepopApSecurity(cfg.security));
 +        // Show the stored key only under the CSS masking (type=text — invisible to the
@@ -1514,8 +1540,15 @@ index 5b64baa..90ed904 100644
 +        // move a running point.
 +        $('#wifi-ap-illegal')
 +            .text(cfg.channel_illegal
-+                ? 'Not allowed here: ' + cfg.channel_illegal
-+                  + '. Pick another channel or Auto and save.' : '')
++                ? (+(cfg.channel || 0) === 0
++                    // канал выбирал не оператор (Auto): совет «выберите Auto» абсурден —
++                    // говорим честно, что поднялась вопреки политике и как из этого выйти
++                    ? 'The point came up on a channel this station\u2019s policy does not allow ('
++                      + cfg.channel_illegal + '). Switch the point off, set an allowed channel '
++                      + 'explicitly, or adjust the region / outdoor setting.'
++                    : 'Not allowed here: ' + cfg.channel_illegal
++                      + '. Pick another channel or Auto and save.')
++                : '')
 +            .toggle(!!cfg.channel_illegal);
 +        $('#wifi-ap-channel-note')
 +            .text(cfg.channel_active ? 'The access point currently runs on ' + cfg.channel_active
@@ -1572,8 +1605,6 @@ index 5b64baa..90ed904 100644
 +        // persistent start-failure line (survives the toast and a dialog reopen)
 +        $('#wifi-ap-last-err').text(cfg.last_error ? 'Access point failed to start: ' + cfg.last_error : '')
 +            .toggle(!!cfg.last_error);
-+        wifi.updating = false;
-+        wifi.apDirty = false;   // the form now mirrors the stored config — nothing to lose
 +    }
 +
 +    function wifiGatherApForm(enabled) {
@@ -1792,14 +1823,21 @@ index 5b64baa..90ed904 100644
 +    // ---- socket handlers ----
 +    socket.on('wifi status', function (status) {
 +        wifi.status = status;
-+        if (status.capability && !status.capability.nm) {
-+            $('#wifiModal .modal-body').children().hide();
++        if (status.capability && !status.capability.nm_running) {
++            // remember what WE hid, so NetworkManager coming back can restore exactly it
++            // (a blanket .show() would also reveal notes that are hidden by design)
++            $('#wifiModal .modal-body').children(':visible').addClass('wifi-nm-hid').hide();
 +            // Export/Import live in the footer (outside .modal-body) — hide them too:
 +            // there is nothing to back up or restore without NetworkManager. Close stays.
 +            $('#wifi-backup-button, #wifi-import-button').hide();
 +            if (!$('#wifi-no-nm').length) {
-+                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning">WiFi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.</div>');
++                $('#wifiModal .modal-body').append('<div id="wifi-no-nm" class="alert alert-warning"></div>');
 +            }
++            // п.96: NM, остановленный чужим скриптом, — не «не та ОС»; и баннер снимается
++            // сам, когда NM возвращается (см. ветку восстановления ниже)
++            $('#wifi-no-nm').text(status.capability.nm
++                ? 'NetworkManager is not running — Wi-Fi settings will return when it is back. The interfaces below are read from the kernel.'
++                : 'WiFi settings are not available on this OS (NetworkManager is required) — use Debian 12 or 13.');
 +            // every status event re-runs the children().hide() above, which also hides the
 +            // alert appended on a PREVIOUS event (reopening the dialog requests a fresh
 +            // status) — re-show it explicitly or the second open ends up an empty dialog
@@ -1809,6 +1847,12 @@ index 5b64baa..90ed904 100644
 +            wifiRenderIfaces();
 +            $('#wifi-ifaces').show();
 +            return;
++        }
++        // NM вернулся после остановки — вернуть спрятанное и убрать баннер (п.96)
++        if ($('#wifi-no-nm').length && $('#wifi-no-nm').is(':visible')) {
++            $('#wifi-no-nm').hide();
++            $('#wifiModal .modal-body').children('.wifi-nm-hid').removeClass('wifi-nm-hid').show();
++            $('#wifi-backup-button, #wifi-import-button').show();
 +        }
 +        wifiRenderIfaces();
 +        wifi.updating = true;
