@@ -143,8 +143,8 @@ $white▐█$purpple   WPA Key:$yellow $wpakey$nocolour"
                 echo -e "$white▐█$purpple   Exporting profile for$yellow $essid$purpple to Network Manager$nocolour"
                 already=$(nmcli --get-values NAME connection show | grep "$essid")
                 [[ "$already" != "" ]] && nmcli connection delete id "$essid"
-                nmcli con add con-name "$essid" ifname "$interface" type wifi ssid "$essid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wpakey"
-                #nmcli con modify "$essid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wpakey"
+                SSIDprinted=WiFi_$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+                nmcli con add con-name "${SSIDprinted}" ifname "$interface" type wifi ssid "$essid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wpakey"
                 echo -e "$white▐█$purpple   Cleaning temporary files"
                 rm -r /tmp/interfaces.txt /tmp/PBC.conf  
                 echo -e "$white▐█$purpple   Connecting to the network with Network Manager$nocolour"

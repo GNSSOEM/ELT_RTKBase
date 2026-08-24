@@ -1,8 +1,8 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..ef6532d 100644
+index 9690796..c7a2b25 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
-@@ -10,7 +10,55 @@
+@@ -10,7 +10,63 @@
  }
  </style>
  <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap4-toggle-3.7.1-beta.css') }}">
@@ -55,11 +55,19 @@ index 9690796..ef6532d 100644
 +#wifi-ap-onair.wifi-offair { background: transparent; color: #6c757d; border: 1px solid #ced4da; }
 +#wifiModal .bootstrap-select .dropdown-menu { z-index: 1080; }
 +#wifiApOnNote, #wifiHiddenNote { display: none; }
++/* hideable note lines: block layout WITHOUT !important — bootstrap's d-block
++   (display:block !important) used to defeat jQuery .hide(), so the one-voice verdict
++   could never actually hide these lines and they showed as a chorus */
++#wifiModal .wifi-note { display: block; }
++/* AP card header on narrow screens: the badge strip wraps UNDER the switch as whole
++   badges (they were escaping the modal), with a small vertical rhythm between rows */
++#wifiModal .wifi-ap-head { row-gap: .3rem; }
++#wifiModal .wifi-ap-head > div { row-gap: .3rem; }
 +</style>
  {% endblock %}
  
  {% block content %}
-@@ -28,6 +76,7 @@
+@@ -28,6 +84,7 @@
          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
        </svg>
      </a>
@@ -67,7 +75,7 @@ index 9690796..ef6532d 100644
      </div>
    </div>
        <form id="{{ main_settings.pop(0).source_section }}" class="collapse was-validated">
-@@ -35,7 +84,7 @@
+@@ -35,7 +92,7 @@
          <div class="form-group row">
          <label for="position" class="col-sm-3 col-form-label">Base coordinates: </label>
          <div class="col-sm-9">
@@ -76,7 +84,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="positionHelp">Antenna's coordinates: latitude (decimal degree) longitude (decimal degree) elevation (meter)</small>
          </div>
      </div>
-@@ -72,6 +121,15 @@
+@@ -72,6 +129,15 @@
  
          </div>
      </div>
@@ -92,7 +100,7 @@ index 9690796..ef6532d 100644
      <div class="form-group row">
  
          <label for="receiver_format" class="col-sm-3 col-form-label">Receiver format: </label>
-@@ -86,16 +144,15 @@
+@@ -86,16 +152,15 @@
  
        <label for="antenna_info" class="col-sm-3 col-form-label">Antenna info: </label>
        <div class="col-sm-9">
@@ -112,7 +120,7 @@ index 9690796..ef6532d 100644
              <div class="col-sm-9">
                <input id="tcp_host-switch" type="text" name="host_addr" class="form-control" aria-describedby="tcp_hostHelp" placeholder="127.0.0.1" value="{{ main_settings[7].tcp_host_addr }}">
                <small class="form-text text-muted" id="tcp_hostHelp">Empty value enable external access to the Gnss receiver from another computer. Default is 127.0.0.1 (no external access)</small>
-@@ -113,7 +170,7 @@
+@@ -113,7 +178,7 @@
  
      </div>
            <div class="clearfix">
@@ -121,7 +129,7 @@ index 9690796..ef6532d 100644
            </div>
        </form>
  
-@@ -123,19 +180,34 @@
+@@ -123,19 +188,34 @@
      <label for="ntrip_A-switch" class="col-4 col-form-label col-form-label-lg">Ntrip A service</label>
      <input id="ntrip_A-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_A_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_A_service_options">Options</button>
@@ -158,7 +166,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="svr_addr_AHelp">Caster url address</small>
          </div>
        </div>
-@@ -146,11 +218,18 @@
+@@ -146,11 +226,18 @@
              <small class="form-text text-muted" id="svr_port_AHelp">Caster port</small>
          </div>
        </div>
@@ -179,7 +187,7 @@ index 9690796..ef6532d 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_A_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -164,24 +243,24 @@
+@@ -164,24 +251,24 @@
              <small class="form-text text-muted" id="svr_pwd_AHelp">Caster password</small>
          </div>
        </div>
@@ -210,7 +218,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="ntrip_A_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -197,19 +276,34 @@
+@@ -197,19 +284,34 @@
      <label for="ntrip_B-switch" class="col-4 col-form-label col-form-label-lg">Ntrip B service</label>
      <input id="ntrip_B-switch" type="checkbox" data-toggle="toggle" data-onstyle="success" data-offstyle="outline-secondary">
      <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#{{ ntrip_B_settings[0].source_section }}" aria-expanded="false" aria-controls="ntrip_B_service_options">Options</button>
@@ -247,7 +255,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="svr_addr_BHelp">Caster url address</small>
          </div>
        </div>
-@@ -220,11 +314,18 @@
+@@ -220,11 +322,18 @@
              <small class="form-text text-muted" id="svr_port_BHelp">Caster port</small>
          </div>
        </div>
@@ -268,7 +276,7 @@ index 9690796..ef6532d 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="svr_pwd_B_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -238,24 +339,24 @@
+@@ -238,24 +347,24 @@
              <small class="form-text text-muted" id="svr_pwd_BHelp">Caster password</small>
          </div>
        </div>
@@ -299,7 +307,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="ntrip_B_receiver_optionsHelp">Receiver dependent options, e.g. -TADJ=1 for U-Blox F9P</small>
          </div>
        </div>      
-@@ -265,6 +366,294 @@
+@@ -265,6 +374,294 @@
          </div>
      </form>
  
@@ -594,7 +602,7 @@ index 9690796..ef6532d 100644
    <!-- ######## Local Ntrip Caster Service ########-->
    <div id="local_ntripc_service_space" class="form-group row">
      <div class="col">
-@@ -291,7 +680,7 @@
+@@ -291,7 +688,7 @@
          <label for="local_ntripc_pwd" class="col-sm-3 col-form-label">Local caster password: </label>
          <div class="col-sm-9">
            <div class="input-group">
@@ -603,7 +611,7 @@ index 9690796..ef6532d 100644
                <span class="input-group-append">
                  <button class="btn btn-outline-secondary" id="local_ntripc_pwd_button" type="button">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16">
-@@ -322,7 +711,7 @@
+@@ -322,7 +719,7 @@
        <div class="form-group row">
          <label for="local_ntripc_msg" class="col-sm-3 col-form-label">Local caster rtcm messages: </label>
          <div class="col-sm-9">
@@ -612,7 +620,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="local_ntripc_msgHelp">Local caster Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -361,10 +750,10 @@
+@@ -361,10 +758,10 @@
              <small class="form-text text-muted" id="rtcm_svr_portHelp">Rtcm server port</small>
          </div>
        </div>
@@ -625,7 +633,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="rtcm_svr_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -413,7 +802,7 @@
+@@ -413,7 +810,7 @@
        <div class="form-group row">
          <label for="rtcm_serial_msg" class="col-sm-3 col-form-label">Serial Rtcm messages: </label>
          <div class="col-sm-9">
@@ -634,7 +642,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="rtcm_serial_msgHelp">Rtcm messages list: msg(interval in seconds),msg(interval in seconds),...</small>
          </div>
        </div>
-@@ -448,7 +837,7 @@
+@@ -448,7 +845,7 @@
        <div class="form-group row">
          <label for="datadir" class="col-sm-3 col-form-label">Data directory: </label>
          <div class="col-sm-9">
@@ -643,7 +651,7 @@ index 9690796..ef6532d 100644
              <small class="form-text text-muted" id="datadirHelp">Absolute path to the directory where the data will be stored</small>
          </div>
        </div>
-@@ -479,6 +868,53 @@
+@@ -479,6 +876,53 @@
              <input id="archive_rotate" type="text" name="archive_rotate" class="form-control" aria-describedby="archive_rotateHelp" placeholder="60" value="{{ file_settings[4].archive_rotate }}" pattern="\d+" required>
              <small class="form-text text-muted" id="archive_rotateHelp">Archives older than this value (in days) will be deleted</small>
          </div>
@@ -697,7 +705,7 @@ index 9690796..ef6532d 100644
        </div>
          <div class="clearfix">
            <button type="submit" class="btn btn-primary float-right" disabled>Save</button>
-@@ -489,7 +925,7 @@
+@@ -489,7 +933,7 @@
      <h4> System Settings:</h4>
      <div class="row py-2 align-items-center">
          <div class="col-sm-4">
@@ -706,7 +714,7 @@ index 9690796..ef6532d 100644
          </div>
          <div class="col-sm-8">
              <button id="check_update_button" class="btn btn-secondary" type="button">Check update</button>
-@@ -511,17 +947,24 @@
+@@ -511,17 +955,24 @@
              </div>
            </div>
            -->      
@@ -733,7 +741,7 @@ index 9690796..ef6532d 100644
                  <div class="invalid-feedback">Confirm password</div>
              </div>
            </div>
-@@ -537,9 +980,9 @@
+@@ -537,9 +988,9 @@
        <span class="col-sm-3">Gnss receiver:</span>
      </div>
      <div class="col-sm-8">
@@ -746,7 +754,7 @@ index 9690796..ef6532d 100644
          {% endif %}
        </span>
      </div>
-@@ -600,8 +1043,8 @@
+@@ -600,8 +1051,8 @@
      <div class="col-sm-4">
        <span class="col-sm-3">Network:</span>
      </div>
@@ -757,7 +765,7 @@ index 9690796..ef6532d 100644
      </div>
    </div>
    
-@@ -621,11 +1064,32 @@
+@@ -621,11 +1072,32 @@
        <span class="col-sm-3">Diagnostic:</span>
      </div>
      <div class="col-sm-8">
@@ -791,7 +799,7 @@ index 9690796..ef6532d 100644
      <div class="row py-2 align-items-center">
        <div class="col-sm-4">
          <span class="col-sm-3">Power:</span>
-@@ -633,6 +1097,7 @@
+@@ -633,6 +1105,7 @@
        <div class="col-sm-8">
            <button id="reboot-button" class="btn btn-secondary" type="button">Reboot</button>
            <button id="shutdown-button" class="btn btn-secondary" type="button">Shutdown</button>
@@ -799,7 +807,7 @@ index 9690796..ef6532d 100644
        </div>
    </div>
      
-@@ -675,7 +1140,7 @@
+@@ -675,7 +1148,7 @@
          <!-- Modal footer -->
          <div class="modal-footer mx-auto">
            <button id="start-update-button" type="button" class="btn btn-success" disabled>Update</button>
@@ -808,7 +816,7 @@ index 9690796..ef6532d 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1259,327 @@
+@@ -794,12 +1267,327 @@
    </div>
  </div>
  
@@ -895,13 +903,13 @@ index 9690796..ef6532d 100644
 +
 +        <!-- Access Point mode -->
 +        <div class="card mt-2" id="wifi-ap-card">
-+          <div class="card-body py-2 d-flex align-items-center justify-content-between flex-wrap">
-+            <div class="d-flex align-items-center">
++          <div class="card-body py-2 d-flex align-items-center justify-content-between flex-wrap wifi-ap-head">
++            <div class="d-flex align-items-center flex-wrap">
 +              <div class="custom-control custom-switch" data-toggle="tooltip" data-placement="bottom"
 +                   data-trigger="hover" data-container="body"
 +                   title="The access point runs permanently while this is on. Turning it on starts the point with the settings below (Save). Turning it off stops the point immediately — the Auto switch is not affected.">
 +                <input type="checkbox" class="custom-control-input" id="wifi-ap-switch">
-+                <label class="custom-control-label font-weight-bold" for="wifi-ap-switch">Access Point mode</label>
++                <label class="custom-control-label font-weight-bold text-nowrap" for="wifi-ap-switch">Access Point mode</label>
 +              </div>
 +              <!-- the beacon's own lamp, always present: green "On air · <band> ch N" while
 +                   broadcasting (whoever raised it), outlined grey "Off air" while silent -->
@@ -989,10 +997,10 @@ index 9690796..ef6532d 100644
 +            <small class="text-warning" id="wifi-ap-outdoor-note" style="display:none"></small>
 +            <!-- one radio, one channel: a connected client network owns it and the point
 +                 follows; the picker states where the point goes once that link ends -->
-+            <small class="d-block mb-1" id="wifi-ap-air" style="display:none"></small>
-+            <small class="text-danger d-block mb-1" id="wifi-ap-illegal" style="display:none"></small>
-+            <small class="text-info d-block mb-1" id="wifi-ap-channel-note" style="display:none"></small>
-+            <small class="text-warning d-block mb-1" id="wifi-ap-yielded" style="display:none"></small>
++            <small class="wifi-note mb-1" id="wifi-ap-air" style="display:none"></small>
++            <small class="text-danger wifi-note mb-1" id="wifi-ap-illegal" style="display:none"></small>
++            <small class="text-info wifi-note mb-1" id="wifi-ap-channel-note" style="display:none"></small>
++            <small class="text-warning wifi-note mb-1" id="wifi-ap-yielded" style="display:none"></small>
 +            <div class="wifi-grp-title">Network</div>
 +            <div class="form-row">
 +              <div class="form-group col-sm-7">
@@ -1007,7 +1015,7 @@ index 9690796..ef6532d 100644
 +            <p class="text-danger mb-2" id="wifi-ap-ip-err" style="display:none"></p>
 +            <!-- the chosen subnet was taken by a network this station is on, so the access
 +                 point stands one block further; the address here comes back when it frees up -->
-+            <small class="text-warning d-block mb-2" id="wifi-ap-ip-moved" style="display:none"></small>
++            <small class="text-warning wifi-note mb-2" id="wifi-ap-ip-moved" style="display:none"></small>
 +            <div class="text-right">
 +              <button class="btn btn-primary" type="button" id="wifi-ap-save">Save</button>
 +            </div>
@@ -1060,7 +1068,7 @@ index 9690796..ef6532d 100644
 +            <option value="wep">WEP (legacy)</option>
 +            <option value="open">Open (no password)</option>
 +          </select>
-+            <small class="text-info d-block mb-1" id="wifi-cm-sec-detected" style="display:none"></small>
++            <small class="text-info wifi-note mb-1" id="wifi-cm-sec-detected" style="display:none"></small>
 +        </div>
 +        <div class="form-group" id="wifi-cm-pwd-field">
 +          <label class="mb-1" for="wifi-cm-pwd">Password</label>

@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..da8c2c5 100644
+index 5b64baa..c1af9d2 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..da8c2c5 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1698 @@ $(document).ready(function () {
+@@ -758,5 +960,1708 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -1211,8 +1211,18 @@ index 5b64baa..da8c2c5 100644
 +        var winner = null;
 +        order.forEach(function (id) {
 +            var el = $(id);
-+            if (!winner && el.text().trim()) { winner = id; el.show(); }
-+            else el.hide();
++            if (!winner && el.text().trim()) {
++                winner = id;
++                // clear our priority-hide first so the stylesheet lays the line out again
++                if (el[0]) el[0].style.removeProperty('display');
++                el.show();
++            } else {
++                el.hide();
++                // a utility class carrying display:...!important (bootstrap's d-block did)
++                // beats the plain inline none that hide() writes and the "hidden" line
++                // stays on screen — hide with priority so the verdict wins regardless
++                if (el[0]) el[0].style.setProperty('display', 'none', 'important');
++            }
 +        });
 +    }
 +
