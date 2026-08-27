@@ -1,7 +1,7 @@
 diff --git a/web_app/server.py b/web_app/server.py
 old mode 100755
 new mode 100644
-index e36bbc4..6512f4d
+index e36bbc4..0f8559f
 --- a/web_app/server.py
 +++ b/web_app/server.py
 @@ -33,6 +33,7 @@ monkey.patch_all()
@@ -23,7 +23,7 @@ index e36bbc4..6512f4d
  
  #print("Installing all required packages")
  #provisioner.provision_reach()
-@@ -99,9 +104,62 @@ rtk = RTKLIB(socketio,
+@@ -99,9 +104,65 @@ rtk = RTKLIB(socketio,
              log_path=app.config["DOWNLOAD_FOLDER"],
              )
  
@@ -47,7 +47,10 @@ index e36bbc4..6512f4d
 +            station_name = mountname
 +        else:
 +            primary_ip = network_infos.get_primary_ip()
-+            station_name = primary_ip
++            if primary_ip != "no_ip":
++                station_name = primary_ip
++            else:
++                station_name = hostname
 +
 +    #print("station_name=", station_name, "hostname=", hostname, "mountname=", mountname, "primary_ip=", primary_ip)
 +    return station_name
@@ -89,7 +92,7 @@ index e36bbc4..6512f4d
                   {"service_unit" : "str2str_local_ntrip_caster.service", "name" : "local_ntrip_caster"},
                   {"service_unit" : "str2str_rtcm_svr.service", "name" : "rtcm_svr"},
                   {'service_unit' : 'str2str_rtcm_serial.service', "name" : "rtcm_serial"},
-@@ -109,12 +167,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
+@@ -109,12 +170,14 @@ services_list = [{"service_unit" : "str2str_tcp.service", "name" : "main"},
                   {'service_unit' : 'rtkbase_archive.timer', "name" : "archive_timer"},
                   {'service_unit' : 'rtkbase_archive.service', "name" : "archive_service"},
                   {'service_unit' : 'rtkbase_raw2nmea.service', "name" : "raw2nmea"},
@@ -106,7 +109,7 @@ index e36bbc4..6512f4d
  
  class StandaloneApplication(gunicorn.app.base.BaseApplication):
      def __init__(self, app, options=None):
-@@ -217,9 +277,21 @@ def repaint_services_button(services_list):
+@@ -217,9 +280,21 @@ def repaint_services_button(services_list):
          result = exit-code or signal => red button (danger)
      """ 
      for service in services_list:
@@ -131,7 +134,7 @@ index e36bbc4..6512f4d
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_color"] = "warning"
-@@ -233,9 +305,8 @@ def repaint_services_button(services_list):
+@@ -233,9 +308,8 @@ def repaint_services_button(services_list):
          if service.get("state_ok") == False:
              service["btn_off_color"] = "outline-danger"
          elif service.get("state_ok") == True:
@@ -142,7 +145,7 @@ index e36bbc4..6512f4d
          if service.get("status") == "running":
              service["btn_color"] = "success"
          elif service.get("status") == "auto-restart":
-@@ -244,6 +315,10 @@ def repaint_services_button(services_list):
+@@ -244,6 +318,10 @@ def repaint_services_button(services_list):
              service["btn_off_color"] = "outline-secondary"
          elif service.get("result") == "exit-code" or service.get("result") == "signal":
              service["btn_off_color"] = "danger"
@@ -153,7 +156,7 @@ index e36bbc4..6512f4d
  
      return services_list
  
-@@ -407,13 +482,115 @@ def download_update(update_path):
+@@ -407,13 +485,115 @@ def download_update(update_path):
      else:
          return update_archive
  
@@ -270,7 +273,7 @@ index e36bbc4..6512f4d
      g.sbc_model = get_sbc_model()
  
  @login.user_loader
-@@ -442,7 +619,7 @@ def settings_page():
+@@ -442,7 +622,7 @@ def settings_page():
      if request.method == 'POST':
          uploaded_file = request.files['file']
          if uploaded_file.filename != '':
@@ -279,7 +282,7 @@ index e36bbc4..6512f4d
          else:
              print("wrong update file")
          return ('', 204)
-@@ -453,11 +630,20 @@ def settings_page():
+@@ -453,11 +633,20 @@ def settings_page():
                                              path=host_url.path,
                                              params=host_url.params, query=host_url.query,
                                              fragment=host_url.fragment)
@@ -300,7 +303,7 @@ index e36bbc4..6512f4d
      local_ntripc_settings = rtkbaseconfig.get_local_ntripc_settings()
      rtcm_svr_settings = rtkbaseconfig.get_rtcm_svr_settings()
      rtcm_client_settings = rtkbaseconfig.get_rtcm_client_settings()
-@@ -465,10 +651,21 @@ def settings_page():
+@@ -465,10 +654,21 @@ def settings_page():
      rtcm_udp_client_settings = rtkbaseconfig.get_rtcm_udp_client_settings()
      rtcm_serial_settings = rtkbaseconfig.get_rtcm_serial_settings()
      file_settings = rtkbaseconfig.get_file_settings()
@@ -322,7 +325,7 @@ index e36bbc4..6512f4d
                                              local_ntripc_settings = local_ntripc_settings,
                                              rtcm_svr_settings = rtcm_svr_settings,
                                              rtcm_client_settings = rtcm_client_settings,
-@@ -476,7 +673,9 @@ def settings_page():
+@@ -476,7 +676,9 @@ def settings_page():
                                              rtcm_udp_client_settings = rtcm_udp_client_settings,
                                              rtcm_serial_settings = rtcm_serial_settings,
                                              file_settings = file_settings,
@@ -333,7 +336,7 @@ index e36bbc4..6512f4d
  
  @app.route('/logs')
  @login_required
-@@ -528,13 +727,32 @@ def diagnostic():
+@@ -528,13 +730,32 @@ def diagnostic():
      """
      getServicesStatus()
      rtkbase_web_service = {'service_unit' : 'rtkbase_web.service', 'name' : 'RTKBase Web Server', 'active' : True}
@@ -368,7 +371,7 @@ index e36bbc4..6512f4d
                                   stdout=subprocess.PIPE,
                                   universal_newlines=True,
                                   check=False)
-@@ -542,7 +760,15 @@ def diagnostic():
+@@ -542,7 +763,15 @@ def diagnostic():
          #Replace carrier return to <br> for html view
          sysctl_status = html.escape(sysctl_status.stdout).replace('\n', '<br>')
          journalctl = html.escape(journalctl.stdout).replace('\n', '<br>')
@@ -385,7 +388,7 @@ index e36bbc4..6512f4d
          logs.append({'name' : service['service_unit'], 'active' : active_state, 'sysctl_status' : sysctl_status, 'journalctl' : journalctl})
          
      return render_template('diagnostic.html', logs = logs)
-@@ -553,26 +779,44 @@ def get_infos():
+@@ -553,26 +782,44 @@ def get_infos():
      """Small api route to get basic informations about the base station"""
  
      infos = {"app" : "RTKBase",
@@ -436,7 +439,7 @@ index e36bbc4..6512f4d
  @socketio.on("disconnect", namespace="/test")
  def clientDisconnect():
      global connected_clients
-@@ -609,6 +853,13 @@ def startBase():
+@@ -609,6 +856,13 @@ def startBase():
          result = {"result" : "failed"}
          socketio.emit("base starting", json.dumps(result), namespace="/test")
          return
@@ -450,7 +453,7 @@ index e36bbc4..6512f4d
      # We must start rtkcv before trying to modify an option
      rtk.startBase()
      saved_input_path = "localhost" + ":" + rtkbaseconfig.get("main", "tcp_port").strip("'")
-@@ -618,6 +869,9 @@ def startBase():
+@@ -618,6 +872,9 @@ def startBase():
      if rtk.get_rtkcv_option("inpstr1-format") != saved_input_type:
          rtk.set_rtkcv_option("inpstr1-format", saved_input_type)
          rtk.set_rtkcv_pending_refresh(True)
@@ -460,7 +463,7 @@ index e36bbc4..6512f4d
  
      if rtk.get_rtkcv_pending_status():
          print("REFRESH NEEDED !!!!!!!!!!!!!!!!")
-@@ -645,18 +899,21 @@ def deleteLog(json_msg):
+@@ -645,18 +902,21 @@ def deleteLog(json_msg):
  def detect_receiver(json_msg):
      print("Detecting gnss receiver")
      #print("DEBUG json_msg: ", json_msg)
@@ -486,7 +489,7 @@ index e36bbc4..6512f4d
              result.update(json_msg)
          except Exception:
              result = {"result" : "failed"}
-@@ -672,10 +929,20 @@ def detect_receiver(json_msg):
+@@ -672,10 +932,20 @@ def detect_receiver(json_msg):
  def apply_receiver_settings(json_msg):
      print("Applying gnss receiver new settings")
      print(json_msg)
@@ -509,7 +512,7 @@ index e36bbc4..6512f4d
  
      socketio.emit("gnss_settings_saved", json.dumps(json_msg), namespace="/test")
  
-@@ -693,8 +960,8 @@ def configure_receiver(brand="", model=""):
+@@ -693,8 +963,8 @@ def configure_receiver(brand="", model=""):
          restart_main = False
  
      print("configuring {} gnss receiver model {}".format(brand, model))
@@ -520,7 +523,7 @@ index e36bbc4..6512f4d
      #print("DEBUG - returncode: ", answer.returncode)
  
      if answer.returncode == 0: # and "Done" in answer.stdout:
-@@ -813,6 +1080,11 @@ def rebootRtkbase():
+@@ -813,6 +1083,11 @@ def rebootRtkbase():
      rtk.shutdown()
      #socketio.stop() hang. I disabled it
      #socketio.stop()
@@ -532,7 +535,7 @@ index e36bbc4..6512f4d
      subprocess.check_output("reboot")
  
  @socketio.on("shutdown device", namespace="/test")
-@@ -823,6 +1095,15 @@ def shutdownRtkbase():
+@@ -823,6 +1098,15 @@ def shutdownRtkbase():
      #socketio.stop()
      subprocess.check_output(["shutdown", "now"])
  
@@ -548,7 +551,7 @@ index e36bbc4..6512f4d
  @socketio.on("turn off wi-fi", namespace="/test")
  def turnOffWiFi():
      print("Turning off wi-fi")
-@@ -881,6 +1162,13 @@ def restartServices(restart_services_list=None):
+@@ -881,6 +1165,13 @@ def restartServices(restart_services_list=None):
                      rtk.stopBase()
                      service["unit"].restart()
                  else:
@@ -562,7 +565,7 @@ index e36bbc4..6512f4d
                      service["unit"].restart()
  
      #refresh service status
-@@ -904,7 +1192,12 @@ def getServicesStatus(emit_pingback=True):
+@@ -904,7 +1195,12 @@ def getServicesStatus(emit_pingback=True):
              #print("unit qui déconne : ", service["name"])
              service["active"] = service["unit"].isActive()
              service["status"] = service["unit"].status()
@@ -576,7 +579,7 @@ index e36bbc4..6512f4d
              if service.get("result") == "success" and service.get("status") == "running":
                  service["state_ok"] = True
              elif service.get("result") == "exit-code":
-@@ -913,7 +1206,10 @@ def getServicesStatus(emit_pingback=True):
+@@ -913,7 +1209,10 @@ def getServicesStatus(emit_pingback=True):
                  service["state_ok"] = None
  
          except Exception as e:
@@ -588,7 +591,7 @@ index e36bbc4..6512f4d
              pass
  
      services_status = []
-@@ -984,11 +1280,17 @@ def update_settings(json_msg):
+@@ -984,11 +1283,17 @@ def update_settings(json_msg):
  
          #Restart service if needed
          if source_section == "main":
@@ -607,7 +610,7 @@ index e36bbc4..6512f4d
          elif source_section == "local_ntrip_caster":
              restartServices(("local_ntrip_caster",))
          elif source_section == "rtcm_svr":
-@@ -1004,6 +1306,344 @@ def update_settings(json_msg):
+@@ -1004,6 +1309,344 @@ def update_settings(json_msg):
          elif source_section == "local_storage":
              restartServices(("file",))
  
@@ -952,20 +955,23 @@ index e36bbc4..6512f4d
  def arg_parse():
      parser = argparse.ArgumentParser(
          description="RTKBase Web server",
-@@ -1042,6 +1682,12 @@ if __name__ == "__main__":
+@@ -1042,6 +1685,15 @@ if __name__ == "__main__":
          manager_thread = Thread(target=manager, daemon=True)
          manager_thread.start()
  
 +        # Wi-Fi zone journal: the operation trail (INFO lines) must reach journald. The
 +        # root handler already exists — network_infos' basicConfig made it at import — so
 +        # raising this one logger is the whole configuration. Root itself stays at WARNING:
-+        # third-party INFO noise is not wanted.
-+        logging.getLogger("wifi_manager").setLevel(logging.INFO)
++        # third-party INFO noise is not wanted. [wifi] debug=true in wifi_manager.conf
++        # opens the DEBUG lines too (watchdog heartbeat, channel-follow decisions) —
++        # applied at service start, so a config edit takes effect on the next restart.
++        logging.getLogger("wifi_manager").setLevel(
++            logging.DEBUG if wifi_manager.station_flag("debug") else logging.INFO)
 +
          app.secret_key = rtkbaseconfig.get_secret_key()
          #socketio.run(app, host = "::", port = args.port or rtkbaseconfig.get("general", "web_port", fallback=80), debug=args.debug) # IPv6 "::" is mapped to IPv4
          gunicorn_options = {
-@@ -1051,6 +1697,12 @@ if __name__ == "__main__":
+@@ -1051,6 +1703,12 @@ if __name__ == "__main__":
          'worker_class': 'gevent',
          'graceful_timeout': 10,
          'loglevel': 'debug' if args.debug else 'warning',

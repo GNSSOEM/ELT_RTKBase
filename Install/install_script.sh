@@ -1589,6 +1589,27 @@ configure_settings(){
          fi
       fi
    fi
+   if ! grep -q "^ap_default_ip" ${WIFI_CONF}; then
+      cat <<"EOF" >>${WIFI_CONF}
+
+# Out-of-the-box settings of the access point, before the operator saves it once.
+# They pre-fill the form of a not-yet-created point, and a first Save with the key field
+# left untouched uses the default key. A fleet order can put its own address plan and key
+# here - one place to change, one set of values for the documentation. Once the point is
+# saved, its profile is the truth and these are not consulted again.
+ap_default_ip = 192.168.1.1
+ap_default_prefix = 24
+ap_default_password = 12345678
+
+# Extra journal detail for the Wi-Fi zone (DEBUG lines): the watchdog's periodic
+# "alive" heartbeat, channel-follow decisions during a connection attempt, and similar.
+# The operation trail itself (connections, the point rising and falling, losses and
+# recoveries) is always in the journal regardless of this switch. Applied when the web
+# service starts - edit, then restart the service.
+debug = false
+EOF
+      echo Add ap_default_ip to ${WIFI_CONF}
+   fi
    #echo chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
    chown ${RTKBASE_USER}:${RTKBASE_USER} ${WIFI_CONF}
    ExitCodeCheck $?

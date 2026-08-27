@@ -115,7 +115,6 @@ set_reg_domain(){
      if [[ "${#code2}" == "2" ]]; then
         #echo iw reg set "${code2}"
         iw reg set "${code2}"
-        ExitCodeCheck $?
         echo Wifi country temporaly set to ${code2} -- code ${exitcode}
      fi
   fi

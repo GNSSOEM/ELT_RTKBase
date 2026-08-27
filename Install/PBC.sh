@@ -141,14 +141,14 @@ $white▐█$purpple   WPA Key:$yellow $wpakey$nocolour"
                 echo -e "$white▐█$purpple   Restarting Newtork Manager$nocolour"
                 systemctl restart NetworkManager.service
                 echo -e "$white▐█$purpple   Exporting profile for$yellow $essid$purpple to Network Manager$nocolour"
-                already=$(nmcli --get-values NAME connection show | grep "$essid")
-                [[ "$already" != "" ]] && nmcli connection delete id "$essid"
-                SSIDprinted=WiFi_$(printf '%s' "${SSID}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+                SSIDprinted=WiFi_$(printf '%s' "${essid}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
+                already=$(nmcli --get-values NAME connection show | grep "${SSIDprinted}")
+                [[ "$already" != "" ]] && nmcli connection delete id "${SSIDprinted}"
                 nmcli con add con-name "${SSIDprinted}" ifname "$interface" type wifi ssid "$essid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wpakey"
                 echo -e "$white▐█$purpple   Cleaning temporary files"
                 rm -r /tmp/interfaces.txt /tmp/PBC.conf  
                 echo -e "$white▐█$purpple   Connecting to the network with Network Manager$nocolour"
-                nmcli connection up "$essid" || { echo -e "
+                nmcli connection up "${SSIDprinted}" || { echo -e "
 
 $red▐█   Error$nocolour -$yellow Conexion failure.$red Exit.$nocolour
    

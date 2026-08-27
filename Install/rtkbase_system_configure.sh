@@ -4,6 +4,7 @@
 #NEWCONF=system.txt
 NEWCONF=/boot/firmware/system.txt
 BASEDIR="$(dirname "$0")"
+WIFI_CONF="${BASEDIR}/rtkbase/wifi_manager.conf"
 HOTSPOT=Hotspot
 exitcode=0
 
@@ -40,6 +41,24 @@ CheckAp0(){
    fi
 }
 
+ap_default_ip=192.168.1.1
+ap_default_prefix=24
+ap_default_password=12345678
+source <( grep -v '^#' "${WIFI_CONF}" | grep '^ap_default_' | sed "s/ //g")
+
+CreateHotspot() {
+   CNT_HOTSPOT=`nmcli --fields NAME connection show | grep -c "^${HOTSPOT}"`
+   #echo CNT_HOTSPOT=${CNT_HOTSPOT}
+   if [[ "${CNT_HOTSPOT}" == "0" ]]; then
+      HOSTNAME=$(hostname)
+      #echo HOSTNAME=${HOSTNAME}
+      nmcli connection add type wifi ifname ap0 con-name ${HOTSPOT} mode ap autoconnect no ssid "${HOSTNAME}" \
+            ipv4.method shared ipv4.addresses "${ap_default_ip}/${ap_default_prefix}" \
+            wifi-sec.group ccmp wifi-sec.pairwise ccmp wifi-sec.proto rsn wifi-sec.key-mgmt wpa-psk wifi-sec.psk "${ap_default_password}"
+      ExitCodeCheck $?
+   fi
+}
+
 WPS() {
   nm-online -s >/dev/null
   HAVE_INTERNET=`nmcli networking connectivity check`
@@ -62,23 +81,15 @@ WPS() {
         HAVE_WIFI=`nmcli --get-values TYPE,AUTOCONNECT connection show  | grep -w "802-11-wireless:yes"`
         #echo HAVE_WIFI=${HAVE_WIFI}
         if [[ -z "${HAVE_WIFI}" ]]; then
-           HAVE_HOTSPOT=`nmcli  --fields NAME connection show | grep "^${HOTSPOT}"`
            CNT_HOTSPOT=`nmcli --fields NAME connection show | grep -c "^${HOTSPOT}"`
            #echo CNT_HOTSPOT=${CNT_HOTSPOT} HAVE_HOTSPOT=${HAVE_HOTSPOT}
-           if [[ "${CNT_HOTSPOT}" == "1" ]]; then
-              nmcli connection up id ${HAVE_HOTSPOT}
-              ExitCodeCheck $?
-           else
+           if [[ "${CNT_HOTSPOT}" != "1" ]]; then
               DeleteHotSpots
-              HOSTNAME=$(hostname)
-              #echo HOSTNAME=${HOSTNAME}
-              nmcli device wifi hotspot con-name ${HOTSPOT} ssid "${HOSTNAME}" password "12345678" ifname ap0 | sed -E $'s/\r//g; s/\x1B\\[[0-9;]*[[:alpha:]]//g'
-              ExitCodeCheck $?
-              nmcli connection modify id ${HOTSPOT} ipv4.addresses "192.168.1.1/24" connection.autoconnect no
-              ExitCodeCheck $?
-              nmcli connection up id ${HOTSPOT}
-              ExitCodeCheck $?
-          fi
+              CreateHotspot
+           fi
+           HAVE_HOTSPOT=`nmcli  --fields NAME connection show | grep "^${HOTSPOT}"`
+           nmcli connection up id ${HAVE_HOTSPOT}
+           ExitCodeCheck $?
         fi
      fi
   fi
@@ -119,6 +130,7 @@ then
 fi
 
 CheckAp0
+CreateHotspot
 
 PRECONFIGURED=preconfigured
 HAVE_PRECONFIGURED=`nmcli --fields NAME connection show | grep -w "${PRECONFIGURED}"`

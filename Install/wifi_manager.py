@@ -840,6 +840,26 @@ def rescue_enabled():
     return station_flag("hotspot_rescue")
 
 
+def ap_conf_defaults():
+    """Station-configured defaults for a not-yet-created access point.
+
+    [wifi] ap_default_ip / ap_default_prefix / ap_default_password in wifi_manager.conf:
+    a fleet order wants its own out-of-the-box address and key, and the documentation one
+    set of values to print. The form of an unconfigured point is pre-filled with these,
+    and a first Save with the key field left untouched uses the default key. Code
+    defaults (AP_DEFAULTS) stand in for anything absent or unusable.
+    """
+    ip = station_setting("ap_default_ip", "") or AP_DEFAULTS["ip"]
+    password = station_setting("ap_default_password", "") or AP_DEFAULTS["password"]
+    try:
+        prefix = int(station_setting("ap_default_prefix", "") or AP_DEFAULTS["prefix"])
+    except ValueError:
+        log.warning("wifi_manager.conf: ap_default_prefix is not a number, using /%s",
+                    AP_DEFAULTS["prefix"])
+        prefix = AP_DEFAULTS["prefix"]
+    return ip, prefix, password
+
+
 def ap_flags(role_is_ap, ap_live, rescue):
     """Truth for the two independent controls: (enabled, raised_by_auto).
 
@@ -2103,8 +2123,11 @@ def list_networks(rescan=False):
         if p_bssid:
             profs_by_bssid[p_bssid] = (name, details)
         else:
+            # a LIST per SSID: several unpinned profiles of one name are legitimate (a
+            # visible and a hidden twin) — a plain dict silently dropped all but the last,
+            # and the lost profile's row simply никогда не existed for the operator
             ssid = details.get("802-11-wireless.ssid") or name
-            profs_by_ssid[ssid] = (name, details)
+            profs_by_ssid.setdefault(ssid, []).append((name, details))
 
     def entry(ssid, scan_item, prof):
         nonlocal link_stale
@@ -2194,9 +2217,18 @@ def list_networks(rescan=False):
     for key, n in sorted(by_bssid.items(), key=lambda kv: -(kv[1].signal or 0)):
         prof = profs_by_bssid.pop((n.bssid or "").upper(), None)
         if prof is None:
-            # legacy profile without a BSSID pin: attach it to the strongest BSS of the
-            # SSID (list is signal-sorted, pop makes it match only once)
-            prof = profs_by_ssid.pop(n.ssid, None)
+            # profile without a BSSID pin: attach one to this BSS (strongest first — the
+            # list is signal-sorted; removal makes each profile match only once). The row
+            # the radio is ON belongs to the ACTIVE profile — matching it to a same-name
+            # twin (the hidden one, say) mislabels the connection and eats the twin's row.
+            pool = profs_by_ssid.get(n.ssid)
+            if pool:
+                act = next((p for p in pool if p[1].get("GENERAL.STATE") == "activated"), None)
+                oth = next((p for p in pool if p[1].get("GENERAL.STATE") != "activated"), None)
+                prof = (act if getattr(n, "in_use", False) else oth) or oth or act
+                pool.remove(prof)
+                if not pool:
+                    del profs_by_ssid[n.ssid]
         e = entry(n.ssid, n, prof)
         if e["in_use"]:
             connected.append(e)
@@ -2211,7 +2243,9 @@ def list_networks(rescan=False):
             available.append(e)
     # saved but not in scan (the pinned AP is out of range/off — strict BSSID matching
     # deliberately does NOT fall back to a same-SSID sibling)
-    for name, details in list(profs_by_bssid.values()) + list(profs_by_ssid.values()):
+    leftovers = list(profs_by_bssid.values()) + [p for pool in profs_by_ssid.values()
+                                                 for p in pool]
+    for name, details in leftovers:
         ssid = details.get("802-11-wireless.ssid") or name
         e = entry(ssid, None, (name, details))
         if e["in_use"]:
@@ -2239,15 +2273,11 @@ def list_networks(rescan=False):
             e.pop("ip", None)
             (saved if e["saved"] else available).append(e)
         connected = [keep]
-    if connected and link_bssid:
-        conn = connected[0]
-
-        def _same_access_point(e):
-            bssid = (e.get("bssid") or "").upper()
-            return e["ssid"] == conn["ssid"] and (not bssid or bssid == link_bssid)
-
-        saved = [e for e in saved if not _same_access_point(e)]
-        available = [e for e in available if not _same_access_point(e)]
+    # Other profiles of the connected network (a hidden twin, a pinned/unpinned pair) STAY
+    # in Saved/Available: they used to be filtered out while the link was up, and a hidden
+    # profile's row simply vanished from Saved — the operator read that as a loss. The
+    # hidden badge tells the rows apart now, so every profile keeps its row; only the
+    # multi-row fold above (one connected row per link) remains.
     saved.sort(key=lambda e: e["ssid"].lower())
     # Signal jitters a few points between rescans, and two networks of comparable strength
     # kept swapping places in the list. Order by tens of signal, alphabetically inside a
@@ -2417,7 +2447,10 @@ def _ap_snapshot_for_safe_apply():
     except Exception as e:
         log.warning("could not read the AP config before connecting: %s", e)
         return None
-    return cfg if cfg.get("configured") else None
+    # only a point that is actually broadcasting is worth lowering and restoring: a
+    # configured-but-silent one (switched off, or role armed but the beacon never rose)
+    # must stay silent whatever happens to the attempt
+    return cfg if cfg.get("configured") and cfg.get("on_air") else None
 
 
 def _restore_ap_after_failure(snap, notify):
@@ -2432,6 +2465,13 @@ def _restore_ap_after_failure(snap, notify):
     try:
         notify("restoring-hotspot", None)
         set_ap(dict(snap, enabled=True, password=""), intent=False)
+        # the restore returns the point AS IT WAS: enabling writes autoconnect=yes (that
+        # flag is the role), but a point that ran with autoconnect off — the watchdog's, or
+        # one NetworkManager dropped the flag on — must come back without it too
+        if snap.get("autoconnect") is False:
+            ref = _ap_ref()
+            if ref:
+                nmcli.connection.modify(ref, {"connection.autoconnect": "no"})
         log.warning("connection failed — the access point was restored")
     except Exception as e:
         log.warning("could not restore the access point: %s", e)
@@ -2582,9 +2622,11 @@ def _ap_prepare_for_client(snap, ssid, bssid, notify):
     if not snap:
         return None
     band, chan = _target_channel(ssid, bssid)
+    log.debug("wifi: preparing the point for '%s' — target %s GHz ch%s", ssid, band, chan)
     if band and chan and ap_channel_ok(band, chan) and _ap_follow_channel(band, chan):
         _ap_yielded = ""
         notify("moving-hotspot", "{} GHz ch{}".format(band, chan))
+        log.debug("wifi: the point follows the attempt onto %s GHz ch%s", band, chan)
         return "followed"
     _lower_ap_for_connect(snap, notify)
     _ap_yielded = ("{} is on {} GHz channel {}, which the access point cannot use here"
@@ -3079,7 +3121,11 @@ def get_ap_config():
         # security default follows the adapter: offering "mixed" where the radio cannot deliver
         # WPA3 would put a value in the form that is not even in its own list of choices
         legacy = wifi_iface_ap_channel()
+        # the station's own defaults pre-fill the form of a not-yet-created point: the
+        # operator sees the address and key the first Save will use
+        def_ip, def_prefix, def_password = ap_conf_defaults()
         return dict(AP_DEFAULTS, ssid=_default_ap_ssid(), security=default_ap_security(),
+                    ip=def_ip, prefix=def_prefix, password=def_password,
                     enabled=False, auto=rescue_enabled(), on_air=bool(legacy),
                     raised_by_auto=False, autoconnect=False, single_iface=bool(legacy),
                     air_band=(legacy or ("", 0))[0], air_channel=(legacy or ("", 0))[1],
@@ -3290,6 +3336,10 @@ def set_ap(config, status_cb=None, intent=True):
         verr = verr or "Unsupported AP security: {}".format(security)
         security = AP_DEFAULTS["security"]
     password = config.get("password") or ""
+    if not password and not stored_key:
+        # a fresh point saved with the key field untouched gets the station default key
+        # ([wifi] ap_default_password) — the same value the form was pre-filled with
+        password = ap_conf_defaults()[2]
     if security != "open":
         if password:
             if not 8 <= len(password) <= 63:
