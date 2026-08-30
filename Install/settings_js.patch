@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..81ce07e 100644
+index 5b64baa..32d1072 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -1383,8 +1383,8 @@ index 5b64baa..81ce07e 100644
 +                ? wifi.list.available.map(function (n) { return wifiRowHTML(n, 'available'); }).join('')
 +                : (wifi.list.scan_blocked
 +                    // прошивка отказывает в скане, пока точка держит 5 ГГц 52–64: refresh
-+                    // не поможет, честно говорим причину и когда сети вернутся
-+                    ? '<div class="text-muted small text-center py-3">Scanning is unavailable while the access point runs on this channel — networks reappear when the point is off or on 2.4 GHz</div>'
++                    // не поможет — называем канал-виновник и когда сети вернутся
++                    ? '<div class="text-muted small text-center py-3">Scanning is unavailable while the access point runs on ' + wifiEsc(wifi.list.scan_blocked) + ' — networks reappear when the point is off or on 2.4 GHz</div>'
 +                    : '<div class="text-muted small text-center py-3">No networks found, please refresh</div>')) +
 +             '</div>';
 +        h += '<div class="wifi-list mt-2"><div class="wifi-add-row" data-wifi-act="hidden">＋ Add hidden network…</div></div>';

@@ -1394,12 +1394,19 @@ def reconcile_regdomain():
     if not cc:
         return False
     have = get_country()
-    if have == cc:
-        return False
     try:
-        subprocess.check_call(["iw", "reg", "set", cc], timeout=10)
-        log.info("wifi: regdomain was %s while the picked country is %s — re-asserted at start",
-                 have or "unset/world", cc)
+        if have != cc:
+            subprocess.check_call(["iw", "reg", "set", cc], timeout=10)
+            log.info("wifi: regdomain was %s while the picked country is %s — re-asserted "
+                     "at start", have or "unset/world", cc)
+            return True
+        # The domain is already right, but after a boot the channel flags may still be the
+        # driver's own world table (52-64 read "No IR" under a DFS-UNSET country): the
+        # driver loads after the cmdline domain was applied and its table wins until the
+        # rules are recomputed. A same-value `reg set` is a kernel no-op; `reg reload`
+        # recomputes the flags without touching the domain — safe next to a live beacon.
+        subprocess.check_call(["iw", "reg", "reload"], timeout=10)
+        log.info("wifi: regdb reloaded at start — channel flags recomputed for %s", cc)
         return True
     except Exception as e:
         log.warning("could not re-assert regdomain %s: %s", cc, e)
@@ -2097,16 +2104,19 @@ def validate_dns_list(dns):
 # --------------------------------------------------------------------------
 
 def _scan_blocked_by_beacon():
-    """True when the radio firmware refuses to scan because our beacon holds 5 GHz 52-64.
+    """The channel whose beacon blinds scanning ("5 GHz ch 60"), or "" when none does.
 
     Measured on the Broadcom radio (brcmfmac): with the access point on a UNII-2A channel
-    every off-channel scan fails (Invalid exchange) while the point itself works fine.
-    Nothing to fix — but the list must say WHY it is empty instead of "please refresh"."""
+    every fresh scan is refused while the point itself works fine (NetworkManager does not
+    even fail — it quietly serves its aging cache). Nothing to fix — but the list must say
+    WHY it is empty, naming the channel, instead of "please refresh"."""
     try:
         band, chan = _ap_live_channel()
     except Exception:
-        return False
-    return band == "5" and bool(chan) and 52 <= int(chan) <= 64
+        return ""
+    if band == "5" and chan and 52 <= int(chan) <= 64:
+        return "{} GHz ch {}".format(band, chan)
+    return ""
 
 
 def list_networks(rescan=False):
@@ -2135,7 +2145,7 @@ def list_networks(rescan=False):
     nm_has_active = any(d.get("GENERAL.STATE") == "activated" for _, d in profiles.items())
 
     scan = []
-    scan_blocked = False
+    scan_blocked = ""
     usable, just_powered = _radio_ensure_on()
     if usable:
         # A running access point no longer blocks scanning. It used to: the point lived on
@@ -2150,6 +2160,12 @@ def list_networks(rescan=False):
         # possibly work. A radio that was just powered on has an empty cache for the same
         # reason nothing could scan — force a fresh scan then, whatever the caller asked.
         do_rescan = rescan or just_powered
+        # a beacon on 5 GHz 52-64 blinds every fresh sweep: the request does not fail —
+        # NetworkManager quietly serves its aging cache (measured live: a fresh scan
+        # brings back only our own beacon). The flag is a state of the radio, not of
+        # this particular request, so it is set by condition rather than by exception.
+        if do_rescan:
+            scan_blocked = _scan_blocked_by_beacon()
         try:
             scan = (nmcli.device.wifi(ifname=WIFI_IFACE, rescan=True) if do_rescan
                     else nmcli.device.wifi(ifname=WIFI_IFACE))
@@ -2157,7 +2173,6 @@ def list_networks(rescan=False):
             # NM refuses a rescan too soon after the previous one; fall back to
             # the cached list rather than showing nothing.
             log.warning("wifi scan failed (rescan=%s): %s", do_rescan, e)
-            scan_blocked = _scan_blocked_by_beacon()
             if do_rescan:
                 try:
                     scan = nmcli.device.wifi(ifname=WIFI_IFACE)
@@ -2407,8 +2422,9 @@ def list_networks(rescan=False):
         # NM claimed a connection the radio does not have — the UI says so instead of showing
         # a network as connected while nothing flows through it
         "link_stale": link_stale,
-        # the scan died against our own beacon (firmware refuses off-channel scans while
-        # the point holds 5 GHz 52-64) — the empty list is a state, not a hint to refresh
+        # the beacon blinds scanning (firmware refuses fresh sweeps while the point holds
+        # 5 GHz 52-64): the channel as text, or "" — the empty list is a state of the
+        # radio, not a hint to refresh, and the message names the channel it stands on
         "scan_blocked": scan_blocked,
         "connected": connected, "saved": saved, "available": available,
     }
