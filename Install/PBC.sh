@@ -142,7 +142,7 @@ $white▐█$purpple   WPA Key:$yellow $wpakey$nocolour"
                 systemctl restart NetworkManager.service
                 echo -e "$white▐█$purpple   Exporting profile for$yellow $essid$purpple to Network Manager$nocolour"
                 SSIDprinted=WiFi_$(printf '%s' "${essid}" | tr '/' '_' | sed 's/[[:cntrl:]]//g')
-                already=$(nmcli --get-values NAME connection show | grep "${SSIDprinted}")
+                already=$(nmcli --get-values NAME connection show | grep -w "${SSIDprinted}")
                 [[ "$already" != "" ]] && nmcli connection delete id "${SSIDprinted}"
                 nmcli con add con-name "${SSIDprinted}" ifname "$interface" type wifi ssid "$essid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wpakey"
                 echo -e "$white▐█$purpple   Cleaning temporary files"

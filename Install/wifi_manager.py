@@ -395,21 +395,49 @@ _TRUE = ("1", "true", "yes", "on")
 _FALSE = ("0", "false", "no", "off")
 
 
+_conf_problem = None          # human-readable trouble with the station conf, for the UI banner
+_conf_problem_logged = None   # the message already in the journal — one line, not one per tick
+
+
+def _note_conf_problem(msg):
+    global _conf_problem, _conf_problem_logged
+    _conf_problem = msg
+    if msg and msg != _conf_problem_logged:
+        log.warning("wifi_manager.conf: %s", msg)
+        _conf_problem_logged = msg
+
+
 def station_setting(key, default="", section="wifi"):
     """Raw value of a station setting. Absent file, section or key -> default.
 
     Quotes are stripped: the station config is written by provisioning and uses the
     ("outdoor='true'") style in places.
     """
+    global _conf_problem, _conf_problem_logged
     import configparser
     try:
         cp = configparser.ConfigParser(interpolation=None)
-        cp.read([WIFI_CONF_DEFAULT, WIFI_CONF])   # the station's own file wins
+        try:
+            cp.read([WIFI_CONF_DEFAULT, WIFI_CONF])   # the station's own file wins
+            _conf_problem = _conf_problem_logged = None
+        except UnicodeDecodeError:
+            # A hand-edited conf with a stray Windows-1251 byte (an em-dash pasted into a
+            # comment) must not void EVERY setting: keys are plain ASCII, so a
+            # byte-preserving re-read keeps them intact whatever the comments hold. A
+            # station once lost its rescue hotspot to one such byte — silently.
+            cp = configparser.ConfigParser(interpolation=None)
+            cp.read([WIFI_CONF_DEFAULT, WIFI_CONF], encoding="latin-1")
+            _note_conf_problem("the file is not valid UTF-8 (a pasted dash in a comment?) — "
+                               "settings were read with a byte-preserving fallback; re-save "
+                               "the file in UTF-8")
         if not cp.has_option(section, key):
             return default
         return (cp.get(section, key) or "").strip().strip("'\"")
     except Exception as e:
-        log.warning("could not read %s: %s", WIFI_CONF, e)
+        # duplicate [wifi] section and friends: configparser refuses the whole file and
+        # every setting silently falls back to its default — say so where it is seen
+        _note_conf_problem("unreadable ({}) — every Wi-Fi setting runs on defaults until "
+                           "this is fixed".format(e))
         return default
 
 
@@ -929,6 +957,9 @@ def _rescue_set_ap(up):
             nmcli.connection.up(ref, wait=30)
         else:
             nmcli.connection.down(ref)
+        # the LED flag follows the beacon whoever raised it: the operator's path sets it
+        # inside set_ap, the watchdog raises the point directly and left the LED dark
+        _set_hotspot_flag(up)
         _notify_ap_changed()
         return True
     except Exception as e:
@@ -1219,6 +1250,7 @@ def rescue_watchdog(stop=None):
             if _radio_flock(wait_s=5):
                 try:
                     migrate_legacy_autoconnect()
+                    reconcile_regdomain()
                 finally:
                     _radio_funlock()
         finally:
@@ -1317,6 +1349,61 @@ def get_country():
         return None
     cc = m.group(1)
     return cc if re.fullmatch(r"[A-Z]{2}", cc) and cc not in ("00", "99", "98", "97") else None
+
+
+def phy_country():
+    """Regdomain the ADAPTER itself sits in (the phy section of `iw reg get`), or None."""
+    if not shutil.which("iw"):
+        return None
+    try:
+        out = _iw("reg", "get")
+    except Exception:
+        return None
+    m = re.search(r"^phy#\d+.*?^country (\S\S):", out, re.MULTILINE | re.DOTALL)
+    return m.group(1) if m else None
+
+
+def cmdline_regdom():
+    """The country the operator PICKED, as recorded in the boot cmdline — or None.
+
+    raspi-config writes cfg80211.ieee80211_regdom=CC there on every explicit country
+    choice, which makes it the one source that survives both reboots and runtime
+    domain drift (802.11d import from a joined network's beacon, for one)."""
+    for path in ("/boot/firmware/cmdline.txt", "/boot/cmdline.txt"):
+        try:
+            with open(path) as f:
+                m = re.search(r"cfg80211\.ieee80211_regdom=([A-Z]{2})\b", f.read())
+            if m:
+                return m.group(1)
+        except OSError:
+            continue
+    return None
+
+
+def reconcile_regdomain():
+    """Re-assert the picked country when the effective domain drifted away from it.
+
+    Measured on the real radio (brcmfmac): the channel picker follows the GLOBAL
+    domain (the phy stays in its own custom world table, 99, whatever userspace does —
+    that is normal and harmless). What actually loses the country's channels is the
+    global domain drifting off the picked country — after a reboot race or an 802.11d
+    import from a joined network's beacon — and until now only re-picking the country
+    by hand brought them back. One `iw reg set` at service start settles it.
+    """
+    cc = cmdline_regdom()
+    if not cc:
+        return False
+    have = get_country()
+    if have == cc:
+        return False
+    try:
+        subprocess.check_call(["iw", "reg", "set", cc], timeout=10)
+        log.info("wifi: regdomain was %s while the picked country is %s — re-asserted at start",
+                 have or "unset/world", cc)
+        return True
+    except Exception as e:
+        log.warning("could not re-assert regdomain %s: %s", cc, e)
+        return False
 
 
 def set_country(cc):
@@ -2009,6 +2096,19 @@ def validate_dns_list(dns):
 # network list
 # --------------------------------------------------------------------------
 
+def _scan_blocked_by_beacon():
+    """True when the radio firmware refuses to scan because our beacon holds 5 GHz 52-64.
+
+    Measured on the Broadcom radio (brcmfmac): with the access point on a UNII-2A channel
+    every off-channel scan fails (Invalid exchange) while the point itself works fine.
+    Nothing to fix — but the list must say WHY it is empty instead of "please refresh"."""
+    try:
+        band, chan = _ap_live_channel()
+    except Exception:
+        return False
+    return band == "5" and bool(chan) and 52 <= int(chan) <= 64
+
+
 def list_networks(rescan=False):
     """Grouped network list + gating info for the popup.
 
@@ -2035,6 +2135,7 @@ def list_networks(rescan=False):
     nm_has_active = any(d.get("GENERAL.STATE") == "activated" for _, d in profiles.items())
 
     scan = []
+    scan_blocked = False
     usable, just_powered = _radio_ensure_on()
     if usable:
         # A running access point no longer blocks scanning. It used to: the point lived on
@@ -2056,6 +2157,7 @@ def list_networks(rescan=False):
             # NM refuses a rescan too soon after the previous one; fall back to
             # the cached list rather than showing nothing.
             log.warning("wifi scan failed (rescan=%s): %s", do_rescan, e)
+            scan_blocked = _scan_blocked_by_beacon()
             if do_rescan:
                 try:
                     scan = nmcli.device.wifi(ifname=WIFI_IFACE)
@@ -2197,10 +2299,11 @@ def list_networks(rescan=False):
         elif verdict is True and not e["in_use"] and not nm_has_active:
             # the radio is on a network no profile claims (activated outside NM's bookkeeping)
             e["in_use"] = True
-        if e["in_use"] and not e["chan"] and link and link.get("freq"):
+        if e["in_use"] and not scan_item and link and link.get("freq"):
             # a connected hidden network has no scan row to carry its channel, but the radio
-            # knows exactly where the link is — the row must not read channel-less, and the
-            # indoor-only/DFS marks hang off the channel
+            # knows exactly where the link is. The link beats any cached last-seen value:
+            # a reconnect on another channel used to keep showing the old number, because
+            # the cache had already filled the field
             e["freq"] = link["freq"]
             e["chan"] = freq_to_chan(link["freq"])
             e["band"] = freq_to_band(link["freq"])
@@ -2243,11 +2346,19 @@ def list_networks(rescan=False):
             available.append(e)
     # saved but not in scan (the pinned AP is out of range/off — strict BSSID matching
     # deliberately does NOT fall back to a same-SSID sibling)
+    # what the air says about a network's security, by SSID: a profile-only row (the
+    # hidden twin) used to show the profile's key-mgmt (WPA2) next to the scan row of the
+    # very same network saying WPA1/WPA2 — one access point, two different labels
+    air_security = {}
+    for n in by_bssid.values():
+        air_security.setdefault(n.ssid, n.security)
     leftovers = list(profs_by_bssid.values()) + [p for pool in profs_by_ssid.values()
                                                  for p in pool]
     for name, details in leftovers:
         ssid = details.get("802-11-wireless.ssid") or name
         e = entry(ssid, None, (name, details))
+        if ssid in air_security:
+            e["security"], e["security_label"] = parse_security(air_security[ssid])
         if e["in_use"]:
             connected.append(e)
         else:
@@ -2296,6 +2407,9 @@ def list_networks(rescan=False):
         # NM claimed a connection the radio does not have — the UI says so instead of showing
         # a network as connected while nothing flows through it
         "link_stale": link_stale,
+        # the scan died against our own beacon (firmware refuses off-channel scans while
+        # the point holds 5 GHz 52-64) — the empty list is a state, not a hint to refresh
+        "scan_blocked": scan_blocked,
         "connected": connected, "saved": saved, "available": available,
     }
 
@@ -2388,6 +2502,9 @@ def get_status(hide_country_codes=()):
     status.update({
         "radio": nmcli.radio.wifi(),
         "country": get_country(),
+        # trouble with wifi_manager.conf (unreadable / bad encoding): the dialog shows a
+        # banner — a warning per watchdog tick in the journal was never seen by anyone
+        "conf_problem": _conf_problem,
         "channels": chans,
         "bands": available_bands(),
         "ap_security_kinds": ap_security_kinds(),
@@ -2472,6 +2589,10 @@ def _restore_ap_after_failure(snap, notify):
             ref = _ap_ref()
             if ref:
                 nmcli.connection.modify(ref, {"connection.autoconnect": "no"})
+                # set_ap already pushed its snapshot — with autoconnect=yes, the flag fix
+                # above happened after it. Push again so no open dialog keeps showing an
+                # autoconnect the profile does not have.
+                _notify_ap_changed()
         log.warning("connection failed — the access point was restored")
     except Exception as e:
         log.warning("could not restore the access point: %s", e)
@@ -2622,11 +2743,11 @@ def _ap_prepare_for_client(snap, ssid, bssid, notify):
     if not snap:
         return None
     band, chan = _target_channel(ssid, bssid)
-    log.debug("wifi: preparing the point for '%s' — target %s GHz ch%s", ssid, band, chan)
+    log.info("wifi: preparing the point for '%s' — target %s GHz ch%s", ssid, band, chan)
     if band and chan and ap_channel_ok(band, chan) and _ap_follow_channel(band, chan):
         _ap_yielded = ""
         notify("moving-hotspot", "{} GHz ch{}".format(band, chan))
-        log.debug("wifi: the point follows the attempt onto %s GHz ch%s", band, chan)
+        log.info("wifi: the point follows the attempt onto %s GHz ch%s", band, chan)
         return "followed"
     _lower_ap_for_connect(snap, notify)
     _ap_yielded = ("{} is on {} GHz channel {}, which the access point cannot use here"
