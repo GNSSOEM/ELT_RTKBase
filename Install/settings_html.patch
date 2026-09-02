@@ -1,5 +1,5 @@
 diff --git a/web_app/templates/settings.html b/web_app/templates/settings.html
-index 9690796..1c135ff 100644
+index 9690796..7e759a4 100644
 --- a/web_app/templates/settings.html
 +++ b/web_app/templates/settings.html
 @@ -10,7 +10,66 @@
@@ -819,7 +819,7 @@ index 9690796..1c135ff 100644
          </div>      
        </div>
      </div>
-@@ -794,12 +1270,332 @@
+@@ -794,12 +1270,347 @@
    </div>
  </div>
  
@@ -887,6 +887,15 @@ index 9690796..1c135ff 100644
 +          <small class="form-text text-muted" id="wifi-region-hint">Optional for connecting: without a region the
 +            client uses a reduced world-safe channel set — networks on other channels are unavailable.
 +            <b>Required</b> for Access Point mode.</small>
++          <!-- the shown region can be a visitor (imported from a joined network's beacon,
++               or set by hand): it works now but does not survive a reboot — say which
++               region the station returns to, and offer to keep the current one -->
++          <!-- no d-flex here: its !important display would beat the inline none, the JS
++               switches between none and flex itself -->
++          <div class="align-items-center mt-1" id="wifi-country-temp" style="display:none">
++            <small class="text-warning wifi-note flex-grow-1 mr-2" id="wifi-country-temp-text"></small>
++            <button class="btn btn-sm btn-outline-warning text-nowrap" type="button" id="wifi-country-keep"></button>
++          </div>
 +        </div>
 +
 +        <div class="alert alert-info py-2 px-3" id="wifiApOnNote">The device has a single radio with one
@@ -942,7 +951,9 @@ index 9690796..1c135ff 100644
 +          <!-- persistent start-failure line: an error toast disappears, but WHY the AP is
 +               not running must survive the toast and a dialog reopen -->
 +          <p class="text-danger mb-0 px-3 pb-2" id="wifi-ap-last-err" style="display:none"></p>
-+          <div class="card-body border-top" id="wifi-ap-body">
++          <!-- collapsed by default: before the first render the point's state is unknown,
++               and an unknown point must not greet a freshly loaded page with an open form -->
++          <div class="card-body border-top" id="wifi-ap-body" style="display:none">
 +            <div class="form-group">
 +              <label class="mb-1" for="wifi-ap-ssid">SSID</label>
 +              <input class="form-control" id="wifi-ap-ssid" value="RtkBase">
@@ -1024,8 +1035,12 @@ index 9690796..1c135ff 100644
 +            <!-- the chosen subnet was taken by a network this station is on, so the access
 +                 point stands one block further; the address here comes back when it frees up -->
 +            <small class="text-warning wifi-note mb-2" id="wifi-ap-ip-moved" style="display:none"></small>
++            <!-- sleeping point: Save writes the profile without raising the beacon,
++                 Save & Start raises it; a live point restarts on save, so there the row
++                 holds the single Save & Restart -->
 +            <div class="text-right">
-+              <button class="btn btn-primary" type="button" id="wifi-ap-save">Save</button>
++              <button class="btn btn-outline-primary mr-2" type="button" id="wifi-ap-save">Save</button>
++              <button class="btn btn-primary" type="button" id="wifi-ap-start">Save &amp; Start</button>
 +            </div>
 +          </div>
 +        </div>

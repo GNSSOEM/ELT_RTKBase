@@ -1,5 +1,5 @@
 diff --git a/web_app/static/settings.js b/web_app/static/settings.js
-index 5b64baa..32d1072 100644
+index 5b64baa..4a42cc4 100644
 --- a/web_app/static/settings.js
 +++ b/web_app/static/settings.js
 @@ -24,6 +24,8 @@
@@ -669,7 +669,7 @@ index 5b64baa..32d1072 100644
      };
      $("#shutdown-button").on("click", function() {
          $("#shutdownModal").modal();
-@@ -758,5 +960,1722 @@ $(document).ready(function () {
+@@ -758,5 +960,1797 @@ $(document).ready(function () {
          socket.emit("shutdown device");
      })
  
@@ -871,6 +871,8 @@ index 5b64baa..32d1072 100644
 +        apStoredAuto: false,    // the Auto (watchdog) toggle as stored in wifi_manager.conf
 +        apPendingAuto: false,   // Auto switched on in the form, arms on Save
 +        apConfigured: false,    // the AP profile exists (the point was saved at least once)
++        apFormOpen: false,      // the operator opened the sleeping point's form to edit it
++        apStoredSecurity: '',   // security as last rendered — start-field change detection
 +        apOnAir: false,         // the beacon is in the air right now
 +        apRaisedByAuto: false,  // ...and it is the watchdog's own, not the operator's
 +        cm: {mode: 'connect', ssid: '', profile: null, security: null}
@@ -1518,7 +1520,8 @@ index 5b64baa..32d1072 100644
 +
 +    function wifiRenderApFormBody(cfg) {
 +        $('#wifi-ap-ssid').val(cfg.ssid);
-+        $('#wifi-ap-sec').val(wifiRepopApSecurity(cfg.security));
++        wifi.apStoredSecurity = wifiRepopApSecurity(cfg.security);
++        $('#wifi-ap-sec').val(wifi.apStoredSecurity);
 +        // Show the stored key only under the CSS masking (type=text — invisible to the
 +        // browser's password manager, so no save prompts). With the type=password fallback
 +        // the field stays empty (•••• placeholder); an empty submit keeps the stored key.
@@ -1880,6 +1883,7 @@ index 5b64baa..32d1072 100644
 +        $('#wifi-radio-switch').prop('checked', !!status.radio);
 +        wifi.updating = false;
 +        wifiSyncCountrySelect();
++        wifiRenderCountryTemp(status);
 +        // adapter without 5 GHz (e.g. RPi Zero 2W): hide the 5 GHz AP band option
 +        if (status.bands && status.bands.indexOf('5') < 0) {
 +            $('#wifi-ap-band option[value="5"]').remove();
@@ -1973,6 +1977,10 @@ index 5b64baa..32d1072 100644
 +        if (!wifi.countriesLoaded) socket.emit('get wifi countries');
 +        socket.emit('get wifi list');   // backend forces a fresh scan (may take a few seconds)
 +        socket.emit('get ap config');
++        // the first render above waits behind the opening scan — until it lands, the
++        // dialog must show the last known truth, not whatever the DOM woke up with
++        // (a reloaded page restores checkbox positions, and markup defaults are blind)
++        wifiApSyncSwitches();
 +        wifi.scanning = true; wifiRenderList();   // list shows "Scanning…" while the initial scan runs
 +        $('#wifiModal').modal();
 +        wifiStartAutoScan();
@@ -2020,6 +2028,35 @@ index 5b64baa..32d1072 100644
 +        // own terminal: a 'wifi list' from an unrelated scan (e.g. the popup-open scan
 +        // finishing) must not unlock the dialog while the region is still being applied
 +        wifiSetBusy(true, 'Applying WiFi region ' + code + '…', 'WiFi region applied', 'country');
++        socket.emit('wifi set country', {country: code});
++    });
++
++    function wifiRenderCountryTemp(status) {
++        // The shown region can be a visitor: joining a network imports the beacon's
++        // country, support may set one by hand. It works right now but is not recorded
++        // for boots, so a reboot returns the station to the recorded region — say so and
++        // offer to keep the current one. The picker itself cannot re-pick the same value
++        // (same-value changes are swallowed by design), which is exactly why the button
++        // exists.
++        var show = !!(status.country_temporary && status.country);
++        if (show) {
++            $('#wifi-country-temp-text').text('Region ' + status.country
++                + ' was picked up from a connected network or set automatically and lasts '
++                + 'until reboot — the station then returns to '
++                + (status.country_stored ? 'region ' + status.country_stored : 'no region') + '.');
++            $('#wifi-country-keep').text('Keep ' + status.country);
++        }
++        // no d-flex on the container: bootstrap's !important display would win over
++        // hide(), so the flex display is set here
++        $('#wifi-country-temp').css('display', show ? 'flex' : 'none');
++    }
++
++    $('#wifi-country-keep').on('click', function () {
++        var code = wifi.status && wifi.status.country;
++        if (!code) return;
++        // same busy terminal as the picker: applying an already-active domain is quick,
++        // but the cmdline write must finish before the dialog unlocks
++        wifiSetBusy(true, 'Saving WiFi region ' + code + '…', 'WiFi region saved', 'country');
 +        socket.emit('wifi set country', {country: code});
 +    });
 +
@@ -2210,36 +2247,43 @@ index 5b64baa..32d1072 100644
 +            note = 'Auto-start is on, but not active yet — set up and Save the access point '
 +                 + 'below, and Auto-start will have something to raise.';
 +        } else if ($('#wifi-ap-switch').prop('checked') && !wifi.apStoredEnabled) {
-+            note = 'The access point will start when you press Save below.';
++            note = 'The access point will start when you press Save & Start below.';
 +        }
 +        $('#wifi-ap-auto-note').text(note).toggle(!!note);
 +    }
 +
 +    function wifiApSyncSwitches() {
-+        // programmatic sync (no submit): the switches mirror the stored config + pending
++        // programmatic sync (no submit): the switches mirror the stored config + pending.
++        // The point's switch also reads ON while the operator holds the sleeping point's
++        // form open — flipping it on opens the form for editing, it no longer promises a
++        // start (that intent lives in the Save & Start button)
 +        wifi.updating = true;
-+        $('#wifi-ap-switch').prop('checked', !!wifi.apStoredEnabled);
++        $('#wifi-ap-switch').prop('checked', !!wifi.apStoredEnabled || !!wifi.apFormOpen);
 +        $('#wifi-ap-auto-switch').prop('checked', !!wifi.apStoredAuto || !!wifi.apPendingAuto);
 +        wifi.updating = false;
-+        // the settings are the running point's settings: editable only while the point's
-+        // own switch is on (a not-yet-saved ON included) — an off point hides its form,
-+        // as it always did
++        // the form shows only while the point's own switch is on — an off point hides
++        // its form, as it always did
 +        $('#wifi-ap-body').toggle($('#wifi-ap-switch').prop('checked'));
++        // which save buttons make sense depends on the air: a sleeping point is written
++        // silently (Save) or raised (Save & Start); a live one restarts on save
++        $('#wifi-ap-save').toggle(!wifi.apOnAir);
++        $('#wifi-ap-start').text(wifi.apOnAir ? 'Save & Restart' : 'Save & Start');
 +        wifiApAutoNote();
 +    }
 +
-+    function wifiSubmitAp(enabled, auto) {
-+        // Form validation gates starting the point and arming Auto (the backend test-starts
-+        // the point when arming, so those settings need everything a real start needs,
-+        // region included). Submits that only switch things OFF must always go through —
-+        // even from an out-of-band state (AP brought up by hand, no region, odd key) — or
-+        // the UI cannot leave that state. The backend then keeps the stored profile
-+        // untouched when the submitted values are invalid.
++    function wifiSubmitAp(enabled, auto, saveOnly) {
++        // Form validation gates starting the point, arming Auto and the plain profile
++        // write (the backend test-starts the point when the armed watchdog's start-fields
++        // change, so those settings need everything a real start needs, region included).
++        // Submits that only switch things OFF must always go through — even from an
++        // out-of-band state (AP brought up by hand, no region, odd key) — or the UI cannot
++        // leave that state. The backend then keeps the stored profile untouched when the
++        // submitted values are invalid.
 +        var reject = function (msg) {
 +            wifiToast(msg, true);
 +            wifiApSyncSwitches();
 +        };
-+        if (enabled || auto) {
++        if (enabled || auto || saveOnly) {
 +            // a live point is legitimately editable with no region (limited world-safe
 +            // mode) — the gate is only for bringing up a silent one
 +            if (!(wifi.status && wifi.status.country) && !wifi.apOnAir) {
@@ -2257,11 +2301,14 @@ index 5b64baa..32d1072 100644
 +        }
 +        var cfg = wifiGatherApForm(!!enabled);
 +        cfg.auto = !!auto;       // Save records the Auto switch, whatever its position
++        if (saveOnly) cfg.save_only = true;   // write the profile, the point sleeps on
 +        wifiSetBusy(true,
 +            enabled ? 'Saving and starting access point…'
++                : saveOnly ? 'Saving access point…'
 +                : auto ? 'Saving and test-starting access point…'
 +                : 'Saving access point…',
 +            enabled ? 'Access point started'
++                : saveOnly ? 'Access point saved'
 +                : auto ? 'Access point set to start automatically'
 +                : 'Access point saved',
 +            'ap');
@@ -2272,11 +2319,13 @@ index 5b64baa..32d1072 100644
 +        if (wifi.updating) return;
 +        $('#wifi-ap-body').toggle(this.checked);
 +        if (this.checked) {
-+            // turning ON applies on Save: the point starts with the settings below
-+            wifi.apDirty = true;
++            // turning ON opens the sleeping point's form for editing — nothing is
++            // pending yet: Save writes the profile, Save & Start raises the point
++            wifi.apFormOpen = true;
 +            wifiApAutoNote();
 +            return;
 +        }
++        wifi.apFormOpen = false;
 +        wifiApAutoNote();
 +        // turning OFF applies immediately and never carries `auto` — the switches are
 +        // independent, so flipping the point off must not disarm the watchdog
@@ -2319,35 +2368,56 @@ index 5b64baa..32d1072 100644
 +            return;
 +        }
 +        if ($('#wifi-ap-switch').prop('checked')) {
-+            // 2. the point is being switched on: the flag rides with Save and is recorded
-+            // only after the point actually starts — a failed start leaves Auto-start off
++            // 2. the point's form is open: the flag rides with Save / Save & Start and is
++            // recorded only after the point proves it can stand (a real or test start) —
++            // a failed start leaves Auto-start off
 +            wifi.apPendingAuto = true;
 +            wifi.apDirty = true;
 +            wifiApAutoNote();
 +            return;
 +        }
-+        // the point is off: there is nothing for Auto-start to arm against
++        // the point's form is closed: there is nothing for Auto-start to arm against
 +        this.checked = false;
 +        wifiApAutoNote();
-+        wifiToast('Auto-start arms only with the access point on — turn it on (it starts on Save), or while it is online', true);
++        wifiToast('Auto-start arms only with the access point open — turn the switch on and press Save, or arm while the point is online', true);
 +    });
 +
-+    $('#wifi-ap-save').on('click', function () {
-+        // One radio, one channel: an explicitly chosen channel wins over a client connection on
-+        // another one, and the connection goes. That used to happen silently.
-+        var enabled = $('#wifi-ap-switch').prop('checked');
-+        var auto = $('#wifi-ap-auto-switch').prop('checked');
-+        var chosen = +($('#wifi-ap-channel').val() || 0);
++    function wifiApChannelClash(chosen) {
++        // One radio, one channel: an explicitly chosen channel wins over a client
++        // connection on another one, and the connection goes. That used to happen
++        // silently. Returns true when the operator declined.
 +        var conn = (wifi.list && (wifi.list.connected || [])[0]) || null;
-+        // arming Auto included: the save test-starts the point, which drops the connection too
-+        if ((enabled || auto) && chosen && conn && conn.chan && conn.chan !== chosen &&
++        return chosen && conn && conn.chan && conn.chan !== chosen &&
 +            !confirm('The station is connected to "' + conn.ssid + '" on channel ' + conn.chan +
 +                     '. The access point on channel ' + chosen + ' will drop that connection — ' +
 +                     'the adapter has a single channel.\n\nChoose channel Auto to let the access point ' +
-+                     'follow the network instead. Continue?')) return;
++                     'follow the network instead. Continue?');
++    }
++
++    $('#wifi-ap-start').on('click', function () {
++        // Save & Start / Save & Restart: the point comes up (or restarts) with the
++        // settings below — the pre-114 Save, under an honest name
++        var auto = $('#wifi-ap-auto-switch').prop('checked');
++        if (wifiApChannelClash(+($('#wifi-ap-channel').val() || 0))) return;
 +        wifi.apDirty = false;   // the edits are being saved — no discard warning needed
 +        wifi.apPendingAuto = false;
-+        wifiSubmitAp(enabled, auto);
++        wifiSubmitAp(true, auto);
++    });
++
++    $('#wifi-ap-save').on('click', function () {
++        // Save: write the profile, the sleeping point sleeps on. With Auto armed the
++        // backend still proves changed start-fields (band/channel/security) with a brief
++        // test start — only then can a chosen channel drop a client connection, so the
++        // clash warning fires only for that case.
++        var auto = $('#wifi-ap-auto-switch').prop('checked');
++        var chosen = +($('#wifi-ap-channel').val() || 0);
++        var startFieldsChanged = chosen !== wifi.apStoredChannel ||
++            ($('#wifi-ap-band').val() || 'all') !== wifi.apStoredBand ||
++            $('#wifi-ap-sec').val() !== wifi.apStoredSecurity;
++        if (auto && startFieldsChanged && wifiApChannelClash(chosen)) return;
++        wifi.apDirty = false;
++        wifi.apPendingAuto = false;
++        wifiSubmitAp(false, auto, true);
 +    });
 +    // Unsaved-changes guard: the AP form applies on Save only, so closing the dialog with
 +    // edits pending silently discards them. Track user edits (programmatic re-renders run
@@ -2364,6 +2434,11 @@ index 5b64baa..32d1072 100644
 +        }
 +        wifi.apDirty = false;
 +        wifi.apPendingAuto = false;
++        wifi.apFormOpen = false;   // the sleeping point's form closes with the dialog
++        // re-sync the DOM right here: the closed dialog must not keep the form visually
++        // open, or the next opening shows the stale open form until the first render
++        // arrives (which waits behind the opening rescan)
++        wifiApSyncSwitches();
 +    });
 +
 +    // optional WiFi profiles backup/restore (JSON)

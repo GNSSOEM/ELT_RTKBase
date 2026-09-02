@@ -1380,6 +1380,24 @@ def cmdline_regdom():
     return None
 
 
+def country_persist_state():
+    """(stored, temporary): the country recorded for boots, and whether the live one is
+    only temporary.
+
+    The dialog shows the LIVE domain (get_country), and that one can arrive without the
+    operator: joining a network imports the beacon's 802.11d country, support may `iw reg
+    set` by hand. Such a country works right now but is not in the boot cmdline, so the
+    next boot returns the station to the recorded one — worth saying out loud, with a way
+    to keep it. Only raspi-config writes the cmdline record; where it does not exist
+    (x86/DIY), no country is ever "permanent" and the note would be noise on every station.
+    """
+    stored = cmdline_regdom()
+    live = get_country()
+    if not live or not shutil.which("raspi-config"):
+        return stored, False
+    return stored, stored != live
+
+
 def reconcile_regdomain():
     """Re-assert the picked country when the effective domain drifted away from it.
 
@@ -2515,9 +2533,15 @@ def get_status(hide_country_codes=()):
     except Exception:
         status["wifi_present"] = True   # can't tell — don't alarm
     chans = allowed_channels()      # one pass: it shells out to iw and parses the config
+    country_stored, country_temp = country_persist_state()
     status.update({
         "radio": nmcli.radio.wifi(),
         "country": get_country(),
+        # the live country may be a visitor (802.11d import, a manual reg set): the boot
+        # record and whether the live one survives a reboot — the dialog says so and
+        # offers to keep it
+        "country_stored": country_stored,
+        "country_temporary": country_temp,
         # trouble with wifi_manager.conf (unreadable / bad encoding): the dialog shows a
         # banner — a warning per watchdog tick in the journal was never seen by anyone
         "conf_problem": _conf_problem,
@@ -3374,6 +3398,38 @@ def _ap_snapshot(details):
     return snap
 
 
+# nmcli shows pmf both as a number and as a word depending on the path — normalize for
+# comparison ("optional" == "2")
+_PMF_WORDS = {"": "0", "default": "0", "disable": "1", "optional": "2", "required": "3"}
+
+
+def _ap_start_fields_changed(prev, security, band, channel):
+    """True when the submitted settings differ from the stored profile in a field the very
+    START of the beacon depends on — band, channel, key-mgmt/pmf. A password, SSID, hidden
+    flag or address cannot stop the beacon from standing, so writing them needs no proving
+    test start."""
+    if prev is None:
+        return True             # no profile yet: nothing is proven
+    sec = _AP_KEY_MGMT.get(security, {})
+    want = {
+        "802-11-wireless.band": {"2.4": "bg", "5": "a"}.get(band, ""),
+        "802-11-wireless.channel": str(channel) if channel and band != "all" else "",
+        "802-11-wireless-security.key-mgmt":
+            sec.get("802-11-wireless-security.key-mgmt", ""),
+        "802-11-wireless-security.pmf": sec.get("802-11-wireless-security.pmf", "0"),
+    }
+    for k, v in want.items():
+        have = (prev.get(k) or "").strip()
+        if k == "802-11-wireless.channel" and have == "0":
+            have = ""           # channel 0 is nmcli's display for "not set"
+        if k == "802-11-wireless-security.pmf":
+            have = _PMF_WORDS.get(have, have)
+            v = _PMF_WORDS.get(v, v)
+        if have != v:
+            return True
+    return False
+
+
 def _ap_restore(ref, snap, autoconnect, reactivate):
     """Undo a failed AP change: put the previous settings and role flags back, and bring the
     previously working access point up again. Best-effort — a rollback failure must not mask
@@ -3418,11 +3474,15 @@ def set_ap(config, status_cb=None, intent=True):
     # config back — get_ap_config carries `auto` these days, but only the OPERATOR'S Save
     # may touch the watchdog flag or demand a proving test start
     auto = config.get("auto") if intent else None
+    # Save without raising or lowering anything: write the sleeping point's profile, leave
+    # its role, the LED flag and a live beacon alone. A test start still happens where the
+    # armed watchdog has something to prove — see `need_test` below.
+    save_only = bool(config.get("save_only")) and intent and not enabled
     if intent:
         # the operation trail (never the password); internal juggling (intent=False) is
         # not an operator action and stays out of the journal
         log.info("wifi: access point %s requested (ssid=%s, band=%s, chan=%s, security=%s%s)",
-                 "on" if enabled else "off",
+                 "save" if save_only else "on" if enabled else "off",
                  config.get("ssid") or "<current>", config.get("band", "all"),
                  config.get("channel") or "auto",
                  config.get("security", AP_DEFAULTS["security"]),
@@ -3514,16 +3574,25 @@ def set_ap(config, status_cb=None, intent=True):
     # operator's gate only: an internal restore puts back what was there, and refusing it
     # would strand the station without its point (the kernel still holds the legal line —
     # a start the domain forbids simply fails and rolls back).
-    if (enabled or auto) and verr:
+    # a profile write is an operator's intent too: invalid values refuse out loud instead
+    # of silently keeping the old ones (the silent path belongs to switching OFF only)
+    if (enabled or auto or save_only) and verr:
         if intent:
             raise WifiError(verr)
         log.warning("internal set_ap proceeds despite: %s", verr)
+
+    # Does this save owe the watchdog a proving test start? Only when the watchdog is (or
+    # is being) armed AND the fields the beacon's start depends on actually changed —
+    # arming itself always proves, because nothing was proven for the new flag yet.
+    need_test = bool(auto) and save_only and (
+        not rescue_enabled()
+        or _ap_start_fields_changed(prev_ap, security, band_req, chan_req))
 
     # The access point needs its own interface before a profile can point at it. Only when
     # actually starting it (or test-starting for 'auto'): saving settings with the control
     # off must not fail on hardware that cannot host a second interface, and must not
     # create one for nothing.
-    if enabled or auto:
+    if enabled or (auto and not save_only) or need_test:
         ensure_ap_iface()
 
     # The address the operator typed is the preference; the profile gets the block that is
@@ -3538,7 +3607,9 @@ def set_ap(config, status_cb=None, intent=True):
         # writing the channel from the form (or from a snapshot, which carries the operator's
         # own channel) ends any loan the point was on — otherwise stale loan keys would linger
         prefs = _without_loan(_load_ap_prefs())
-        if intent:
+        # save_only leaves `wanted` alone: writing settings is not a wish about the
+        # point's on/off state
+        if intent and not save_only:
             prefs["wanted"] = enabled
         _save_ap_prefs(dict(prefs, ip=ip, prefix=prefix, ip_written=eff_ip,
                             prefix_written=eff_prefix, band=band_req, channel=chan_req))
@@ -3596,7 +3667,7 @@ def set_ap(config, status_cb=None, intent=True):
     try:
         # no profile AND switching off: nothing to modify or lower — a point that was never
         # configured is already off, and that must not stop the mode from being recorded
-        if ap_ref:
+        if ap_ref and not save_only:
             nmcli.connection.modify(ap_ref, {"connection.autoconnect": "yes" if enabled else "no"})
         global _last_ap_error, _ap_yielded, _last_ap_action
         _last_ap_action = time.time()
@@ -3606,6 +3677,13 @@ def set_ap(config, status_cb=None, intent=True):
             _set_hotspot_flag(True)
             # standing again: whatever made the point yield the radio no longer applies
             _ap_yielded = ""
+        elif save_only:
+            # the point sleeps on; up and straight down only where the armed watchdog
+            # has something to prove (see need_test)
+            if need_test:
+                notify("starting", "hotspot")
+                nmcli.connection.up(ap_ref, wait=30)
+                nmcli.connection.down(ap_ref)
         else:
             if ap_ref and _ap_active():
                 try:
@@ -3648,8 +3726,11 @@ def set_ap(config, status_cb=None, intent=True):
         # and writing the flag there would desync the station config from reality
         set_station_flag("hotspot_rescue", bool(auto))
     if intent:
-        log.info("wifi: access point %s", "up" if enabled
-                 else ("down, watchdog armed" if auto else "down"))
+        log.info("wifi: access point %s",
+                 "up" if enabled
+                 else "settings saved (proved by a test start)" if save_only and need_test
+                 else "settings saved" if save_only
+                 else "down, watchdog armed" if auto else "down")
     else:
         # internal juggling (lowering for a client attempt, restoring after a failure)
         # moves the point underneath an open dialog — push the fresh state to it
