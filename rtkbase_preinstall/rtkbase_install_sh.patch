@@ -1,5 +1,7 @@
 diff --git a/tools/install.sh b/tools/install.sh
-index 8886ab6..a3fdc0f
+old mode 100755
+new mode 100644
+index 8886ab6..55a4009
 --- a/tools/install.sh
 +++ b/tools/install.sh
 @@ -133,9 +133,9 @@ install_gpsd_chrony() {
@@ -41,3 +43,12 @@ index 8886ab6..a3fdc0f
        #venv module installation
        sudo -u "${RTKBASE_USER}" "${python_venv}" -m pip install --upgrade pip setuptools wheel  --extra-index-url https://www.piwheels.org/simple
        # install prebuilt wheel for cryptography because it is unavailable on piwheels (2023/01)
+@@ -371,7 +371,7 @@ rtkbase_requirements(){
+       
+       #Installing requirements for Cellular modem. Installing them during the Armbian firstrun doesn't work because the network isn't fully up.
+       sudo -u "${RTKBASE_USER}" "${rtkbase_path}/venv/bin/python" -m pip install nmcli  --extra-index-url https://www.piwheels.org/simple
+-      sudo -u "${RTKBASE_USER}" "${rtkbase_path}/venv/bin/python" -m pip install git+https://github.com/Stefal/sim-modem.git
++      #sudo -u "${RTKBASE_USER}" "${rtkbase_path}/venv/bin/python" -m pip install git+https://github.com/Stefal/sim-modem.git
+ 
+ }
+ 
