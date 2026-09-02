@@ -471,9 +471,12 @@ if [[ ${SETANT} == Y ]]; then
    if [[ -z "${ANT_N}" ]]; then ANT_N="0.0000"; fi
    #echo ANTNAME=${ANTNAME} ANTSERIAL=${ANTSERIAL} ANTSETUP=${ANTSETUP}
    if [[ "${receiver}" =~ Unicore ]]; then
-      ANTNAME=`echo "${ANTNAME}" | awk -F ' ' '{print $1}'`
-      #ANTINFO="\"${ANTNAME}\" \"${ANTSERIAL}\" ${ANTSETUP}"
-      ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
+      ANTNAME1=`echo "${ANTNAME}" | awk -F ' ' '{print $1}'`
+      if [[ "${ANTNAME1}" == "${ANTNAME}" ]]; then
+         ANTINFO="${ANTNAME} ${ANTSERIAL} ${ANTSETUP}"
+      else
+         ANTINFO="\"${ANTNAME}\" ${ANTSERIAL} ${ANTSETUP}"
+      fi
       #echo ANTINFO=${ANTINFO}
       #echo NmeaConf ${DEVICE} \"CONFIG BASEANTENNAMODEL ${ANTINFO} USER\" QUIET
       NmeaConf ${DEVICE} "CONFIG BASEANTENNAMODEL ${ANTINFO} USER" QUIET
