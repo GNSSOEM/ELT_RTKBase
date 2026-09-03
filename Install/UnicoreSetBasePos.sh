@@ -285,24 +285,26 @@ fi
 
 CHECKPOS=N
 SAVEPOS=N
-if [[ ${SETPOS} == Y ]]
-then
-   if [[ "${receiver}" =~ Unicore ]]
-   then
+if [[ ${SETPOS} == Y ]]; then
+   if [[ "${receiver}" =~ Unicore ]]; then
       NO_ANSWER_COUNT=0;
-      for i in `seq 1 30`
-      do
+      RTCM_FOUND=N
+      for i in `seq 1 30`; do
          #echo UNICORE_MODE=\`NmeaConf ${DEVICE} MODE\`
          UNICORE_MODE=`NmeaConf ${DEVICE} MODE`
          IS_FINE=`echo ${UNICORE_MODE} | grep -c "1005"`
          NO_ANSWER=`echo ${UNICORE_MODE} | grep -c "maxRead=0 "`
+         RTCM=`echo ${UNICORE_MODE} | grep -c "RTCM3"`
          #echo UNICORE_MODE=${UNICORE_MODE}
-         #echo IS_FINE=${IS_FINE} NO_ANSWER=${NO_ANSWER} NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
-         if [[ ${IS_FINE} != "0" ]]; then
+         #echo i=${i} IS_FINE=${IS_FINE} NO_ANSWER=${NO_ANSWER} NO_ANSWER_COUNT=${NO_ANSWER_COUNT} RTCM=${RTCM}
+         if [[ "${IS_FINE}" != "0" ]]; then
             echo 1005 found on $i iteration
+            RTCM_FOUND=Y
             break
+         elif [[ "${RTCM}" != "0" ]]; then
+            RTCM_FOUND=Y
          fi
-         if [[ ${NO_ANSWER} != "0" ]]; then
+         if [[ "${NO_ANSWER}" != "0" ]]; then
             let NO_ANSWER_COUNT++
             #echo NO_ANSWER_COUNT=${NO_ANSWER_COUNT}
             if [ ${NO_ANSWER_COUNT} -ge 5 ]; then
@@ -313,23 +315,27 @@ then
          fi
          sleep 1
       done
-      #echo NmeaConf ${DEVICE} \"MODE BASE 1 ${position}\" QUIET
-      NmeaConf ${DEVICE} "MODE BASE 1 ${position}" QUIET
-      lastcode=$?
-      if [[ $lastcode == 0 ]]; then
-         CHECKPOS=Y
-         SAVEPOS=Y
+      #echo RTCM_FOUND=${RTCM_FOUND}
+      if [[ "${RTCM_FOUND}" != "Y" ]]; then
+         echo receiver not output RTCM3
+         BADPOS=A
       else
-         BADPOS=Y
-         TIMEPOS=Y
+         #echo NmeaConf ${DEVICE} \"MODE BASE 1 ${position}\" QUIET
+         NmeaConf ${DEVICE} "MODE BASE 1 ${position}" QUIET
+         lastcode=$?
+         if [[ $lastcode == 0 ]]; then
+            CHECKPOS=Y
+            SAVEPOS=Y
+         else
+            BADPOS=Y
+            TIMEPOS=Y
+         fi
       fi
-   elif [[ "${receiver}" =~ Bynav ]]
-   then
+   elif [[ "${receiver}" =~ Bynav ]]; then
       #echo NmeaConf ${DEVICE} \"FIX POSITION ${position}\" QUIET
       NmeaConf ${DEVICE} "FIX POSITION ${position}" QUIET
       lastcode=$?
-      if [[ $lastcode == 0 ]]
-      then
+      if [[ $lastcode == 0 ]]; then
          recv_position="${position}"
          #echo recv_position=${recv_position}
          SAVECONF=Y
@@ -339,20 +345,17 @@ then
          BADPOS=Y
          TIMEPOS=Y
       fi
-   elif [[ "${receiver}" =~ Septentrio ]]
-   then
+   elif [[ "${receiver}" =~ Septentrio ]]; then
       commapos=`echo ${position} | sed "s/ \{2,99\}/ /g" | sed "s/^ //" | sed "s/ $//" | sed "s/ /,/g"`
       #echo commapos=${commapos}
       #echo NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1, ${commapos}\" QUIET
       NmeaConf ${DEVICE} "setStaticPosGeodetic , Geodetic1, ${commapos}" QUIET
       lastcode=$?
-      if [[ $lastcode == 0 ]]
-      then
+      if [[ $lastcode == 0 ]]; then
          #echo NmeaConf ${DEVICE} \"setPVTMode, , , Geodetic1\" QUIET
          NmeaConf ${DEVICE} "setPVTMode, , , Geodetic1" QUIET
          ExitCodeCheck $?
-         if [[ $lastcode == 0 ]]
-         then
+         if [[ $lastcode == 0 ]]; then
             recv_position="${position}"
             #echo recv_position=${recv_position}
             SAVECONF=Y
@@ -360,8 +363,7 @@ then
             BADPOS=N
          fi
       fi
-      if [[ ${SAVEPOS} != Y ]]
-      then
+      if [[ ${SAVEPOS} != Y ]]; then
          BADPOS=Y
          TIMEPOS=Y
       fi
@@ -380,9 +382,8 @@ then
    fi
 fi
 
-#echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS} SAVECONF=${SAVECONF} BADPOS=${BADPOS}
-if [[ ${CHECKPOS} == Y ]]
-then
+#echo CHECKPOS=${CHECKPOS} SAVEPOS=${SAVEPOS} SAVECONF=${SAVECONF} BADPOS=${BADPOS} TIMEPOS=${TIMEPOS}
+if [[ ${CHECKPOS} == Y ]]; then
    #echo UNICORE_ANSWER=\`NmeaConf ${DEVICE} CONFIG\`
    UNICORE_ANSWER=`NmeaConf ${DEVICE} CONFIG`
    ExitCodeCheck $?
@@ -390,10 +391,15 @@ then
    POSITION_INCORRECT=`echo ${UNICORE_ANSWER} | grep -c "not correct"`
    HAVE_RTCM3=`echo ${UNICORE_ANSWER} | grep -c "RTCM3:"`
    #echo POSITION_INCORRECT=${POSITION_INCORRECT} HAVE_RTCM3=${HAVE_RTCM3}
-   if [[ ${POSITION_INCORRECT} == "0" ]] && [[ ${HAVE_RTCM3} != "0" ]]; then
-      recv_position="${position}"
-      #echo recv_position=${recv_position}
-      BADPOS=N
+   if [[ ${POSITION_INCORRECT} == "0" ]]; then
+      if [[ ${HAVE_RTCM3} != "0" ]]; then
+         recv_position="${position}"
+         #echo recv_position=${recv_position}
+         BADPOS=N
+      else
+         BADPOS=A
+         TIMEPOS=Y
+      fi
    else
       BADPOS=Y
       TIMEPOS=Y
@@ -401,10 +407,8 @@ then
    SAVECONF=Y
 fi
 
-if [[ "${BADPOS}" == "" ]]
-then
-   if [[ -f ${BADPOSFILE} ]]
-   then
+if [[ "${BADPOS}" == "" ]]; then
+   if [[ -f ${BADPOSFILE} ]]; then
       BADNOW=Y
       BADPOS=N
    else
@@ -412,15 +416,15 @@ then
    fi
 fi
 
-if [[ "${BADPOS}" != "" ]]
-then
+if [[ "${BADPOS}" != "" ]]; then
    #echo BADPOS=${BADPOS} BADNOW=${BADNOW} BADPOSFILE=${BADPOSFILE}
-   if [[ ${BADPOS} != ${BADNOW} ]]
-   then
-      if [[ ${BADPOS} == Y ]]
-      then
+   if [[ ${BADPOS} != ${BADNOW} ]]; then
+      if [[ ${BADPOS} == Y ]]; then
          #echo \"Bad coordinates\" \>${BADPOSFILE}
          echo "Bad coordinates" >${BADPOSFILE}
+      elif [[ ${BADPOS} == A ]]; then
+         #echo \"No any RTCM3. Is anttenna connected?\" \>${BADPOSFILE}
+         echo "No any RTCM3. Is anttenna connected?" >${BADPOSFILE}
       else
          #echo rm -f ${BADPOSFILE}
          rm -f ${BADPOSFILE}
@@ -431,10 +435,8 @@ then
 fi
 
 #echo TIMEPOS=${TIMEPOS}
-if [[ ${TIMEPOS} == Y ]]
-then
-   if [[ "${receiver}" =~ Unicore ]]
-   then
+if [[ ${TIMEPOS} == Y ]]; then
+   if [[ "${receiver}" =~ Unicore ]]; then
       #echo NmeaConf ${DEVICE} \"MODE BASE 1 TIME 60 1\" QUIET
       NmeaConf ${DEVICE} "MODE BASE 1 TIME 60 1" QUIET
       ExitCodeCheck $?
