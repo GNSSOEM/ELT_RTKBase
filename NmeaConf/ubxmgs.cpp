@@ -1610,6 +1610,8 @@ TUbxCfg UbxCfgTable[] = {
          "RTCM DF003 reference station ID (output)"},
         {"CFG-RTCM-DF028_OUT", 0x30090010, "U2", 0.0001, "m",
          "RTCM DF028 (antenna height) output value"},
+        {"CFG-RTCM-MSM_OUT_RANGERATE_SIGN", 0x30090011, "L", 1, "",
+         "Sign of the Phaserange rate in RTCM MSM7 and MSM5 output message"},
 
         // CFG-SBAS-
         {"CFG-SBAS", 0x1036ffff, "", 0, "",
@@ -2233,6 +2235,7 @@ TUbxCmd UbxCmdTable[] = {
    {0x0140, "UBX-NAV-EKFSTATUS"},
    {0x0142, "UBX-NAV-SLAS"},
    {0x0143, "UBX-NAV-SIG"},
+   {0x0145, "UBX-NAV-DAHEADING"},
    {0x0160, "UBX-NAV-AOPSTATUS"},
    {0x0161, "UBX-NAV-EOE"},
    {0x0162, "UBX-NAV-PL"},
